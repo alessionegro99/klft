@@ -499,7 +499,7 @@ namespace klft {
     KOKKOS_INLINE_FUNCTION U1<T> operator*(const U1<Tin> &in) const {
       T k1 = in.v.real()*(v.real() + v.imag());
       T k2 = v.real()*(in.v.imag() - in.v.real());
-      T k3 = v.imag()*(in.v.real() + in.b.imag());
+      T k3 = v.imag()*(in.v.real() + in.v.imag());
       return U1<T>(Kokkos::complex<T>(k1 - k3, k1 + k2));
     }
 
