@@ -488,14 +488,19 @@ namespace klft {
 
     template <typename Tin>
     KOKKOS_INLINE_FUNCTION void operator*=(const U1<Tin> &in) {
-      T a = v.real()*in.v.real() - v.imag()*in.v.imag();
-      T b = v.real()*in.v.imag() + v.imag()*in.v.real();
-      v = Kokkos::complex<T>(a,b);
+
+      T k1 = in.v.real()*(v.real() + v.imag());
+      T k2 = v.real()*(in.v.imag() - in.v.real());
+      T k3 = v.imag()*(in.v.real() + in.b.imag());
+      v = Kokkos::complex<T>(k1 - k3, k1 + k2);
     }
 
     template <typename Tin>
     KOKKOS_INLINE_FUNCTION U1<T> operator*(const U1<Tin> &in) const {
-      return U1<T>(Kokkos::complex<T>(v.real()*in.v.real() - v.imag()*in.v.imag(),v.real()*in.v.imag() + v.imag()*in.v.real()));
+      T k1 = in.v.real()*(v.real() + v.imag());
+      T k2 = v.real()*(in.v.imag() - in.v.real());
+      T k3 = v.imag()*(in.v.real() + in.b.imag());
+      return U1<T>(Kokkos::complex<T>(k1 - k3, k1 + k2));
     }
 
     KOKKOS_INLINE_FUNCTION T retrace() const {
