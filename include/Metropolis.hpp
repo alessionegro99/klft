@@ -90,9 +90,22 @@ namespace klft
           // calculate the new link
           const SUN<Nc> U_new = U_old * r;
           // calculate delta S
-          const real_t dS = -(params.beta/static_cast<real_t>(Nc))
+
+          real_t dS = -(params.beta/static_cast<real_t>(Nc))
                            * (trace(U_new * staple).real()
-                            - trace(U_old * staple).real());
+                           - trace(U_old * staple).real());
+          
+          if(params.epsilon1 != 0.0) {
+            dS += - params.epsilon1 * static_cast<real_t>(0.5) * (trace(U_new).real() - trace(U_old).real());
+          }
+          // ReTr(U^2)
+          if (params.epsilon2 != 0.0) {
+            // Calc trace(U_new):
+            auto retr_U_new = trace(U_new).real();
+            auto retr_U_old = trace(U_old).real();
+            // we use the fact that ReTr(U^2) = 2 * ReTr(U)^2 - 2
+            dS += -params.epsilon2 * (retr_U_new * retr_U_new - retr_U_old * retr_U_old);
+          }
           // accept or reject the update
           bool accept = dS < 0.0;
           if (!accept) {
@@ -152,7 +165,7 @@ namespace klft
         params.print();
         printf("Lattice dimensions: ");
         for (index_t j = 0; j < rank; ++j) {
-          printf("%d ", dimensions[j]);
+          printf("%ld ", dimensions[j]);
         }
         printf("\n");
         printf("Current number of accepted steps: %11.6f\n", nAccepted.sum());

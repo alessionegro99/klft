@@ -52,6 +52,10 @@ namespace klft {
         // parameters specific to the Wilson action
         metropolisParams.beta = mp["beta"].as<double>(1.0);
         metropolisParams.delta = mp["delta"].as<double>(0.1);
+        
+        // parameters specific to the gauge breaking
+        metropolisParams.epsilon1 = mp["epsilon1"].as<real_t>(0.0);
+        metropolisParams.epsilon2 = mp["epsilon2"].as<real_t>(0.0);
         // ...
         // add more parameters above this as needed
       } else {
@@ -81,6 +85,8 @@ namespace klft {
         gaugeObservableParams.measure_wilson_loop_temporal = gp["measure_wilson_loop_temporal"].as<bool>(false);
         // whether to measure the mu-nu Wilson loop
         gaugeObservableParams.measure_wilson_loop_mu_nu = gp["measure_wilson_loop_mu_nu"].as<bool>(false);
+        // whether to measure the Retrace(U)
+        gaugeObservableParams.measure_retrace_U = gp["measure_retrace_U"].as<bool>(false);
 
         // pairs of (L,T) for the temporal Wilson loop
         if (gp["W_temp_L_T_pairs"]) {
@@ -107,6 +113,7 @@ namespace klft {
         gaugeObservableParams.plaquette_filename = gp["plaquette_filename"].as<std::string>("");
         gaugeObservableParams.W_temp_filename = gp["W_temp_filename"].as<std::string>("");
         gaugeObservableParams.W_mu_nu_filename = gp["W_mu_nu_filename"].as<std::string>("");
+        gaugeObservableParams.RetraceU_filename = gp["RetraceU_filename"].as<std::string>("");
 
         // whether to write to file
         gaugeObservableParams.write_to_file = gp["write_to_file"].as<bool>(false);

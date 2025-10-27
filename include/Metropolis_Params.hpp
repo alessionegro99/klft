@@ -48,6 +48,9 @@ namespace klft
     real_t beta; // inverse coupling constant
     real_t delta; // step size for the metropolis update
 
+    real_t epsilon1; // gauge breaking parameter, if applicable
+    real_t epsilon2;
+
     // add more parameters above this line as needed
     // ...
 
@@ -69,7 +72,9 @@ namespace klft
 
       beta = 1.0;
       delta = 0.1;
-
+      epsilon1 = 0.0;
+      epsilon2 = 0.0;
+      
       // set default values to newly added parameters
       // above this line
       // ...

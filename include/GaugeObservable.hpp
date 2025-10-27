@@ -23,6 +23,7 @@
 #pragma once
 #include "GaugePlaquette.hpp"
 #include "WilsonLoop.hpp"
+#include "GaugeRetrace.hpp"
 #include <fstream>
 
 namespace klft
@@ -33,6 +34,8 @@ namespace klft
     bool measure_plaquette; // whether to measure the plaquette
     bool measure_wilson_loop_temporal; // whether to measure the temporal Wilson loop
     bool measure_wilson_loop_mu_nu; // whether to measure the mu-nu Wilson loop
+    bool measure_retrace_U;                         // new
+
     std::vector<Kokkos::Array<index_t,2>> W_temp_L_T_pairs; // pairs of (L,T) for the temporal Wilson loop
     std::vector<Kokkos::Array<index_t,2>> W_mu_nu_pairs; // pairs of (mu,nu) for the mu-nu Wilson loop
     std::vector<Kokkos::Array<index_t,2>> W_Lmu_Lnu_pairs; // pairs of (Lmu,Lnu) for the Wilson loop
@@ -42,11 +45,13 @@ namespace klft
     std::vector<real_t> plaquette_measurements; // measurements of the plaquette
     std::vector<std::vector<Kokkos::Array<real_t,3>>> W_temp_measurements; // L, T and corresponding W_temp
     std::vector<std::vector<Kokkos::Array<real_t,5>>> W_mu_nu_measurements; // mu, nu, Lmu, Lnu and corresponding W_mu_nu
+    std::vector<real_t> retraceU_measurements;      // new
 
     // finally, some filenames where the measurements will be flushed
     std::string plaquette_filename; // filename for the plaquette measurements
     std::string W_temp_filename; // filename for the temporal Wilson loop measurements
     std::string W_mu_nu_filename; // filename for the mu-nu Wilson loop measurements
+    std::string RetraceU_filename;                  // new
 
     // boolean flag to indicate if the measurements are to be flushed
     bool write_to_file;
@@ -57,7 +62,8 @@ namespace klft
       : measurement_interval(0),
         measure_plaquette(false),
         measure_wilson_loop_temporal(false),
-        measure_wilson_loop_mu_nu(false) {}
+        measure_wilson_loop_mu_nu(false),
+        measure_retrace_U(false) {}
   };
 
   // define a function to measure the gauge observables
@@ -121,6 +127,16 @@ namespace klft
       }
       params.W_mu_nu_measurements.push_back(temp_measurements);
     }
+
+    // measure the Retrace(U) if requested
+    if (params.measure_retrace_U) {
+      const real_t R = Retrace_links_avg<rank, Nc>(g_in);
+      params.retraceU_measurements.push_back(R);
+      if (KLFT_VERBOSITY > 0) {
+        printf("Retrace(U): %11.6f\n", R);
+      }
+}
+
     // add the step to the measurement steps
     params.measurement_steps.push_back(step);
     return;
@@ -199,6 +215,27 @@ namespace klft
     }
   }
 
+  inline void flushRetraceU(std::ofstream &file,
+                      const GaugeObservableParams &params,
+                      const bool HEADER = true) {
+    // check if the file is open
+    if (!file.is_open()) {
+      printf("Error: file is not open\n");
+      return;
+    }
+    // check if Retrace(U) measurements are available
+    if (!params.measure_retrace_U) {
+      printf("Error: no Retrace(U) measurements available\n");
+      return;
+    }
+    if (HEADER) file << "# step, Retrace(U)\n";
+    for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+      file << params.measurement_steps[i] << ", "
+           << params.retraceU_measurements[i] << "\n";
+    }
+  }
+  
+
   // define a global function to flush all measurements
   inline void flushAllGaugeObservables(const GaugeObservableParams &params,
                                 const bool HEADER = true) {
@@ -223,6 +260,11 @@ namespace klft
     if (params.W_mu_nu_filename != "") {
       std::ofstream file(params.W_mu_nu_filename, std::ios::app);
       flushWilsonLoopMuNu(file, params, HEADER);
+      file.close();
+    }
+    if (params.RetraceU_filename != "") {
+      std::ofstream file(params.RetraceU_filename, std::ios::app);
+      flushRetraceU(file, params, HEADER);
       file.close();
     }
     // ...
