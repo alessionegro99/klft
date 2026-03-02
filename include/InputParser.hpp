@@ -26,8 +26,40 @@
 #include "Metropolis_Params.hpp"
 #include "GaugeObservable.hpp"
 #include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
 
 namespace klft {
+
+  // Helper to parse index ranges like "1:16" or single values
+  inline std::vector<index_t> parseIndexRange(const YAML::Node& node) {
+    std::vector<index_t> values;
+    if (node.IsScalar()) {
+      std::string s = node.as<std::string>();
+      size_t colon = s.find(':');
+      if (colon != std::string::npos) {
+        try {
+          index_t start = std::stoi(s.substr(0, colon));
+          index_t end = std::stoi(s.substr(colon + 1));
+          if (start <= end) {
+            for (index_t i = start; i <= end; ++i) {
+              values.push_back(i);
+            }
+          }
+        } catch (...) {
+          printf("Warning: Failed to parse range '%s'\n", s.c_str());
+        }
+      } else {
+        try {
+          values.push_back(node.as<index_t>());
+        } catch (...) {
+          printf("Warning: Failed to parse index '%s'\n", s.c_str());
+        }
+      }
+    }
+    return values;
+  }
 
   // get MetropolisParams from input file
   bool parseInputFile(const std::string &filename, MetropolisParams &metropolisParams) {
@@ -91,21 +123,39 @@ namespace klft {
         // pairs of (L,T) for the temporal Wilson loop
         if (gp["W_temp_L_T_pairs"]) {
           for (const auto &pair : gp["W_temp_L_T_pairs"]) {
-            gaugeObservableParams.W_temp_L_T_pairs.push_back(IndexArray<2>({pair[0].as<index_t>(), pair[1].as<index_t>()}));
+            auto v1 = parseIndexRange(pair[0]);
+            auto v2 = parseIndexRange(pair[1]);
+            for (auto i1 : v1) {
+              for (auto i2 : v2) {
+                gaugeObservableParams.W_temp_L_T_pairs.push_back(IndexArray<2>({i1, i2}));
+              }
+            }
           }
         }
 
         // pairs of (mu,nu) for the mu-nu Wilson loop
         if (gp["W_mu_nu_pairs"]) {
           for (const auto &pair : gp["W_mu_nu_pairs"]) {
-            gaugeObservableParams.W_mu_nu_pairs.push_back(IndexArray<2>({pair[0].as<index_t>(), pair[1].as<index_t>()}));
+            auto v1 = parseIndexRange(pair[0]);
+            auto v2 = parseIndexRange(pair[1]);
+            for (auto i1 : v1) {
+              for (auto i2 : v2) {
+                gaugeObservableParams.W_mu_nu_pairs.push_back(IndexArray<2>({i1, i2}));
+              }
+            }
           }
         }
 
         // pairs of (Lmu,Lnu) for the Wilson loop
         if (gp["W_Lmu_Lnu_pairs"]) {
           for (const auto &pair : gp["W_Lmu_Lnu_pairs"]) {
-            gaugeObservableParams.W_Lmu_Lnu_pairs.push_back(IndexArray<2>({pair[0].as<index_t>(), pair[1].as<index_t>()}));
+            auto v1 = parseIndexRange(pair[0]);
+            auto v2 = parseIndexRange(pair[1]);
+            for (auto i1 : v1) {
+              for (auto i2 : v2) {
+                gaugeObservableParams.W_Lmu_Lnu_pairs.push_back(IndexArray<2>({i1, i2}));
+              }
+            }
           }
         }
 
