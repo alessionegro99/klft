@@ -1,36 +1,43 @@
 {
-  "version": 2,
-  "cmakeMinimumRequired": { "major": 3, "minor": 20 },
-
-  "configurePresets": [
-    {
-      "name": "relwithdebinfo",
-      "displayName": "Release with Debug Info",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/../../Build/klft-rel",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "Kokkos_ENABLE_OPENMP": "ON",
-        "Kokkos_ARCH_ZEN3": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      }
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20
     },
-    {
-      "name": "debug",
-      "displayName": "Debug",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/../../Build/klft-debug",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "Kokkos_ENABLE_OPENMP": "ON",
-        "Kokkos_ARCH_ZEN3": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      }
-    }
-  ],
-
-  "buildPresets": [
-    { "name": "relwithdebinfo", "configurePreset": "relwithdebinfo" },
-    { "name": "debug", "configurePreset": "debug" }
-  ]
+    "configurePresets": [
+        {
+            "name": "relwithdebinfo",
+            "displayName": "Release with Debug Info",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/../../Build/klft-rel",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "Kokkos_ENABLE_OPENMP": "ON",
+                "Kokkos_ARCH_ZEN3": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "debug",
+            "displayName": "Debug",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/../../Build/klft-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "Kokkos_ENABLE_OPENMP": "ON",
+                "Kokkos_ARCH_ZEN3": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "relwithdebinfo",
+            "configurePreset": "relwithdebinfo"
+        },
+        {
+            "name": "debug",
+            "configurePreset": "debug"
+        }
+    ]
 }
