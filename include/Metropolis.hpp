@@ -226,8 +226,9 @@ int run_metropolis(GaugeFieldType &g_in,
       printf("Step: %ld, Acceptance rate: %f, Time: %f\n", step, acc_rate,
              time);
     }
-    // measure the gauge observables
-    measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, step);
+
+    measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, step, acc_rate,
+                                      time);
   }
   // flush the measurements to the files
   flushAllGaugeObservables(gaugeObsParams);
