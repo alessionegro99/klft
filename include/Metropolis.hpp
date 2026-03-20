@@ -94,7 +94,8 @@ template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
             (trace(U_new * staple).real() - trace(U_old * staple).real());
 
         if (params.epsilon1 != 0.0) {
-          dS += -params.epsilon1 * (trace(U_new).real() - trace(U_old).real());
+          dS += -params.epsilon1 * static_cast<real_t>(0.5) *
+                (trace(U_new).real() - trace(U_old).real());
         }
 
         if (params.epsilon2 != 0.0) {
