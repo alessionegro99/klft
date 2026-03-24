@@ -1,25 +1,14 @@
-// Define the global types and views for Kokkos Lattice Field Theory (KLFT)
-// This file contains the definitions for the types used in KLFT, including
-// the real and complex types, gauge field types, and field view types.
-// It also includes the definitions for the policies used in Kokkos parallel
-// programming.
-
 #pragma once
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
 namespace klft {
 
-// define the global types
-// is this a good idea?
-// if we want different fields with different precision (e.g. coarse grid)
-// might be a lot of work to redefine, but on the other hand, if we want to
-// be precision agnostic, everything has to be templated with given precision
-// let's start like this and worry about mixed precision later
+// double precision
 using real_t = double;
+// Kokkos need device-compatible types
 using complex_t = Kokkos::complex<real_t>;
-
-// use int for the index type
+// indexing type
 using index_t = int;
 
 // define index_arrays
