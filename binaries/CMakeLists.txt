@@ -1,2 +1,2 @@
-add_executable(metropolis metropolis.cpp)
-target_link_libraries(metropolis PUBLIC klft Kokkos::kokkos yaml-cpp)
+add_executable(nemc nemc.cpp)
+target_link_libraries(nemc PUBLIC klft Kokkos::kokkos yaml-cpp)

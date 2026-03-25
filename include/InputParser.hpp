@@ -3,8 +3,8 @@
 // different Param structs
 
 #pragma once
-#include "Metropolis_Params.hpp"
 #include "gauge_obs_meas.hpp"
+#include "klft_params.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -51,27 +51,58 @@ inline bool parseInputFile(const std::string &filename,
     if (config["MetropolisParams"]) {
       const auto &mp = config["MetropolisParams"];
 
-      // general parameters
+      // geometry
       metropolisParams.Ndims = mp["Ndims"].as<index_t>(4);
       metropolisParams.L0 = mp["L0"].as<index_t>(32);
       metropolisParams.L1 = mp["L1"].as<index_t>(32);
       metropolisParams.L2 = mp["L2"].as<index_t>(32);
       metropolisParams.L3 = mp["L3"].as<index_t>(32);
+
+      // update
       metropolisParams.nHits = mp["nHits"].as<index_t>(10);
       metropolisParams.nSweep = mp["nSweep"].as<index_t>(1000);
       metropolisParams.seed = mp["seed"].as<index_t>(1234);
 
-      // parameters specific to the GaugeField
+      // gauge field
       metropolisParams.Nd = mp["Nd"].as<size_t>(4);
       metropolisParams.Nc = mp["Nc"].as<size_t>(2);
 
-      // parameters specific to the Wilson action
+      // action
       metropolisParams.beta = mp["beta"].as<double>(1.0);
       metropolisParams.delta = mp["delta"].as<double>(0.1);
-
-      // parameters specific to the gauge breaking
       metropolisParams.epsilon1 = mp["epsilon1"].as<real_t>(0.0);
-      metropolisParams.epsilon2 = mp["epsilon2"].as<real_t>(0.0);
+      // metropolisParams.epsilon2 = mp["epsilon2"].as<real_t>(0.0);
+      //
+      // NEMC
+      metropolisParams.enable_nemc = mp["enable_nemc"].as<bool>(false);
+      metropolisParams.nemc_ntherm = mp["nemc_ntherm"].as<index_t>(0);
+      metropolisParams.nemc_stride = mp["nemc_stride"].as<index_t>(5);
+      metropolisParams.nemc_nsteps = mp["nemc_nsteps"].as<index_t>(10);
+      metropolisParams.nemc_dbeta = mp["nemc_dbeta"].as<real_t>(0.01);
+      metropolisParams.nemc_filename =
+          mp["nemc_filename"].as<std::string>("nemc_results.out");
+
+      if (metropolisParams.enable_nemc) {
+        if (metropolisParams.nemc_ntherm < 0) {
+          printf("Error: nemc_ntherm must be non-negative\n");
+          return false;
+        }
+        if (metropolisParams.nemc_stride <= 0) {
+          printf(
+              "Error: nemc_stride must be positive when enable_nemc is true\n");
+          return false;
+        }
+        if (metropolisParams.nemc_nsteps <= 0) {
+          printf(
+              "Error: nemc_nsteps must be positive when enable_nemc is true\n");
+          return false;
+        }
+        if (metropolisParams.nemc_filename.empty()) {
+          printf("Error: nemc_filename is empty\n");
+          return false;
+        }
+      }
+
       // ...
       // add more parameters above this as needed
     } else {

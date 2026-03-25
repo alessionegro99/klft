@@ -1,6 +1,6 @@
 #pragma once
-#include "GaugeField.hpp"
 #include "GaugeGroup.hpp"
+#include "field_gauge.hpp"
 
 namespace klft {
 

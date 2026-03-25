@@ -4,7 +4,6 @@
 #include "GLOBAL.hpp"
 #include "IndexHelper.hpp"
 #include "SUN.hpp"
-#include "Tuner.hpp"
 
 #include <Kokkos_Core.hpp>
 #include <cassert>
@@ -81,8 +80,8 @@ real_t GaugePlaquette(const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
 
   GaugePlaq<rank, Nc> gaugePlaquette(g_in, plaq_per_site, end);
 
-  tune_and_launch_for<rank>("GaugePlaquette_GaugeField", start, end,
-                            gaugePlaquette);
+  Kokkos::parallel_for("GaugePlaquette_GaugeField", Policy<rank>(start, end),
+                       gaugePlaquette);
   Kokkos::fence();
 
   plaq = plaq_per_site.sum();
@@ -314,8 +313,8 @@ real_t BlockedGaugePlaquetteOneLevel(
   BlockedGaugePlaqOneLevel<rank, Nc> blockedPlaq(g_in, plaq_per_site,
                                                  fine_dimensions, child_offset);
 
-  tune_and_launch_for<rank>("BlockedGaugePlaquetteOneLevel_GaugeField",
-                            coarse_start, coarse_end, blockedPlaq);
+  Kokkos::parallel_for("BlockedGaugePlaquetteOneLevel_GaugeField",
+                       Policy<rank>(coarse_start, coarse_end), blockedPlaq);
   Kokkos::fence();
 
   complex_t plaq = plaq_per_site.sum();
@@ -534,13 +533,14 @@ void WilsonLoop_mu_nu(
 
     wlmunu.update_Lmu_Lnu(Lmu, Lnu);
 
-    tune_and_launch_for<rank>("WilsonLoop_GaugeField_WLmunu", start, end,
-                              wlmunu);
+    Kokkos::parallel_for("WilsonLoop_GaugeField_WLmunu",
+                         Policy<rank>(start, end), wlmunu);
     Kokkos::fence();
 
-    tune_and_launch_for<rank>("WilsonLoop_GaugeField_WLoop_munu", start, end,
-                              WLoop_munu<rank, Nc>(WLmu, WLnu, mu, nu, Lmu, Lnu,
-                                                   Wmunu_per_site, end));
+    Kokkos::parallel_for("WilsonLoop_GaugeField_WLoop_munu",
+                         Policy<rank>(start, end),
+                         WLoop_munu<rank, Nc>(WLmu, WLnu, mu, nu, Lmu, Lnu,
+                                              Wmunu_per_site, end));
     Kokkos::fence();
 
     Wmunu = Wmunu_per_site.sum();

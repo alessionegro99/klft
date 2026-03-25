@@ -1,6 +1,6 @@
 // utility functions for gauge fields
 
-#include "GaugeField.hpp"
+#include "field_gauge.hpp"
 
 namespace klft {
 // calculate staple per site and store in another gauge field
