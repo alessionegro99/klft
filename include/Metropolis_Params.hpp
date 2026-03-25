@@ -51,7 +51,7 @@ struct MetropolisParams {
     beta = 1.0;
     delta = 0.1;
     epsilon1 = 0.0;
-    epsilon2 = 0.0;
+    // epsilon2 = 0.0;
 
     // set default values to newly added parameters
     // above this line

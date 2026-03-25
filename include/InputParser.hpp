@@ -3,8 +3,8 @@
 // different Param structs
 
 #pragma once
-#include "GaugeObservable.hpp"
 #include "Metropolis_Params.hpp"
+#include "gauge_obs_meas.hpp"
 #include <fstream>
 #include <sstream>
 #include <string>

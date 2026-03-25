@@ -4,7 +4,6 @@
 
 namespace klft {
 
-// double precision
 using real_t = double;
 // Kokkos need device-compatible types
 using complex_t = Kokkos::complex<real_t>;

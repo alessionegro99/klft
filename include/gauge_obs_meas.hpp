@@ -1,8 +1,5 @@
 #pragma once
-#include "GaugeEnergy.hpp"
-#include "GaugePlaquette.hpp"
-#include "GaugeRetrace.hpp"
-#include "WilsonLoop.hpp"
+#include "gauge_obs_def.hpp"
 
 #include <fstream>
 #include <iomanip>
@@ -14,13 +11,13 @@ namespace klft {
 
 struct GaugeObservableParams {
   size_t measurement_interval;
+
   bool measure_plaquette;
   bool measure_wilson_loop_temporal;
   bool measure_wilson_loop_mu_nu;
   bool measure_retrace_U;
-
-  // nested Wilson-action observable
   bool measure_nested_wilson_action;
+
   std::vector<index_t> nested_child_offset;
 
   std::vector<Kokkos::Array<index_t, 2>> W_temp_L_T_pairs;
@@ -32,11 +29,9 @@ struct GaugeObservableParams {
   std::vector<real_t> measurement_times;
 
   std::vector<real_t> plaquette_measurements;
+  std::vector<real_t> retraceU_measurements;
   std::vector<std::vector<WilsonLoopTemporalMeasurement>> W_temp_measurements;
   std::vector<std::vector<WilsonLoopMuNuMeasurement>> W_mu_nu_measurements;
-  std::vector<real_t> retraceU_measurements;
-
-  // nested Wilson-action measurements
   std::vector<real_t> nested_plaq_V_measurements;
   std::vector<real_t> nested_plaq_child_measurements;
   std::vector<real_t> nested_E_V_measurements;

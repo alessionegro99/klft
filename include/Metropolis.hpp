@@ -1,30 +1,18 @@
-// this file defines metropolis sweeps for different fields and actions
-
 #pragma once
 #include "FieldTypeHelper.hpp"
 #include "GLOBAL.hpp"
-#include "GaugeObservable.hpp"
 #include "IndexHelper.hpp"
 #include "Metropolis_Params.hpp"
-
-// we are hard coding the RNG now to use Kokkos::Random_XorShift64_Pool
-// we might want to use our own RNG or allow the user to choose from
-// different RNGs in the future
+#include "gauge_obs_meas.hpp"
 #include <Kokkos_Random.hpp>
 
 using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
 
 namespace klft {
-// here we define functions for the metropolis update
-// the function sweep metropolis must be overloaded
-// for different fields and actions
-// by default, the function must return the number of
-// accepted updates
 
 template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
-  // we strictly work with Nd = rank
   constexpr static const size_t Nd = rank;
-  // define the gauge field type
+
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
   GaugeFieldType g_in;
   // define the scalar field type
@@ -64,11 +52,9 @@ template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
       for (index_t hit = 0; hit < params.nHits; ++hit) {
         // generate a random SUN matrix
         randSUN(r, generator, params.delta);
-        // get old link
+
         const SUN<Nc> U_old = g_in(site, mu);
-        // calculate the new link
         const SUN<Nc> U_new = U_old * r;
-        // calculate delta S
 
         real_t dS =
             -(params.beta / static_cast<real_t>(Nc)) *
@@ -79,22 +65,12 @@ template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
                 (trace(U_new).real() - trace(U_old).real());
         }
 
-        // TODO:
-        // if (params.epsilon2 != 0.0) {
-        //   static_assert(Nc == 2, "epsilon2 term currently only implemented "
-        //                          "consistently for Nc=2.");
-        //   auto retr_U_new = trace(U_new).real();
-        //   auto retr_U_old = trace(U_old).real();
-
-        //  // ReTr(U^2) = 2 * ReTr(U)^2 - 2
-        //  dS += -params.epsilon2 *
-        //        (retr_U_new * retr_U_new - retr_U_old * retr_U_old);
-        //}
-
         bool accept = dS < 0.0;
+
         if (!accept) {
           accept = (generator.drand(0.0, 1.0) < Kokkos::exp(-dS));
         }
+
         if (accept) {
           g_in(site, mu) = restoreSUN(U_new);
           nAcc_per_site++;
@@ -108,16 +84,13 @@ template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
   }
 };
 
-// metropolis sweep for SUN gauge fields
 // returns acceptance rate
 template <size_t rank, size_t Nc, class RNG>
 real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
                         const MetropolisParams &params, const RNG &rng) {
-  // this works strictly for Nd = rank
   constexpr static const size_t Nd = rank;
-  // get start and end indices
-  // TODO: change to g_in.dimensions
-  const auto &dimensions = g_in.field.layout().dimension;
+
+  const auto &dimensions = g_in.dimensions;
   IndexArray<rank> start;
   IndexArray<rank> end;
   for (index_t i = 0; i < Nd; ++i) {
@@ -132,10 +105,9 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   using ScalarFieldType = typename DeviceScalarFieldType<rank>::type;
   ScalarFieldType nAccepted(end, 0.0);
 
-  // for N dimensional lattices, we need to divide each dimension
   // into odd and even sites and launch the kernel for each sublattice
   // this results in 2^N sublattices
-  for (index_t i = 0; i < std::pow(2, rank); ++i) {
+  for (index_t i = 0; i < static_cast<index_t>(1u << rank); ++i) {
     // define metropolis functor for this sublattice
     MetropolisGaugeField<rank, Nc, RNG> metropolis(g_in, params, end, nAccepted,
                                                    oddeven_array<rank>(i), rng);
@@ -192,11 +164,6 @@ int run_metropolis(GaugeFieldType &g_in,
         sweep_Metropolis<rank, Nc>(g_in, metropolisParams, rng);
     // get the time taken for the sweep
     const real_t time = timer.seconds();
-    // print the acceptance rate
-    if (KLFT_VERBOSITY > 0) {
-      printf("Step: %ld, Acceptance rate: %f, Time: %f\n", step, acc_rate,
-             time);
-    }
 
     measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, step, acc_rate,
                                       time);
@@ -207,8 +174,7 @@ int run_metropolis(GaugeFieldType &g_in,
   return 0;
 }
 
-// define run_metropolis for all dimensionalities
-// and gauge groups
+// definefor all dimensionalities and gauge groups
 // 2D U(1)
 template int run_metropolis<2, 1>(deviceGaugeField2D<2, 1> &g_in,
                                   const MetropolisParams &metropolisParams,
