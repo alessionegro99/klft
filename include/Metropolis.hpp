@@ -1,22 +1,3 @@
-//******************************************************************************/
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-//
-// KLFT is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// KLFT is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with KLFT.  If not, see <http://www.gnu.org/licenses/>.
-//
-//******************************************************************************/
-
 // this file defines metropolis sweeps for different fields and actions
 
 #pragma once
@@ -98,14 +79,17 @@ template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
                 (trace(U_new).real() - trace(U_old).real());
         }
 
-        if (params.epsilon2 != 0.0) {
-          auto retr_U_new = trace(U_new).real();
-          auto retr_U_old = trace(U_old).real();
+        // TODO:
+        // if (params.epsilon2 != 0.0) {
+        //   static_assert(Nc == 2, "epsilon2 term currently only implemented "
+        //                          "consistently for Nc=2.");
+        //   auto retr_U_new = trace(U_new).real();
+        //   auto retr_U_old = trace(U_old).real();
 
-          // ReTr(U^2) = 2 * ReTr(U)^2 - 2
-          dS += -params.epsilon2 *
-                (retr_U_new * retr_U_new - retr_U_old * retr_U_old);
-        }
+        //  // ReTr(U^2) = 2 * ReTr(U)^2 - 2
+        //  dS += -params.epsilon2 *
+        //        (retr_U_new * retr_U_new - retr_U_old * retr_U_old);
+        //}
 
         bool accept = dS < 0.0;
         if (!accept) {
@@ -132,15 +116,19 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   // this works strictly for Nd = rank
   constexpr static const size_t Nd = rank;
   // get start and end indices
+  // TODO: change to g_in.dimensions
   const auto &dimensions = g_in.field.layout().dimension;
   IndexArray<rank> start;
   IndexArray<rank> end;
   for (index_t i = 0; i < Nd; ++i) {
+    if ((dimensions[i] % 2) != 0) {
+      throw std::runtime_error(
+          "sweep_Metropolis requires even lattice extents in every direction.");
+    }
     start[i] = 0;
-    end[i] = (index_t)(dimensions[i] / 2);
+    end[i] = dimensions[i] / 2;
   }
 
-  // define a scalar field to store the number of accepted updates
   using ScalarFieldType = typename DeviceScalarFieldType<rank>::type;
   ScalarFieldType nAccepted(end, 0.0);
 
@@ -151,33 +139,18 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
     // define metropolis functor for this sublattice
     MetropolisGaugeField<rank, Nc, RNG> metropolis(g_in, params, end, nAccepted,
                                                    oddeven_array<rank>(i), rng);
-    if (KLFT_VERBOSITY > 1) {
-      printf("Launching Metropolis for sublattice %d\n", i);
-      printf("Lattice odd/even: ");
-      for (index_t j = 0; j < rank; ++j) {
-        printf("%d ", oddeven_array<rank>(i)[j]);
-      }
-      printf("\n");
-    }
-    if (KLFT_VERBOSITY > 2) {
-      params.print();
-      printf("Lattice dimensions: ");
-      for (index_t j = 0; j < rank; ++j) {
-        printf("%ld ", dimensions[j]);
-      }
-      printf("\n");
-      printf("Current number of accepted steps: %11.6f\n", nAccepted.sum());
-    }
     // launch the kernel
     tune_and_launch_for<rank>("sweep_Metropolis_GaugeField_sublat_" +
                                   std::to_string(i),
                               start, end, metropolis);
     Kokkos::fence();
   }
-  // reduce the number of accepted updates
+
   real_t nAcc_total = nAccepted.sum();
+
+  // TODO: remove(?)
   Kokkos::fence();
-  // normalize the acceptance rate
+
   real_t norm = 1.0;
   for (index_t i = 0; i < rank; ++i) {
     norm *= static_cast<real_t>(dimensions[i]);
@@ -185,7 +158,7 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   norm *= static_cast<real_t>(Nd);
   norm *= static_cast<real_t>(params.nHits);
   nAcc_total /= norm;
-  // return the acceptance rate
+
   return nAcc_total;
 }
 

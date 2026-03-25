@@ -1,20 +1,9 @@
-//*******************************************************************************
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-// See the top-level project for licensing details (GPLv3 or later).
-//
-//*******************************************************************************
-
 #pragma once
 #include "FieldTypeHelper.hpp" // for DeviceGaugeFieldType<rank,Nc>
 #include "GLOBAL.hpp"
 #include <Kokkos_Core.hpp>
 
 namespace klft {
-
-//------------------------------------------------------------------------------
-// Helpers
-//------------------------------------------------------------------------------
 
 KOKKOS_INLINE_FUNCTION
 real_t real_part(const real_t &x) { return x; }

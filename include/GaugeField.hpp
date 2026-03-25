@@ -1,22 +1,3 @@
-//******************************************************************************/
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-//
-// KLFT is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// KLFT is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with KLFT.  If not, see <http://www.gnu.org/licenses/>.
-//
-//******************************************************************************/
-
 // define structs for initializing gauge fields
 
 #pragma once
@@ -57,6 +38,7 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
   deviceGaugeField(const index_t L0, const index_t L1, const index_t L2,
                    const index_t L3, RNG &rng)
       : dimensions({L0, L1, L2, L3}) {
+    // TODO: leaking random pool states because they are never freed
     do_init(L0, L1, L2, L3, field, rng);
   }
 
@@ -148,6 +130,8 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
   const IndexArray<4> dimensions;
 
   // define accessors for the field
+  // TODO: This is a const member function returning a mutable reference. Not
+  // const correct
   template <typename indexType>
   KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> &
   operator()(const indexType i0, const indexType i1, const indexType i2,
@@ -169,6 +153,7 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
     return field(site[0], site[1], site[2], site[3], mu);
   }
 
+  // TODO: Again the pass by value
   template <typename indexType>
   KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> &
   operator()(const Kokkos::Array<indexType, 4> site, const index_t mu) {
@@ -209,6 +194,7 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
               conj(field(i0, i1, i2, i3, nu));
     } // loop over nu
 // negative directions
+// TODO: why not using the helper functions in the other file?
 #pragma unroll
     for (index_t nu = 0; nu < Nd; ++nu) { // loop over nu
       // do nothing for mu = nu

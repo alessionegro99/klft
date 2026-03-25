@@ -24,7 +24,7 @@ KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator*(const SUN<Nc> &a,
 }
 
 template <size_t Nc>
-KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator*=(SUN<Nc> &a, const SUN<Nc> &b) {
+KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> &operator*=(SUN<Nc> &a, const SUN<Nc> &b) {
   SUN<Nc> c = a * b;
   a = c;
   return a;
@@ -45,7 +45,7 @@ KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator+(const SUN<Nc> &a,
 }
 
 template <size_t Nc>
-KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator+=(SUN<Nc> &a, const SUN<Nc> &b) {
+KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> &operator+=(SUN<Nc> &a, const SUN<Nc> &b) {
   SUN<Nc> c = a + b;
   a = c;
   return a;
@@ -66,7 +66,7 @@ KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator-(const SUN<Nc> &a,
 }
 
 template <size_t Nc>
-KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator-=(SUN<Nc> &a, const SUN<Nc> &b) {
+KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> &operator-=(SUN<Nc> &a, const SUN<Nc> &b) {
   SUN<Nc> c = a - b;
   a = c;
   return a;
@@ -87,12 +87,13 @@ KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator*(const SUN<Nc> &a,
 }
 
 template <size_t Nc>
-KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> operator*=(SUN<Nc> &a, const real_t &b) {
+KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> &operator*=(SUN<Nc> &a, const real_t &b) {
   SUN<Nc> c = a * b;
   a = c;
   return a;
 }
 
+// TODO: rename to Hermitian conjugate (dagger)
 template <size_t Nc>
 KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> conj(const SUN<Nc> &a) {
   SUN<Nc> c;
@@ -149,6 +150,7 @@ KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<2> &r, RNG &generator,
   // return r;
 }
 
+// TODO: suspicious
 // template <size_t N = Nc, typename std::enable_if<N == 3, int>::type = 0,
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<3> &r, RNG &generator,

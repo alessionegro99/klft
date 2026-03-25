@@ -36,6 +36,8 @@ struct deviceField {
   const IndexArray<4> dimensions;
 
   // define accessors
+  // TODO: perhaps const complex_t & for const version of operator()?
+  // note that if i change it, it does not compile correctly anmymore
   template <typename indexType>
   KOKKOS_FORCEINLINE_FUNCTION complex_t &
   operator()(const indexType i0, const indexType i1, const indexType i2,
@@ -51,6 +53,7 @@ struct deviceField {
   }
 
   // define accessors with 4D Kokkos array
+  // TODO: pass by const& would be kleaner for Kokkos::Array<...,4>
   template <typename indexType>
   KOKKOS_FORCEINLINE_FUNCTION complex_t &
   operator()(const Kokkos::Array<indexType, 4> site) const {

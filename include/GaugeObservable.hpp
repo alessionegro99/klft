@@ -3,9 +3,12 @@
 #include "GaugePlaquette.hpp"
 #include "GaugeRetrace.hpp"
 #include "WilsonLoop.hpp"
+
 #include <fstream>
 #include <iomanip>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace klft {
 
@@ -29,8 +32,8 @@ struct GaugeObservableParams {
   std::vector<real_t> measurement_times;
 
   std::vector<real_t> plaquette_measurements;
-  std::vector<std::vector<Kokkos::Array<real_t, 3>>> W_temp_measurements;
-  std::vector<std::vector<Kokkos::Array<real_t, 5>>> W_mu_nu_measurements;
+  std::vector<std::vector<WilsonLoopTemporalMeasurement>> W_temp_measurements;
+  std::vector<std::vector<WilsonLoopMuNuMeasurement>> W_mu_nu_measurements;
   std::vector<real_t> retraceU_measurements;
 
   // nested Wilson-action measurements
@@ -54,6 +57,25 @@ struct GaugeObservableParams {
         write_to_file(false) {}
 };
 
+inline void requireOpen(const std::ofstream &file) {
+  if (!file.is_open()) {
+    throw std::runtime_error("Output file is not open.");
+  }
+}
+
+inline void requireEnabled(const bool enabled, const char *what) {
+  if (!enabled) {
+    throw std::runtime_error(
+        std::string("Requested flush for disabled observable: ") + what);
+  }
+}
+
+inline void requireSameSize(const size_t a, const size_t b, const char *what) {
+  if (a != b) {
+    throw std::runtime_error(std::string("Inconsistent sizes for ") + what);
+  }
+}
+
 template <size_t rank, size_t Nc>
 void measureGaugeObservables(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
@@ -64,46 +86,22 @@ void measureGaugeObservables(
     return;
   }
 
-  if (KLFT_VERBOSITY > 0) {
-    printf("Measurement of Gauge Observables\n");
-    printf("step: %zu\n", step);
-  }
-
   if (params.measure_plaquette) {
     const real_t P = GaugePlaquette<rank, Nc>(g_in);
     params.plaquette_measurements.push_back(P);
-    if (KLFT_VERBOSITY > 0) {
-      printf("plaquette: %.12f\n", P);
-    }
   }
 
   if (params.measure_wilson_loop_temporal) {
-    if (KLFT_VERBOSITY > 0) {
-      printf("temporal Wilson loop:\n");
-      printf("L, T, W_temp\n");
-    }
-
-    std::vector<Kokkos::Array<real_t, 3>> temp_measurements;
+    std::vector<WilsonLoopTemporalMeasurement> temp_measurements;
     WilsonLoop_temporal<rank, Nc>(g_in, params.W_temp_L_T_pairs,
                                   temp_measurements);
 
-    if (KLFT_VERBOSITY > 0) {
-      for (const auto &measure : temp_measurements) {
-        printf("%d, %d, %.12f\n", static_cast<index_t>(measure[0]),
-               static_cast<index_t>(measure[1]), measure[2]);
-      }
-    }
-
-    params.W_temp_measurements.push_back(temp_measurements);
+    params.W_temp_measurements.push_back(std::move(temp_measurements));
   }
 
   if (params.measure_wilson_loop_mu_nu) {
-    if (KLFT_VERBOSITY > 0) {
-      printf("Wilson loop in the mu-nu plane:\n");
-      printf("mu, nu, Lmu, Lnu, W_mu_nu\n");
-    }
+    std::vector<WilsonLoopMuNuMeasurement> temp_measurements;
 
-    std::vector<Kokkos::Array<real_t, 5>> temp_measurements;
     for (const auto &pair_mu_nu : params.W_mu_nu_pairs) {
       const index_t mu = pair_mu_nu[0];
       const index_t nu = pair_mu_nu[1];
@@ -111,24 +109,12 @@ void measureGaugeObservables(
                                  temp_measurements);
     }
 
-    if (KLFT_VERBOSITY > 0) {
-      for (const auto &measure : temp_measurements) {
-        printf("%d, %d, %d, %d, %.12f\n", static_cast<index_t>(measure[0]),
-               static_cast<index_t>(measure[1]),
-               static_cast<index_t>(measure[2]),
-               static_cast<index_t>(measure[3]), measure[4]);
-      }
-    }
-
-    params.W_mu_nu_measurements.push_back(temp_measurements);
+    params.W_mu_nu_measurements.push_back(std::move(temp_measurements));
   }
 
   if (params.measure_retrace_U) {
     const real_t R = Retrace_links_avg<rank, Nc>(g_in);
     params.retraceU_measurements.push_back(R);
-    if (KLFT_VERBOSITY > 0) {
-      printf("Retrace(U): %.12f\n", R);
-    }
   }
 
   if (params.measure_nested_wilson_action) {
@@ -138,7 +124,7 @@ void measureGaugeObservables(
     }
 
     IndexArray<rank> child_offset;
-    for (index_t d = 0; d < rank; ++d) {
+    for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
       child_offset[d] = params.nested_child_offset[d];
     }
 
@@ -149,14 +135,6 @@ void measureGaugeObservables(
     params.nested_plaq_child_measurements.push_back(res.plaq_child);
     params.nested_E_V_measurements.push_back(res.E_V);
     params.nested_E_child_measurements.push_back(res.E_child);
-
-    if (KLFT_VERBOSITY > 0) {
-      printf("nested Wilson action:\n");
-      printf("plaq(V): %.12f\n", res.plaq_V);
-      printf("plaq(child): %.12f\n", res.plaq_child);
-      printf("E(V): %.12f\n", res.E_V);
-      printf("E(child): %.12f\n", res.E_child);
-    }
   }
 
   params.measurement_steps.push_back(step);
@@ -167,22 +145,17 @@ void measureGaugeObservables(
 inline void flushPlaquette(std::ofstream &file,
                            const GaugeObservableParams &params,
                            const bool HEADER = true) {
-  if (!file.is_open()) {
-    printf("Error: file is not open\n");
-    return;
-  }
-  if (!params.measure_plaquette) {
-    printf("Error: no plaquette measurements available\n");
-    return;
-  }
+  requireOpen(file);
+  requireEnabled(params.measure_plaquette, "plaquette");
 
-  if (params.measurement_steps.size() != params.plaquette_measurements.size() ||
-      params.measurement_steps.size() !=
-          params.measurement_acceptance_rates.size() ||
-      params.measurement_steps.size() != params.measurement_times.size()) {
-    printf("Error: inconsistent plaquette metadata sizes\n");
-    return;
-  }
+  requireSameSize(params.measurement_steps.size(),
+                  params.plaquette_measurements.size(),
+                  "plaquette measurements");
+  requireSameSize(params.measurement_steps.size(),
+                  params.measurement_acceptance_rates.size(),
+                  "plaquette acceptance rates");
+  requireSameSize(params.measurement_steps.size(),
+                  params.measurement_times.size(), "plaquette times");
 
   if (HEADER) {
     file << "# step, plaquette, acceptance_rate, time\n";
@@ -201,14 +174,12 @@ inline void flushPlaquette(std::ofstream &file,
 inline void flushWilsonLoopTemporal(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
-  if (!file.is_open()) {
-    printf("Error: file is not open\n");
-    return;
-  }
-  if (!params.measure_wilson_loop_temporal) {
-    printf("Error: no temporal Wilson loop measurements available\n");
-    return;
-  }
+  requireOpen(file);
+  requireEnabled(params.measure_wilson_loop_temporal, "temporal Wilson loop");
+
+  requireSameSize(params.measurement_steps.size(),
+                  params.W_temp_measurements.size(),
+                  "temporal Wilson loop measurements");
 
   if (HEADER) {
     file << "# step, L, T, W_temp\n";
@@ -218,8 +189,8 @@ inline void flushWilsonLoopTemporal(std::ofstream &file,
 
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
     for (const auto &measurement : params.W_temp_measurements[i]) {
-      file << params.measurement_steps[i] << ", " << measurement[0] << ", "
-           << measurement[1] << ", " << measurement[2] << "\n";
+      file << params.measurement_steps[i] << ", " << measurement.L << ", "
+           << measurement.T << ", " << measurement.value << "\n";
     }
   }
 }
@@ -227,14 +198,12 @@ inline void flushWilsonLoopTemporal(std::ofstream &file,
 inline void flushWilsonLoopMuNu(std::ofstream &file,
                                 const GaugeObservableParams &params,
                                 const bool HEADER = true) {
-  if (!file.is_open()) {
-    printf("Error: file is not open\n");
-    return;
-  }
-  if (!params.measure_wilson_loop_mu_nu) {
-    printf("Error: no mu-nu Wilson loop measurements available\n");
-    return;
-  }
+  requireOpen(file);
+  requireEnabled(params.measure_wilson_loop_mu_nu, "mu-nu Wilson loop");
+
+  requireSameSize(params.measurement_steps.size(),
+                  params.W_mu_nu_measurements.size(),
+                  "mu-nu Wilson loop measurements");
 
   if (HEADER) {
     file << "# step, mu, nu, Lmu, Lnu, W_mu_nu\n";
@@ -244,9 +213,9 @@ inline void flushWilsonLoopMuNu(std::ofstream &file,
 
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
     for (const auto &measurement : params.W_mu_nu_measurements[i]) {
-      file << params.measurement_steps[i] << ", " << measurement[0] << ", "
-           << measurement[1] << ", " << measurement[2] << ", " << measurement[3]
-           << ", " << measurement[4] << "\n";
+      file << params.measurement_steps[i] << ", " << measurement.mu << ", "
+           << measurement.nu << ", " << measurement.Lmu << ", "
+           << measurement.Lnu << ", " << measurement.value << "\n";
     }
   }
 }
@@ -254,14 +223,12 @@ inline void flushWilsonLoopMuNu(std::ofstream &file,
 inline void flushRetraceU(std::ofstream &file,
                           const GaugeObservableParams &params,
                           const bool HEADER = true) {
-  if (!file.is_open()) {
-    printf("Error: file is not open\n");
-    return;
-  }
-  if (!params.measure_retrace_U) {
-    printf("Error: no Retrace(U) measurements available\n");
-    return;
-  }
+  requireOpen(file);
+  requireEnabled(params.measure_retrace_U, "Retrace(U)");
+
+  requireSameSize(params.measurement_steps.size(),
+                  params.retraceU_measurements.size(),
+                  "Retrace(U) measurements");
 
   if (HEADER) {
     file << "# step, Retrace(U)\n";
@@ -278,23 +245,18 @@ inline void flushRetraceU(std::ofstream &file,
 inline void flushNestedWilsonAction(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
-  if (!file.is_open()) {
-    printf("Error: file is not open\n");
-    return;
-  }
-  if (!params.measure_nested_wilson_action) {
-    printf("Error: no nested Wilson action measurements available\n");
-    return;
-  }
+  requireOpen(file);
+  requireEnabled(params.measure_nested_wilson_action, "nested Wilson action");
 
   const size_t n = params.measurement_steps.size();
-  if (n != params.nested_plaq_V_measurements.size() ||
-      n != params.nested_plaq_child_measurements.size() ||
-      n != params.nested_E_V_measurements.size() ||
-      n != params.nested_E_child_measurements.size()) {
-    printf("Error: inconsistent nested Wilson action metadata sizes\n");
-    return;
-  }
+  requireSameSize(n, params.nested_plaq_V_measurements.size(),
+                  "nested plaq_V measurements");
+  requireSameSize(n, params.nested_plaq_child_measurements.size(),
+                  "nested plaq_child measurements");
+  requireSameSize(n, params.nested_E_V_measurements.size(),
+                  "nested E_V measurements");
+  requireSameSize(n, params.nested_E_child_measurements.size(),
+                  "nested E_child measurements");
 
   if (HEADER) {
     file << "# step, plaq_V, plaq_child, E_V, E_child\n";
@@ -314,38 +276,32 @@ inline void flushNestedWilsonAction(std::ofstream &file,
 inline void flushAllGaugeObservables(const GaugeObservableParams &params,
                                      const bool HEADER = true) {
   if (!params.write_to_file) {
-    printf("write_to_file is not enabled\n");
     return;
   }
 
-  if (params.plaquette_filename != "") {
+  if (!params.plaquette_filename.empty()) {
     std::ofstream file(params.plaquette_filename, std::ios::app);
     flushPlaquette(file, params, HEADER);
-    file.close();
   }
 
-  if (params.W_temp_filename != "") {
+  if (!params.W_temp_filename.empty()) {
     std::ofstream file(params.W_temp_filename, std::ios::app);
     flushWilsonLoopTemporal(file, params, HEADER);
-    file.close();
   }
 
-  if (params.W_mu_nu_filename != "") {
+  if (!params.W_mu_nu_filename.empty()) {
     std::ofstream file(params.W_mu_nu_filename, std::ios::app);
     flushWilsonLoopMuNu(file, params, HEADER);
-    file.close();
   }
 
-  if (params.RetraceU_filename != "") {
+  if (!params.RetraceU_filename.empty()) {
     std::ofstream file(params.RetraceU_filename, std::ios::app);
     flushRetraceU(file, params, HEADER);
-    file.close();
   }
 
-  if (params.nested_wilson_action_filename != "") {
+  if (!params.nested_wilson_action_filename.empty()) {
     std::ofstream file(params.nested_wilson_action_filename, std::ios::app);
     flushNestedWilsonAction(file, params, HEADER);
-    file.close();
   }
 }
 
