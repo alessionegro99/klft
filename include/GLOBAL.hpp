@@ -9,22 +9,15 @@ using real_t = double;
 // Kokkos need device-compatible types
 using complex_t = Kokkos::complex<real_t>;
 // indexing type
+// TODO: change to std::int64_t if flattened arrays are used
 using index_t = int;
-
 // define index_arrays
 template <size_t rank> using IndexArray = Kokkos::Array<index_t, rank>;
-
 // define groups for gauge fields
 template <size_t Nc>
 using SUN = Kokkos::Array<Kokkos::Array<complex_t, Nc>, Nc>;
 
-// define field view types
-// by default all views are 4D
-// some dimensions are set to 1 for lower dimensions
-// I'm still not sure if this is the best way to do it
-// Nd here is templated, but for a 4D gauge field,
-// shouldn't Nd always be 4?
-// Nc is the number of colors
+// TODO: flatten position array
 template <size_t Nd, size_t Nc>
 using GaugeField =
     Kokkos::View<SUN<Nc> ****[Nd], Kokkos::MemoryTraits<Kokkos::Restrict>>;

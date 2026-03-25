@@ -1,5 +1,3 @@
-// define structs for initializing field
-
 #pragma once
 #include "GLOBAL.hpp"
 #include "Tuner.hpp"
