@@ -16,6 +16,9 @@ template <size_t rank, size_t Nc> struct NEMCBranchResult {
   std::vector<real_t> beta_schedule;
   std::vector<real_t> acceptance_rates;
   std::vector<real_t> plaquettes;
+
+  std::vector<real_t> works;
+  real_t work = 0.0; // exp(-work);
 };
 
 template <size_t rank, size_t Nc>
@@ -32,10 +35,15 @@ nemc_write_to_file(const std::string &filename,
 
   for (size_t b = 0; b < nbranches; ++b) {
     if (results[b].beta_schedule.size() != nsteps ||
-        results[b].acceptance_rates.size() != nsteps ||
-        results[b].plaquettes.size() != nsteps) {
+        results[b].plaquettes.size() != nsteps ||
+        results[b].works.size() != nsteps) {
       throw std::runtime_error("Inconsistent NEMC branch sizes.");
     }
+  }
+
+  if (results[0].acceptance_rates.size() != nsteps) {
+    throw std::runtime_error(
+        "First NEMC branch has inconsistent acceptance-rate size.");
   }
 
   for (size_t b = 1; b < nbranches; ++b) {
@@ -55,18 +63,20 @@ nemc_write_to_file(const std::string &filename,
   file << std::setprecision(12);
 
   if (header) {
-    file << "# beta";
+    file << "# beta, acc_" << results[0].spawn_step;
     for (size_t b = 0; b < nbranches; ++b) {
-      file << ", acc_" << (b + 1) << ", plaq_" << (b + 1);
+      file << ", plaq_" << results[b].spawn_step << ", work_"
+           << results[b].spawn_step;
     }
     file << "\n";
   }
 
   for (size_t k = 0; k < nsteps; ++k) {
-    file << results[0].beta_schedule[k];
+    file << results[0].beta_schedule[k] << ", "
+         << results[0].acceptance_rates[k];
+
     for (size_t b = 0; b < nbranches; ++b) {
-      file << ", " << results[b].acceptance_rates[k] << ", "
-           << results[b].plaquettes[k];
+      file << ", " << results[b].plaquettes[k] << ", " << results[b].works[k];
     }
     file << "\n";
   }
@@ -228,35 +238,6 @@ real_t sweep_metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
 }
 
 template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
-NEMCBranchResult<rank, Nc> run_nemc_branch(const GaugeFieldType &u_start,
-                                           const MetropolisParams &base_params,
-                                           const size_t spawn_step) {
-  NEMCBranchResult<rank, Nc> out;
-  out.spawn_step = spawn_step;
-
-  GaugeFieldType branch_field = clone_gauge_field(u_start);
-  MetropolisParams branch_params = base_params;
-
-  RNG branch_rng(static_cast<uint64_t>(base_params.seed) +
-                 static_cast<uint64_t>(104729) *
-                     static_cast<uint64_t>(spawn_step + 1));
-
-  for (index_t k = 1; k <= branch_params.nemc_nsteps; ++k) {
-    branch_params.beta =
-        base_params.beta + static_cast<real_t>(k) * branch_params.nemc_dbeta;
-
-    const real_t acc_rate =
-        sweep_metropolis<rank, Nc>(branch_field, branch_params, branch_rng);
-
-    out.beta_schedule.push_back(branch_params.beta);
-    out.acceptance_rates.push_back(acc_rate);
-    out.plaquettes.push_back(GaugePlaquette<rank, Nc>(branch_field));
-  }
-
-  return out;
-}
-
-template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
 int run_metropolis(GaugeFieldType &g_in,
                    const MetropolisParams &metropolisParams,
                    GaugeObservableParams &gaugeObsParams, const RNG &rng) {
@@ -291,6 +272,52 @@ int run_metropolis(GaugeFieldType &g_in,
 
   flushAllGaugeObservables(gaugeObsParams);
   return 0;
+}
+
+template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
+NEMCBranchResult<rank, Nc> run_nemc_branch(const GaugeFieldType &u_start,
+                                           const MetropolisParams &base_params,
+                                           const size_t spawn_step) {
+  NEMCBranchResult<rank, Nc> out;
+  out.spawn_step = spawn_step;
+
+  GaugeFieldType branch_field = clone_gauge_field(u_start);
+  MetropolisParams branch_params = base_params;
+
+  RNG branch_rng(static_cast<uint64_t>(base_params.seed) +
+                 static_cast<uint64_t>(104729) *
+                     static_cast<uint64_t>(spawn_step + 1));
+
+  real_t beta_old = base_params.beta;
+
+  for (index_t k = 1; k <= branch_params.nemc_nsteps; ++k) {
+    const real_t beta_new =
+        base_params.beta + static_cast<real_t>(k) * branch_params.nemc_dbeta;
+
+    // work increment ΔW_k = S_{beta_new}(U_k) - S_{beta_old}(U_k)
+    // here U_k is the configuration BEFORE the sweep at beta_new
+    const real_t plaq_before = GaugePlaquette<rank, Nc>(branch_field, true);
+    const real_t action_before = ReducedWilsonActionFromAvgPlaquette<rank>(
+        plaq_before, branch_field.dimensions);
+    const real_t dW = (beta_new - beta_old) * action_before;
+
+    branch_params.beta = beta_new;
+
+    const real_t acc_rate =
+        sweep_metropolis<rank, Nc>(branch_field, branch_params, branch_rng);
+
+    const real_t plaq_after = GaugePlaquette<rank, Nc>(branch_field, true);
+
+    out.beta_schedule.push_back(beta_new);
+    out.acceptance_rates.push_back(acc_rate);
+    out.plaquettes.push_back(plaq_after);
+    out.works.push_back(dW);
+
+    out.work += dW;
+    beta_old = beta_new;
+  }
+
+  return out;
 }
 
 template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
