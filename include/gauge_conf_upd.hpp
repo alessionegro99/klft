@@ -266,8 +266,9 @@ int run_metropolis(GaugeFieldType &g_in,
 
     const real_t time = timer.seconds();
 
-    measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, step, acc_rate,
-                                      time);
+    const size_t main_sweep = step + 1;
+    measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, main_sweep,
+                                      acc_rate, time);
   }
 
   flushAllGaugeObservables(gaugeObsParams);
@@ -351,10 +352,10 @@ int run_metropolis_nemc(GaugeFieldType &g_in,
 
     const real_t time = timer.seconds();
 
-    measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, step, acc_rate,
-                                      time);
-
     const size_t main_sweep = step + 1;
+
+    measureGaugeObservables<rank, Nc>(g_in, gaugeObsParams, main_sweep,
+                                      acc_rate, time);
 
     if (metropolisParams.enable_nemc && metropolisParams.nemc_stride > 0 &&
         main_sweep > static_cast<size_t>(metropolisParams.nemc_ntherm) &&
