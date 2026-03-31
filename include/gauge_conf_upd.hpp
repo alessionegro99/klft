@@ -291,12 +291,25 @@ NEMCBranchResult<rank, Nc> run_nemc_branch(const GaugeFieldType &u_start,
 
   real_t beta_old = base_params.beta;
 
+  // Initial equilibrium point: beta = beta_eq, work = 0, plaquette = P(U_start)
+  const real_t plaq_eq = GaugePlaquette<rank, Nc>(branch_field, true);
+
+  out.beta_schedule.push_back(beta_old);
+
+  // Choose one:
+  out.acceptance_rates.push_back(0.0);
+  // or:
+  // out.acceptance_rates.push_back(std::numeric_limits<real_t>::quiet_NaN());
+
+  out.plaquettes.push_back(plaq_eq);
+  out.works.push_back(0.0);
+
   for (index_t k = 1; k <= branch_params.nemc_nsteps; ++k) {
     const real_t beta_new =
         base_params.beta + static_cast<real_t>(k) * branch_params.nemc_dbeta;
 
     // work increment ΔW_k = S_{beta_new}(U_k) - S_{beta_old}(U_k)
-    // here U_k is the configuration BEFORE the sweep at beta_new
+    // where U_k is the configuration BEFORE the sweep at beta_new
     const real_t plaq_before = GaugePlaquette<rank, Nc>(branch_field, true);
     const real_t action_before = ReducedWilsonActionFromAvgPlaquette<rank>(
         plaq_before, branch_field.dimensions);
