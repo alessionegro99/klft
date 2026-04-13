@@ -5,6 +5,9 @@
 #include "gauge_obs_meas.hpp"
 #include "klft_params.hpp"
 #include <Kokkos_Random.hpp>
+#include <fstream>
+#include <iomanip>
+#include <stdexcept>
 #include <vector>
 
 using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
@@ -18,7 +21,7 @@ template <size_t rank, size_t Nc> struct NEMCBranchResult {
   std::vector<real_t> plaquettes;
 
   std::vector<real_t> works;
-  real_t work = 0.0; // exp(-work);
+  real_t work = 0.0; // total work along the branch
 };
 
 template <size_t rank, size_t Nc>
@@ -30,31 +33,6 @@ nemc_write_to_file(const std::string &filename,
     return;
   }
 
-  const size_t nbranches = results.size();
-  const size_t nsteps = results[0].beta_schedule.size();
-
-  for (size_t b = 0; b < nbranches; ++b) {
-    if (results[b].beta_schedule.size() != nsteps ||
-        results[b].plaquettes.size() != nsteps ||
-        results[b].works.size() != nsteps) {
-      throw std::runtime_error("Inconsistent NEMC branch sizes.");
-    }
-  }
-
-  if (results[0].acceptance_rates.size() != nsteps) {
-    throw std::runtime_error(
-        "First NEMC branch has inconsistent acceptance-rate size.");
-  }
-
-  for (size_t b = 1; b < nbranches; ++b) {
-    for (size_t k = 0; k < nsteps; ++k) {
-      if (results[b].beta_schedule[k] != results[0].beta_schedule[k]) {
-        throw std::runtime_error("Wide NEMC output requires identical beta "
-                                 "schedules across branches.");
-      }
-    }
-  }
-
   std::ofstream file(filename, std::ios::out);
   if (!file.is_open()) {
     throw std::runtime_error("Could not open NEMC output file.");
@@ -63,22 +41,21 @@ nemc_write_to_file(const std::string &filename,
   file << std::setprecision(12);
 
   if (header) {
-    file << "# beta, acc_" << results[0].spawn_step;
-    for (size_t b = 0; b < nbranches; ++b) {
-      file << ", plaq_" << results[b].spawn_step << ", work_"
-           << results[b].spawn_step;
-    }
-    file << "\n";
+    file << "# step, beta, plaquette, work\n";
   }
 
-  for (size_t k = 0; k < nsteps; ++k) {
-    file << results[0].beta_schedule[k] << ", "
-         << results[0].acceptance_rates[k];
+  for (size_t b = 0; b < results.size(); ++b) {
+    const auto &branch = results[b];
+    const size_t nsteps = branch.beta_schedule.size();
 
-    for (size_t b = 0; b < nbranches; ++b) {
-      file << ", " << results[b].plaquettes[k] << ", " << results[b].works[k];
+    if (branch.plaquettes.size() != nsteps || branch.works.size() != nsteps) {
+      throw std::runtime_error("Inconsistent NEMC branch sizes.");
     }
-    file << "\n";
+
+    for (size_t k = 0; k < nsteps; ++k) {
+      file << branch.spawn_step << ", " << branch.beta_schedule[k] << ", "
+           << branch.plaquettes[k] << ", " << branch.works[k] << "\n";
+    }
   }
 }
 
@@ -295,12 +272,7 @@ NEMCBranchResult<rank, Nc> run_nemc_branch(const GaugeFieldType &u_start,
   const real_t plaq_eq = GaugePlaquette<rank, Nc>(branch_field, true);
 
   out.beta_schedule.push_back(beta_old);
-
-  // Choose one:
   out.acceptance_rates.push_back(0.0);
-  // or:
-  // out.acceptance_rates.push_back(std::numeric_limits<real_t>::quiet_NaN());
-
   out.plaquettes.push_back(plaq_eq);
   out.works.push_back(0.0);
 
