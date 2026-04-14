@@ -6,8 +6,6 @@
 using namespace klft;
 
 int main(int argc, char *argv[]) {
-  print_driver_banner("Metropolis");
-
   Kokkos::initialize(argc, argv);
   int rc = 0;
   std::string input_file;

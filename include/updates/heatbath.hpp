@@ -333,6 +333,7 @@ int run_heatbath(GaugeFieldType &g_in, const HeatbathParams &heatbathParams,
                  GaugeObservableParams &gaugeObsParams, const RNG &rng) {
   const auto &dimensions = g_in.dimensions;
   validate_even_extents<rank>(dimensions, "Heatbath");
+  gaugeObsParams.include_acceptance_rate = false;
 
   assert(heatbathParams.L0 == dimensions[0]);
   assert(heatbathParams.L1 == dimensions[1]);
@@ -348,10 +349,6 @@ int run_heatbath(GaugeFieldType &g_in, const HeatbathParams &heatbathParams,
     timer.reset();
     full_heatbath_sweep<rank, Nc>(g_in, heatbathParams, rng);
     const real_t time = timer.seconds();
-
-    if (KLFT_VERBOSITY > 0) {
-      printf("Step: %zu, Time: %f\n", step, time);
-    }
 
     measureGaugeObservables<rank, Nc>(g_in, heatbathParams, gaugeObsParams,
                                       step + 1, 0.0, time, rng);

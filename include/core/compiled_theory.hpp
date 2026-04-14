@@ -2,9 +2,6 @@
 
 #include "core/klft_config.hpp"
 #include "fields/field_type_traits.hpp"
-
-#include <cstdio>
-
 namespace klft {
 
 using CompiledGaugeField =
@@ -24,10 +21,6 @@ make_identity_gauge_field(const index_t L0, const index_t L1, const index_t L2,
     return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1,
                                                          identitySUN<Nc>());
   }
-}
-
-inline void print_compiled_theory() {
-  printf("Compiled theory: %zuD %s\n", compiled_rank, compiled_group_name());
 }
 
 } // namespace klft

@@ -24,6 +24,7 @@ struct GaugeObservableParams {
   std::vector<Kokkos::Array<index_t, 2>> W_temp_L_T_pairs;
   std::vector<Kokkos::Array<index_t, 2>> W_mu_nu_pairs;
   std::vector<Kokkos::Array<index_t, 2>> W_Lmu_Lnu_pairs;
+  bool include_acceptance_rate;
 
   std::vector<size_t> measurement_steps;
   std::vector<real_t> measurement_acceptance_rates;
@@ -51,7 +52,8 @@ struct GaugeObservableParams {
       : measurement_interval(0), measure_plaquette(false),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
         measure_retrace_U(false), wilson_loop_multihit(1),
-        measure_nested_wilson_action(false), write_to_file(false) {}
+        measure_nested_wilson_action(false), include_acceptance_rate(false),
+        write_to_file(false) {}
 };
 
 inline void appendLatestGaugeObservables(const GaugeObservableParams &params);
@@ -69,25 +71,12 @@ void measureGaugeObservables(
     return;
   }
 
-  if (KLFT_VERBOSITY > 0) {
-    printf("Measurement of Gauge Observables\n");
-    printf("step: %zu\n", step);
-  }
-
   if (params.measure_plaquette) {
     const real_t P = GaugePlaquette<rank, Nc>(g_in);
     params.plaquette_measurements.push_back(P);
-    if (KLFT_VERBOSITY > 0) {
-      printf("plaquette: %.12f\n", P);
-    }
   }
 
   if (params.measure_wilson_loop_temporal) {
-    if (KLFT_VERBOSITY > 0) {
-      printf("temporal Wilson loop:\n");
-      printf("L, T, W_temp\n");
-    }
-
     std::vector<Kokkos::Array<real_t, 3>> temp_measurements;
     WilsonLoop_temporal<rank, Nc>(g_in, params.W_temp_L_T_pairs,
                                   temp_measurements,
@@ -96,22 +85,10 @@ void measureGaugeObservables(
                                   updateParams.epsilon1,
                                   updateParams.epsilon2, rng);
 
-    if (KLFT_VERBOSITY > 0) {
-      for (const auto &measure : temp_measurements) {
-        printf("%d, %d, %.12f\n", static_cast<index_t>(measure[0]),
-               static_cast<index_t>(measure[1]), measure[2]);
-      }
-    }
-
     params.W_temp_measurements.push_back(temp_measurements);
   }
 
   if (params.measure_wilson_loop_mu_nu) {
-    if (KLFT_VERBOSITY > 0) {
-      printf("Wilson loop in the mu-nu plane:\n");
-      printf("mu, nu, Lmu, Lnu, W_mu_nu\n");
-    }
-
     std::vector<Kokkos::Array<real_t, 5>> temp_measurements;
     for (const auto &pair_mu_nu : params.W_mu_nu_pairs) {
       const index_t mu = pair_mu_nu[0];
@@ -123,24 +100,12 @@ void measureGaugeObservables(
                                  updateParams.epsilon2, rng);
     }
 
-    if (KLFT_VERBOSITY > 0) {
-      for (const auto &measure : temp_measurements) {
-        printf("%d, %d, %d, %d, %.12f\n", static_cast<index_t>(measure[0]),
-               static_cast<index_t>(measure[1]),
-               static_cast<index_t>(measure[2]),
-               static_cast<index_t>(measure[3]), measure[4]);
-      }
-    }
-
     params.W_mu_nu_measurements.push_back(temp_measurements);
   }
 
   if (params.measure_retrace_U) {
     const real_t R = Retrace_links_avg<rank, Nc>(g_in);
     params.retraceU_measurements.push_back(R);
-    if (KLFT_VERBOSITY > 0) {
-      printf("Retrace(U): %.12f\n", R);
-    }
   }
 
   if (params.measure_nested_wilson_action) {
@@ -161,18 +126,12 @@ void measureGaugeObservables(
     params.nested_plaq_child_measurements.push_back(res.plaq_child);
     params.nested_E_V_measurements.push_back(res.E_V);
     params.nested_E_child_measurements.push_back(res.E_child);
-
-    if (KLFT_VERBOSITY > 0) {
-      printf("nested Wilson action:\n");
-      printf("plaq(V): %.12f\n", res.plaq_V);
-      printf("plaq(child): %.12f\n", res.plaq_child);
-      printf("E(V): %.12f\n", res.E_V);
-      printf("E(child): %.12f\n", res.E_child);
-    }
   }
 
   params.measurement_steps.push_back(step);
-  params.measurement_acceptance_rates.push_back(acc_rate);
+  if (params.include_acceptance_rate) {
+    params.measurement_acceptance_rates.push_back(acc_rate);
+  }
   params.measurement_times.push_back(time);
 
   if (params.write_to_file) {
@@ -209,24 +168,33 @@ inline void flushPlaquette(std::ofstream &file,
   }
 
   if (params.measurement_steps.size() != params.plaquette_measurements.size() ||
-      params.measurement_steps.size() !=
-          params.measurement_acceptance_rates.size() ||
       params.measurement_steps.size() != params.measurement_times.size()) {
     printf("Error: inconsistent plaquette metadata sizes\n");
     return;
   }
+  if (params.include_acceptance_rate &&
+      params.measurement_steps.size() != params.measurement_acceptance_rates.size()) {
+    printf("Error: inconsistent plaquette acceptance metadata sizes\n");
+    return;
+  }
 
   if (HEADER) {
-    file << "# step, plaquette, acceptance_rate, time\n";
+    if (params.include_acceptance_rate) {
+      file << "# step plaquette acceptance_rate time\n";
+    } else {
+      file << "# step plaquette time\n";
+    }
   }
 
   file << std::setprecision(12);
 
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
-    file << params.measurement_steps[i] << ", "
-         << params.plaquette_measurements[i] << ", "
-         << params.measurement_acceptance_rates[i] << ", "
-         << params.measurement_times[i] << "\n";
+    file << params.measurement_steps[i] << " "
+         << params.plaquette_measurements[i];
+    if (params.include_acceptance_rate) {
+      file << " " << params.measurement_acceptance_rates[i];
+    }
+    file << " " << params.measurement_times[i] << "\n";
   }
 }
 
@@ -244,15 +212,15 @@ inline void flushWilsonLoopTemporal(std::ofstream &file,
   }
 
   if (HEADER) {
-    file << "# step, L, T, W_temp\n";
+    file << "# step L T W_temp\n";
   }
 
   file << std::setprecision(12);
 
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
     for (const auto &measurement : params.W_temp_measurements[i]) {
-      file << params.measurement_steps[i] << ", " << measurement[0] << ", "
-           << measurement[1] << ", " << measurement[2] << "\n";
+      file << params.measurement_steps[i] << " " << measurement[0] << " "
+           << measurement[1] << " " << measurement[2] << "\n";
     }
   }
 }
@@ -271,16 +239,16 @@ inline void flushWilsonLoopMuNu(std::ofstream &file,
   }
 
   if (HEADER) {
-    file << "# step, mu, nu, Lmu, Lnu, W_mu_nu\n";
+    file << "# step mu nu Lmu Lnu W_mu_nu\n";
   }
 
   file << std::setprecision(12);
 
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
     for (const auto &measurement : params.W_mu_nu_measurements[i]) {
-      file << params.measurement_steps[i] << ", " << measurement[0] << ", "
-           << measurement[1] << ", " << measurement[2] << ", " << measurement[3]
-           << ", " << measurement[4] << "\n";
+      file << params.measurement_steps[i] << " " << measurement[0] << " "
+           << measurement[1] << " " << measurement[2] << " " << measurement[3]
+           << " " << measurement[4] << "\n";
     }
   }
 }
@@ -299,13 +267,13 @@ inline void flushRetraceU(std::ofstream &file,
   }
 
   if (HEADER) {
-    file << "# step, Retrace(U)\n";
+    file << "# step RetraceU\n";
   }
 
   file << std::setprecision(12);
 
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
-    file << params.measurement_steps[i] << ", "
+    file << params.measurement_steps[i] << " "
          << params.retraceU_measurements[i] << "\n";
   }
 }
@@ -333,16 +301,16 @@ inline void flushNestedWilsonAction(std::ofstream &file,
   }
 
   if (HEADER) {
-    file << "# step, plaq_V, plaq_child, E_V, E_child\n";
+    file << "# step plaq_V plaq_child E_V E_child\n";
   }
 
   file << std::setprecision(12);
 
   for (size_t i = 0; i < n; ++i) {
-    file << params.measurement_steps[i] << ", "
-         << params.nested_plaq_V_measurements[i] << ", "
-         << params.nested_plaq_child_measurements[i] << ", "
-         << params.nested_E_V_measurements[i] << ", "
+    file << params.measurement_steps[i] << " "
+         << params.nested_plaq_V_measurements[i] << " "
+         << params.nested_plaq_child_measurements[i] << " "
+         << params.nested_E_V_measurements[i] << " "
          << params.nested_E_child_measurements[i] << "\n";
   }
 }

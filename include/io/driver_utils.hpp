@@ -12,9 +12,6 @@
 
 namespace klft {
 
-inline constexpr const char *driver_hline =
-    "====================================================================\n";
-
 inline std::vector<std::pair<int, int>> sample_plane_pairs() {
   std::vector<std::pair<int, int>> pairs;
   for (size_t mu = 0; mu < compiled_rank; ++mu) {
@@ -166,13 +163,6 @@ inline int parse_driver_args(int argc, char **argv, std::string &input_file) {
     }
   }
   return 0;
-}
-
-inline void print_driver_banner(const char *title) {
-  printf("%s", driver_hline);
-  printf("%s for %s gauge fields in %zuD\n", title, compiled_group_name(),
-         compiled_rank);
-  printf("%s", driver_hline);
 }
 
 } // namespace klft

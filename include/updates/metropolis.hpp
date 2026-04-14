@@ -91,23 +91,6 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   for (index_t i = 0; i < (1 << rank); ++i) {
     MetropolisGaugeField<rank, Nc, RNG> metropolis(g_in, params, nAccepted,
                                                    oddeven_array<rank>(i), rng);
-    if (KLFT_VERBOSITY > 1) {
-      printf("Launching Metropolis for sublattice %d\n", i);
-      printf("Lattice odd/even: ");
-      for (index_t j = 0; j < rank; ++j) {
-        printf("%d ", oddeven_array<rank>(i)[j]);
-      }
-      printf("\n");
-    }
-    if (KLFT_VERBOSITY > 2) {
-      params.print();
-      printf("Lattice dimensions: ");
-      for (index_t j = 0; j < rank; ++j) {
-        printf("%ld ", dimensions[j]);
-      }
-      printf("\n");
-      printf("Current number of accepted steps: %11.6f\n", nAccepted.sum());
-    }
     Kokkos::parallel_for(Policy<rank>(start, end), metropolis);
     Kokkos::fence();
   }
@@ -130,6 +113,7 @@ int run_metropolis(GaugeFieldType &g_in,
                    GaugeObservableParams &gaugeObsParams, const RNG &rng) {
   const auto &dimensions = g_in.dimensions;
   validate_even_extents<rank>(dimensions, "Metropolis");
+  gaugeObsParams.include_acceptance_rate = true;
   assert(metropolisParams.L0 == dimensions[0]);
   assert(metropolisParams.L1 == dimensions[1]);
   if constexpr (rank > 2) {
@@ -144,11 +128,6 @@ int run_metropolis(GaugeFieldType &g_in,
     const real_t acc_rate =
         sweep_Metropolis<rank, Nc>(g_in, metropolisParams, rng);
     const real_t time = timer.seconds();
-    if (KLFT_VERBOSITY > 0) {
-      printf("Step: %zu, Acceptance rate: %f, Time: %f\n", step, acc_rate,
-             time);
-    }
-
     measureGaugeObservables<rank, Nc>(g_in, metropolisParams, gaugeObsParams,
                                       step + 1, acc_rate, time, rng);
   }

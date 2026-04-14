@@ -86,6 +86,9 @@ binaries/metropolis
 Running `binaries/metropolis` with no arguments writes a sample `input.yaml`
 and exits.
 
+Observable files are written incrementally and use space-separated columns.
+The plaquette file written by `metropolis` stores `step plaquette acceptance_rate time`.
+
 ### Example input.yaml
 
 ```yaml
@@ -139,6 +142,9 @@ binaries/heatbath
 
 Running `binaries/heatbath` with no arguments writes a sample `input.yaml` and exits.
 
+Observable files are written incrementally and use space-separated columns.
+The plaquette file written by `heatbath` stores `step plaquette time`.
+
 ### Example heatbath input.yaml
 
 ```yaml
@@ -183,13 +189,3 @@ GaugeObservableParams:
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true
 ```
-
-# Environment variables
-
-### KLFT_VERBOSITY
-Set the verbosity level of the library.
-- 0: silent
-- 1: summarize
-- 2: verbose
-- &gt;=3: debug
-- Default: 0

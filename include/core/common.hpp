@@ -79,8 +79,4 @@ constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<3> identitySUN<3>() {
   return id;
 }
 
-inline int KLFT_VERBOSITY = 0;
-
-inline void setVerbosity(int v) { KLFT_VERBOSITY = v; }
-
 } // namespace klft
