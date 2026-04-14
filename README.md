@@ -40,6 +40,23 @@ The most important Kokkos options are:
 
 see the [Kokkos documentation](https://kokkos.org/kokkos-core-wiki/get-started/configuration-guide.html#cmake-keywords) for more options
 
+### KLFT options
+
+KLFT is configured in the Bonn style: the dimension and gauge group are chosen at compile time.
+
+`-DKLFT_NDIM=2|3|4` chooses the lattice dimension
+
+`-DKLFT_NC=1|2|3` chooses the gauge group:
+- `1` = `U(1)`
+- `2` = `SU(2)`
+- `3` = `SU(3)`
+
+Example:
+
+```bash
+cmake -DKokkos_ENABLE_CUDA=ON -DKLFT_NDIM=4 -DKLFT_NC=3 /path/to/klft
+```
+
 # Usage
 
 ## Metropolis
@@ -59,9 +76,6 @@ binaries/metropolis
 ```yaml
 # input.yaml
 MetropolisParams:    # parameters for the Metropolis algorithm
-  Ndims: 4    # number of dimensions [2,3,4]
-  Nd: 4       # number of link dimensions (this must be strictly same as Ndims)
-  Nc: 1       # number of colors (defines SU(Nc)) [1,2,3]
   L0: 8       # lattice extent in 0 direction
   L1: 8       # lattice extent in 1 direction
   L2: 8       # lattice extent in 2 direction
@@ -95,6 +109,66 @@ GaugeObservableParams:
   W_temp_filename: "W_temp.out"        # filename to output the temporal Wilson loop
   W_mu_nu_filename: "W_mu_nu.out"      # filename to output the planar Wilson loop
   write_to_file: true                  # write the measurements to file
+```
+
+## Heatbath
+
+```bash
+binaries/heatbath
+  -f <file_name> --filename <file_name>
+     Name of the input file.
+     Default: input.yaml
+  -h, --help
+     Prints this message.
+     Hint: use --kokkos-help to see command line options provided by Kokkos.
+```
+
+Running `binaries/heatbath` with no arguments writes a sample `input.yaml` and exits.
+
+### Example heatbath input.yaml
+
+```yaml
+# input.yaml
+HeatbathParams:
+  L0: 8
+  L1: 8
+  L2: 8
+  L3: 8
+  nSweep: 1000
+  nOverrelax: 5
+  seed: 32091
+  beta: 2.0
+  delta: 0.1       # only used by Wilson-loop multihit measurements
+  epsilon1: 0.0    # supported by heatbath/overrelaxation
+  epsilon2: 0.0    # currently not supported by heatbath/overrelaxation
+
+GaugeObservableParams:
+  measurement_interval: 10
+  measure_plaquette: true
+  measure_wilson_loop_temporal: true
+  measure_wilson_loop_mu_nu: true
+  measure_retrace_U: false
+  wilson_loop_multihit: 1
+  measure_nested_wilson_action: false
+  W_temp_L_T_pairs:
+    - [2, 2]
+    - [3, 4]
+    - [4, 3]
+    - [4, 4]
+  W_mu_nu_pairs:
+    - [0, 1]
+    - [1, 2]
+    - [3, 2]
+  W_Lmu_Lnu_pairs:
+    - [2, 2]
+    - [3, 3]
+    - [4, 3]
+  plaquette_filename: "plaquette.out"
+  W_temp_filename: "W_temp.out"
+  W_mu_nu_filename: "W_mu_nu.out"
+  RetraceU_filename: "RetraceU.out"
+  nested_wilson_action_filename: "nested_wilson_action.out"
+  write_to_file: true
 ```
 
 # Environment variables

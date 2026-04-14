@@ -2,7 +2,6 @@
 #include "GaugeEnergy.hpp"
 #include "GaugePlaquette.hpp"
 #include "GaugeRetrace.hpp"
-#include "Metropolis_Params.hpp"
 #include "WilsonLoop.hpp"
 #include <filesystem>
 #include <fstream>
@@ -60,10 +59,10 @@ struct GaugeObservableParams {
 inline void appendLatestGaugeObservables(const GaugeObservableParams &params);
 inline void clearAllGaugeObservables(GaugeObservableParams &params);
 
-template <size_t rank, size_t Nc, class RNG>
+template <size_t rank, size_t Nc, class UpdateParams, class RNG>
 void measureGaugeObservables(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
-    const MetropolisParams &metropolisParams, GaugeObservableParams &params,
+    const UpdateParams &updateParams, GaugeObservableParams &params,
     const size_t step, const real_t acc_rate, const real_t time,
     const RNG &rng) {
   if ((params.measurement_interval == 0) ||
@@ -94,8 +93,8 @@ void measureGaugeObservables(
     WilsonLoop_temporal<rank, Nc>(g_in, params.W_temp_L_T_pairs,
                                   temp_measurements,
                                   params.wilson_loop_multihit,
-                                  metropolisParams.beta,
-                                  metropolisParams.delta, rng);
+                                  updateParams.beta,
+                                  updateParams.delta, rng);
 
     if (KLFT_VERBOSITY > 0) {
       for (const auto &measure : temp_measurements) {
@@ -120,8 +119,8 @@ void measureGaugeObservables(
       WilsonLoop_mu_nu<rank, Nc>(g_in, mu, nu, params.W_Lmu_Lnu_pairs,
                                  temp_measurements,
                                  params.wilson_loop_multihit,
-                                 metropolisParams.beta,
-                                 metropolisParams.delta, rng);
+                                 updateParams.beta,
+                                 updateParams.delta, rng);
     }
 
     if (KLFT_VERBOSITY > 0) {
@@ -363,35 +362,36 @@ inline void appendLatestGaugeObservables(const GaugeObservableParams &params) {
     return;
   }
 
-  if (params.plaquette_filename != "") {
+  if (params.measure_plaquette && params.plaquette_filename != "") {
     std::ofstream file(params.plaquette_filename, std::ios::app);
     flushPlaquette(file, params, fileNeedsHeader(params.plaquette_filename));
     file.flush();
     file.close();
   }
 
-  if (params.W_temp_filename != "") {
+  if (params.measure_wilson_loop_temporal && params.W_temp_filename != "") {
     std::ofstream file(params.W_temp_filename, std::ios::app);
     flushWilsonLoopTemporal(file, params, fileNeedsHeader(params.W_temp_filename));
     file.flush();
     file.close();
   }
 
-  if (params.W_mu_nu_filename != "") {
+  if (params.measure_wilson_loop_mu_nu && params.W_mu_nu_filename != "") {
     std::ofstream file(params.W_mu_nu_filename, std::ios::app);
     flushWilsonLoopMuNu(file, params, fileNeedsHeader(params.W_mu_nu_filename));
     file.flush();
     file.close();
   }
 
-  if (params.RetraceU_filename != "") {
+  if (params.measure_retrace_U && params.RetraceU_filename != "") {
     std::ofstream file(params.RetraceU_filename, std::ios::app);
     flushRetraceU(file, params, fileNeedsHeader(params.RetraceU_filename));
     file.flush();
     file.close();
   }
 
-  if (params.nested_wilson_action_filename != "") {
+  if (params.measure_nested_wilson_action &&
+      params.nested_wilson_action_filename != "") {
     std::ofstream file(params.nested_wilson_action_filename, std::ios::app);
     flushNestedWilsonAction(
         file, params, fileNeedsHeader(params.nested_wilson_action_filename));

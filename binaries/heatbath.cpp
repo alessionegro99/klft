@@ -17,9 +17,6 @@
 //
 //******************************************************************************/
 
-// this file performs metropolis for gauge fields
-// for different dimensions and gauge groups
-
 #include "KLFTConfig.hpp"
 #include "klft.hpp"
 #include <filesystem>
@@ -27,13 +24,6 @@
 #include <getopt.h>
 
 using namespace klft;
-
-// we are hard coding the RNG now to use Kokkos::Random_XorShift64_Pool
-// we might want to use our own RNG or allow the user to choose from
-// different RNGs in the future
-#include <Kokkos_Random.hpp>
-
-using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
 
 #define HLINE                                                                  \
   "====================================================================\n"
@@ -52,13 +42,13 @@ int write_sample_input_file(const std::string &filename) {
   }
 
   file << "# input.yaml\n"
-       << "MetropolisParams:\n"
+       << "HeatbathParams:\n"
        << "  L0: 8\n"
        << "  L1: 8\n"
        << "  L2: " << (compiled_rank > 2 ? 8 : 4) << "\n"
        << "  L3: " << (compiled_rank > 3 ? 8 : 4) << "\n"
-       << "  nHits: 10\n"
        << "  nSweep: 1000\n"
+       << "  nOverrelax: 5\n"
        << "  seed: 32091\n"
        << "  beta: 2.0\n"
        << "  delta: 0.1\n"
@@ -99,7 +89,6 @@ int write_sample_input_file(const std::string &filename) {
 }
 
 int parse_args(int argc, char **argv, std::string &input_file) {
-  // Defaults
   input_file = "input.yaml";
 
   if (argc == 1) {
@@ -125,7 +114,7 @@ int parse_args(int argc, char **argv, std::string &input_file) {
   int c;
   int option_index = 0;
   while ((c = getopt_long(argc, argv, "f:h", long_options, &option_index)) !=
-         -1)
+         -1) {
     switch (c) {
     case 'f':
       input_file = optarg;
@@ -133,21 +122,20 @@ int parse_args(int argc, char **argv, std::string &input_file) {
     case 'h':
       printf("%s", help_string.c_str());
       return -2;
-      break;
     case 0:
       break;
     default:
       printf("%s", help_string.c_str());
       return -1;
-      break;
     }
+  }
   return 0;
 }
 
 int main(int argc, char *argv[]) {
   printf(HLINE);
-  printf("Metropolis for %s gauge fields in %zuD\n", compiled_group_name(),
-         compiled_rank);
+  printf("Heatbath + overrelaxation for %s gauge fields in %zuD\n",
+         compiled_group_name(), compiled_rank);
   printf(HLINE);
 
   Kokkos::initialize(argc, argv);
@@ -155,11 +143,10 @@ int main(int argc, char *argv[]) {
   std::string input_file;
   rc = parse_args(argc, argv, input_file);
   if (rc == 0) {
-    rc = Metropolis(input_file);
+    rc = Heatbath(input_file);
   } else if (rc == 1) {
     rc = write_sample_input_file(input_file);
   } else if (rc == -2) {
-    // Don't return error code when called with "-h"
     rc = 0;
   }
   Kokkos::finalize();

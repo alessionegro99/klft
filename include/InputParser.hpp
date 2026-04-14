@@ -4,6 +4,8 @@
 
 #pragma once
 #include "GaugeObservable.hpp"
+#include "Heatbath_Params.hpp"
+#include "KLFTConfig.hpp"
 #include "Metropolis_Params.hpp"
 #include <fstream>
 #include <sstream>
@@ -12,6 +14,37 @@
 #include <yaml-cpp/yaml.h>
 
 namespace klft {
+
+inline bool validateCompiledTheory(const YAML::Node &node) {
+  if (node["Ndims"]) {
+    const auto value = node["Ndims"].as<size_t>();
+    if (value != compiled_rank) {
+      printf("Error: input requests Ndims=%zu but this build is compiled for %zuD\n",
+             value, compiled_rank);
+      return false;
+    }
+  }
+
+  if (node["Nd"]) {
+    const auto value = node["Nd"].as<size_t>();
+    if (value != compiled_rank) {
+      printf("Error: input requests Nd=%zu but this build is compiled for %zuD\n",
+             value, compiled_rank);
+      return false;
+    }
+  }
+
+  if (node["Nc"]) {
+    const auto value = node["Nc"].as<size_t>();
+    if (value != compiled_nc) {
+      printf("Error: input requests Nc=%zu but this build is compiled for %s\n",
+             value, compiled_group_name());
+      return false;
+    }
+  }
+
+  return true;
+}
 
 // Helper to parse index ranges like "1:16" or single values
 inline std::vector<index_t> parseIndexRange(const YAML::Node &node) {
@@ -50,9 +83,11 @@ inline bool parseInputFile(const std::string &filename,
 
     if (config["MetropolisParams"]) {
       const auto &mp = config["MetropolisParams"];
+      if (!validateCompiledTheory(mp)) {
+        return false;
+      }
 
       // general parameters
-      metropolisParams.Ndims = mp["Ndims"].as<index_t>(4);
       metropolisParams.L0 = mp["L0"].as<index_t>(32);
       metropolisParams.L1 = mp["L1"].as<index_t>(32);
       metropolisParams.L2 = mp["L2"].as<index_t>(32);
@@ -60,10 +95,6 @@ inline bool parseInputFile(const std::string &filename,
       metropolisParams.nHits = mp["nHits"].as<index_t>(10);
       metropolisParams.nSweep = mp["nSweep"].as<index_t>(1000);
       metropolisParams.seed = mp["seed"].as<index_t>(1234);
-
-      // parameters specific to the GaugeField
-      metropolisParams.Nd = mp["Nd"].as<size_t>(4);
-      metropolisParams.Nc = mp["Nc"].as<size_t>(2);
 
       // parameters specific to the Wilson action
       metropolisParams.beta = mp["beta"].as<double>(1.0);
@@ -76,6 +107,41 @@ inline bool parseInputFile(const std::string &filename,
       // add more parameters above this as needed
     } else {
       printf("Error: MetropolisParams not found in input file\n");
+      return false;
+    }
+
+    return true;
+  } catch (const YAML::Exception &e) {
+    printf("Error parsing input file: %s\n", e.what());
+    return false;
+  }
+}
+
+inline bool parseInputFile(const std::string &filename,
+                           HeatbathParams &heatbathParams) {
+  try {
+    YAML::Node config = YAML::LoadFile(filename);
+
+    if (config["HeatbathParams"]) {
+      const auto &hp = config["HeatbathParams"];
+      if (!validateCompiledTheory(hp)) {
+        return false;
+      }
+
+      heatbathParams.L0 = hp["L0"].as<index_t>(32);
+      heatbathParams.L1 = hp["L1"].as<index_t>(32);
+      heatbathParams.L2 = hp["L2"].as<index_t>(32);
+      heatbathParams.L3 = hp["L3"].as<index_t>(32);
+      heatbathParams.nSweep = hp["nSweep"].as<index_t>(1000);
+      heatbathParams.nOverrelax = hp["nOverrelax"].as<index_t>(5);
+      heatbathParams.seed = hp["seed"].as<index_t>(1234);
+
+      heatbathParams.beta = hp["beta"].as<double>(1.0);
+      heatbathParams.delta = hp["delta"].as<double>(0.1);
+      heatbathParams.epsilon1 = hp["epsilon1"].as<real_t>(0.0);
+      heatbathParams.epsilon2 = hp["epsilon2"].as<real_t>(0.0);
+    } else {
+      printf("Error: HeatbathParams not found in input file\n");
       return false;
     }
 

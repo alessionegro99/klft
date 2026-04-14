@@ -17,33 +17,25 @@
 //
 //******************************************************************************/
 
-// this file defines the main function to run the metropolis
-// for 2D, 3D and 4D SU(N) gauge fields
-
-#include "Metropolis.hpp"
 #include "CompiledTheory.hpp"
+#include "Heatbath.hpp"
 #include "InputParser.hpp"
 
-// we are hard coding the RNG now to use Kokkos::Random_XorShift64_Pool
-// we might want to use our own RNG or allow the user to choose from
-// different RNGs in the future
 #include <Kokkos_Random.hpp>
 
 using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
 
 namespace klft {
 
-int Metropolis(const std::string &input_file) {
-  // get verbosity from environment
+int Heatbath(const std::string &input_file) {
   const int verbosity = std::getenv("KLFT_VERBOSITY")
                             ? std::atoi(std::getenv("KLFT_VERBOSITY"))
                             : 0;
   setVerbosity(verbosity);
 
-  // parse input file
-  MetropolisParams metropolisParams;
+  HeatbathParams heatbathParams;
   GaugeObservableParams gaugeObsParams;
-  if (!parseInputFile(input_file, metropolisParams)) {
+  if (!parseInputFile(input_file, heatbathParams)) {
     printf("Error parsing input file\n");
     return -1;
   }
@@ -51,16 +43,23 @@ int Metropolis(const std::string &input_file) {
     printf("Error parsing input file\n");
     return -1;
   }
-  // print the parameters
-  metropolisParams.print();
+
+  if (heatbathParams.epsilon2 != 0.0) {
+    printf("Error: heatbath/overrelaxation currently supports epsilon1 only; "
+           "epsilon2 requires a different local update.\n");
+    return -1;
+  }
+
+  heatbathParams.print();
   print_compiled_theory();
-  // initialize RNG
-  RNGType rng(metropolisParams.seed);
+  RNGType rng(heatbathParams.seed);
+
   auto gauge_field = make_identity_gauge_field<compiled_rank, compiled_nc>(
-      metropolisParams.L0, metropolisParams.L1, metropolisParams.L2,
-      metropolisParams.L3);
-  run_metropolis<compiled_rank, compiled_nc>(gauge_field, metropolisParams,
-                                             gaugeObsParams, rng);
+      heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
+      heatbathParams.L3);
+  run_heatbath<compiled_rank, compiled_nc>(gauge_field, heatbathParams,
+                                           gaugeObsParams, rng);
+
   return 0;
 }
 
