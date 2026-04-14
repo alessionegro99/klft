@@ -81,9 +81,13 @@ KOKKOS_FORCEINLINE_FUNCTION void extract_embedded_SU2(
 template <size_t Nc>
 KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> effective_local_matrix(
     const SUN<Nc> &staple, const real_t beta, const real_t epsilon1) {
-  SUN<Nc> out = staple * (beta / static_cast<real_t>(Nc));
+  // The heatbath kernels follow the Bonn convention: they update with a
+  // weight proportional to exp[(1/Nc) ReTr(U M)], so the Wilson coupling
+  // enters as M = beta * staple.
+  SUN<Nc> out = staple * beta;
   if (epsilon1 != 0.0) {
-    out += identitySUN<Nc>() * (0.5 * epsilon1);
+    out += identitySUN<Nc>() *
+           (static_cast<real_t>(Nc) * 0.5 * epsilon1);
   }
   return out;
 }
