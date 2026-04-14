@@ -25,6 +25,17 @@ inline std::vector<std::pair<int, int>> sample_plane_pairs() {
   return pairs;
 }
 
+inline void write_sample_nested_child_offset(std::ofstream &file) {
+  file << "  nested_child_offset: [";
+  for (size_t d = 0; d < compiled_rank; ++d) {
+    if (d != 0) {
+      file << ", ";
+    }
+    file << "0";
+  }
+  file << "]\n";
+}
+
 inline void write_common_observable_sample(std::ofstream &file) {
   file << "GaugeObservableParams:\n"
        << "  measurement_interval: 10\n"
@@ -33,8 +44,9 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  measure_wilson_loop_mu_nu: true\n"
        << "  measure_retrace_U: false\n"
        << "  wilson_loop_multihit: 1\n"
-       << "  measure_nested_wilson_action: false\n"
-       << "  W_temp_L_T_pairs:\n"
+       << "  measure_nested_wilson_action: false\n";
+  write_sample_nested_child_offset(file);
+  file << "  W_temp_L_T_pairs:\n"
        << "    - [2, 2]\n"
        << "    - [3, 3]\n"
        << "    - [4, 4]\n"

@@ -110,6 +110,7 @@ GaugeObservableParams:
   measure_wilson_loop_temporal: true    # measure the temporal Wilson loop
   measure_wilson_loop_mu_nu: true       # measure the spatial Wilson loop
   wilson_loop_multihit: 1               # Wilson-loop-only multihit; 1 keeps the current observable
+  nested_child_offset: [0, 0, 0, 0]     # required if measure_nested_wilson_action is true
   W_temp_L_T_pairs:      # pairs of (L, T) values for the temporal Wilson loop
     - [2, 2]
     - [3, 3]             # keep a non-decreasing order (as much as possible)
@@ -170,6 +171,7 @@ GaugeObservableParams:
   measure_retrace_U: false
   wilson_loop_multihit: 1
   measure_nested_wilson_action: false
+  nested_child_offset: [0, 0, 0, 0]
   W_temp_L_T_pairs:
     - [2, 2]
     - [3, 3]
