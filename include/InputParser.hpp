@@ -121,6 +121,9 @@ inline bool parseInputFile(const std::string &filename,
       gaugeObservableParams.measure_retrace_U =
           gp["measure_retrace_U"].as<bool>(false);
 
+      gaugeObservableParams.wilson_loop_multihit =
+          gp["wilson_loop_multihit"].as<index_t>(1);
+
       // whether to measure the nested Wilson action
       gaugeObservableParams.measure_nested_wilson_action =
           gp["measure_nested_wilson_action"].as<bool>(false);
@@ -200,6 +203,11 @@ inline bool parseInputFile(const std::string &filename,
       gaugeObservableParams.write_to_file = gp["write_to_file"].as<bool>(false);
 
       // validation for nested observable
+      if (gaugeObservableParams.wilson_loop_multihit < 1) {
+        printf("Error: wilson_loop_multihit must be >= 1\n");
+        return false;
+      }
+
       if (gaugeObservableParams.measure_nested_wilson_action &&
           !gp["nested_child_offset"]) {
         printf("Error: measure_nested_wilson_action is true but "

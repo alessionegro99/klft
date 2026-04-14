@@ -77,6 +77,7 @@ GaugeObservableParams:
   measure_plaquette: true                # measure the plaquette
   measure_wilson_loop_temporal: true    # measure the temporal Wilson loop
   measure_wilson_loop_mu_nu: true       # measure the spatial Wilson loop
+  wilson_loop_multihit: 1               # Wilson-loop-only multihit; 1 keeps the current observable
   W_temp_L_T_pairs:      # pairs of (L, T) values for the temporal Wilson loop
     - [2, 2]
     - [3, 4]             # keep a non-decreasing order (as much as possible)

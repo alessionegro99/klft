@@ -2,7 +2,9 @@
 #include "GaugeEnergy.hpp"
 #include "GaugePlaquette.hpp"
 #include "GaugeRetrace.hpp"
+#include "Metropolis_Params.hpp"
 #include "WilsonLoop.hpp"
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <stdexcept>
@@ -15,6 +17,7 @@ struct GaugeObservableParams {
   bool measure_wilson_loop_temporal;
   bool measure_wilson_loop_mu_nu;
   bool measure_retrace_U;
+  index_t wilson_loop_multihit;
 
   // nested Wilson-action observable
   bool measure_nested_wilson_action;
@@ -50,15 +53,19 @@ struct GaugeObservableParams {
   GaugeObservableParams()
       : measurement_interval(0), measure_plaquette(false),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
-        measure_retrace_U(false), measure_nested_wilson_action(false),
-        write_to_file(false) {}
+        measure_retrace_U(false), wilson_loop_multihit(1),
+        measure_nested_wilson_action(false), write_to_file(false) {}
 };
 
-template <size_t rank, size_t Nc>
+inline void appendLatestGaugeObservables(const GaugeObservableParams &params);
+inline void clearAllGaugeObservables(GaugeObservableParams &params);
+
+template <size_t rank, size_t Nc, class RNG>
 void measureGaugeObservables(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
-    GaugeObservableParams &params, const size_t step, const real_t acc_rate,
-    const real_t time) {
+    const MetropolisParams &metropolisParams, GaugeObservableParams &params,
+    const size_t step, const real_t acc_rate, const real_t time,
+    const RNG &rng) {
   if ((params.measurement_interval == 0) ||
       (step % params.measurement_interval != 0) || (step == 0)) {
     return;
@@ -85,7 +92,10 @@ void measureGaugeObservables(
 
     std::vector<Kokkos::Array<real_t, 3>> temp_measurements;
     WilsonLoop_temporal<rank, Nc>(g_in, params.W_temp_L_T_pairs,
-                                  temp_measurements);
+                                  temp_measurements,
+                                  params.wilson_loop_multihit,
+                                  metropolisParams.beta,
+                                  metropolisParams.delta, rng);
 
     if (KLFT_VERBOSITY > 0) {
       for (const auto &measure : temp_measurements) {
@@ -108,7 +118,10 @@ void measureGaugeObservables(
       const index_t mu = pair_mu_nu[0];
       const index_t nu = pair_mu_nu[1];
       WilsonLoop_mu_nu<rank, Nc>(g_in, mu, nu, params.W_Lmu_Lnu_pairs,
-                                 temp_measurements);
+                                 temp_measurements,
+                                 params.wilson_loop_multihit,
+                                 metropolisParams.beta,
+                                 metropolisParams.delta, rng);
     }
 
     if (KLFT_VERBOSITY > 0) {
@@ -162,6 +175,24 @@ void measureGaugeObservables(
   params.measurement_steps.push_back(step);
   params.measurement_acceptance_rates.push_back(acc_rate);
   params.measurement_times.push_back(time);
+
+  if (params.write_to_file) {
+    appendLatestGaugeObservables(params);
+    clearAllGaugeObservables(params);
+  }
+}
+
+inline bool fileNeedsHeader(const std::string &filename) {
+  if (filename.empty()) {
+    return false;
+  }
+
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  if (!fs::exists(filename, ec)) {
+    return true;
+  }
+  return fs::file_size(filename, ec) == 0;
 }
 
 inline void flushPlaquette(std::ofstream &file,
@@ -363,6 +394,48 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.nested_plaq_child_measurements.clear();
   params.nested_E_V_measurements.clear();
   params.nested_E_child_measurements.clear();
+}
+
+inline void appendLatestGaugeObservables(const GaugeObservableParams &params) {
+  if (!params.write_to_file) {
+    return;
+  }
+
+  if (params.plaquette_filename != "") {
+    std::ofstream file(params.plaquette_filename, std::ios::app);
+    flushPlaquette(file, params, fileNeedsHeader(params.plaquette_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.W_temp_filename != "") {
+    std::ofstream file(params.W_temp_filename, std::ios::app);
+    flushWilsonLoopTemporal(file, params, fileNeedsHeader(params.W_temp_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.W_mu_nu_filename != "") {
+    std::ofstream file(params.W_mu_nu_filename, std::ios::app);
+    flushWilsonLoopMuNu(file, params, fileNeedsHeader(params.W_mu_nu_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.RetraceU_filename != "") {
+    std::ofstream file(params.RetraceU_filename, std::ios::app);
+    flushRetraceU(file, params, fileNeedsHeader(params.RetraceU_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.nested_wilson_action_filename != "") {
+    std::ofstream file(params.nested_wilson_action_filename, std::ios::app);
+    flushNestedWilsonAction(
+        file, params, fileNeedsHeader(params.nested_wilson_action_filename));
+    file.flush();
+    file.close();
+  }
 }
 
 } // namespace klft
