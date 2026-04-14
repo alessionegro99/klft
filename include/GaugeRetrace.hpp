@@ -1,20 +1,9 @@
-//*******************************************************************************
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-// See the top-level project for licensing details (GPLv3 or later).
-//
-//*******************************************************************************
-
 #pragma once
-#include "FieldTypeHelper.hpp" // for DeviceGaugeFieldType<rank,Nc>
+#include "FieldTypeHelper.hpp"
 #include "GLOBAL.hpp"
 #include <Kokkos_Core.hpp>
 
 namespace klft {
-
-//------------------------------------------------------------------------------
-// Helpers
-//------------------------------------------------------------------------------
 
 KOKKOS_INLINE_FUNCTION
 real_t real_part(const real_t &x) { return x; }
@@ -29,7 +18,7 @@ KOKKOS_INLINE_FUNCTION real_t real_part(const Kokkos::complex<T> &z) {
   return static_cast<real_t>(z.real());
 }
 
-// linear -> multi-index (row-major) for arbitrary rank
+// Convert a linear site index into a rank-dimensional lattice index.
 template <size_t rank>
 KOKKOS_INLINE_FUNCTION IndexArray<rank>
 linear_to_multi(size_t lin, const IndexArray<rank> &dims) {
@@ -43,8 +32,6 @@ linear_to_multi(size_t lin, const IndexArray<rank> &dims) {
   return idx;
 }
 
-// get_dims overloads for our wrappers (they hold an IndexArray<rank> named
-// 'dimensions')
 template <size_t Nc>
 KOKKOS_INLINE_FUNCTION IndexArray<2>
 get_dims(const typename DeviceGaugeFieldType<2, Nc>::type &g) {
@@ -63,17 +50,12 @@ get_dims(const typename DeviceGaugeFieldType<4, Nc>::type &g) {
   return g.dimensions;
 }
 
-//------------------------------------------------------------------------------
-// Retrace_links_avg
-//   Average over all links of Re(Tr U_mu(x))/Nc
-//------------------------------------------------------------------------------
-
+// Average Re Tr U over all links.
 template <size_t rank, size_t Nc>
 KOKKOS_INLINE_FUNCTION real_t
 Retrace_at(const typename DeviceGaugeFieldType<rank, Nc>::type &g,
            const IndexArray<rank> &site, const index_t mu) {
-  const auto &U =
-      g(site, mu); // SUN<Nc> = Kokkos::Array<Kokkos::Array<complex_t,Nc>,Nc>
+  const auto &U = g(site, mu);
   real_t trr = 0.0;
 #pragma unroll
   for (index_t a = 0; a < static_cast<index_t>(Nc); ++a) {
@@ -92,7 +74,6 @@ Retrace_links_avg(const typename DeviceGaugeFieldType<rank, Nc>::type &g) {
 
   const auto dims = get_dims<Nc>(g);
 
-  // number of sites = product of dims
   size_t nSites = 1;
 #pragma unroll
   for (size_t r = 0; r < rank; ++r)
@@ -112,7 +93,6 @@ Retrace_links_avg(const typename DeviceGaugeFieldType<rank, Nc>::type &g) {
       },
       total);
 
-  // average over all links
   return total / static_cast<real_t>(nLinks);
 }
 

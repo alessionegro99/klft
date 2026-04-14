@@ -1,24 +1,3 @@
-//******************************************************************************/
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-//
-// KLFT is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// KLFT is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with KLFT.  If not, see <http://www.gnu.org/licenses/>.
-//
-//******************************************************************************/
-
-// define SUN operations
-
 #pragma once
 #include "GLOBAL.hpp"
 
@@ -135,25 +114,18 @@ KOKKOS_FORCEINLINE_FUNCTION complex_t trace(const SUN<Nc> &a) {
   return c;
 }
 
-// random SUN matrix generator
-// need to be defined for each Nc
-
-// template <size_t N = Nc, typename std::enable_if<N == 1, int>::type = 0,
+// Draw a random group element near the identity for Metropolis proposals.
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<1> &r, RNG &generator,
                                          real_t delta) {
-  // SUN<1> r;
   r[0][0] = Kokkos::exp(
       complex_t(0.0, generator.drand(-delta * Kokkos::numbers::pi_v<real_t>,
                                      delta * Kokkos::numbers::pi_v<real_t>)));
-  // return r;
 }
 
-// template <size_t N = Nc, typename std::enable_if<N == 2, int>::type = 0,
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<2> &r, RNG &generator,
                                          real_t delta) {
-  // SUN<2> r;
   real_t alpha =
       generator.drand(0.0, delta * 2 * Kokkos::numbers::pi_v<real_t>);
   real_t u = generator.drand(-1.0, 1.0);
@@ -165,14 +137,11 @@ KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<2> &r, RNG &generator,
   r[0][1] = complex_t(n1 * salpha, n2 * salpha);
   r[1][0] = complex_t(-r[0][1].real(), r[0][1].imag());
   r[1][1] = complex_t(r[0][0].real(), -r[0][0].imag());
-  // return r;
 }
 
-// template <size_t N = Nc, typename std::enable_if<N == 3, int>::type = 0,
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<3> &r, RNG &generator,
                                          real_t delta) {
-  // SUN<3> r;
   real_t r1[6], r2[6], norm, fact;
   complex_t z1[3], z2[3], z3[3], z;
   while (1) {
@@ -230,11 +199,7 @@ KOKKOS_FORCEINLINE_FUNCTION void randSUN(SUN<3> &r, RNG &generator,
   r[2][0] = z3[0];
   r[2][1] = z3[1];
   r[2][2] = z3[2];
-  // return r;
 }
-
-// restore the gauge symmetry
-// this also must be defined for each Nc
 
 KOKKOS_FORCEINLINE_FUNCTION
 SUN<1> restoreSUN(const SUN<1> &a) {
