@@ -3,7 +3,6 @@
 #include "GaugePlaquette.hpp"
 #include "IndexHelper.hpp"
 #include "SUN.hpp"
-#include "Tuner.hpp"
 
 #include <stdexcept>
 
@@ -168,8 +167,7 @@ real_t BlockedGaugePlaquetteOneLevel(
   BlockedGaugePlaqOneLevel<rank, Nc> blockedPlaq(g_in, plaq_per_site,
                                                  fine_dimensions, child_offset);
 
-  tune_and_launch_for<rank>("BlockedGaugePlaquetteOneLevel_GaugeField",
-                            coarse_start, coarse_end, blockedPlaq);
+  Kokkos::parallel_for(Policy<rank>(coarse_start, coarse_end), blockedPlaq);
   Kokkos::fence();
 
   complex_t plaq = plaq_per_site.sum();

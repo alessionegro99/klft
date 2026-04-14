@@ -41,9 +41,8 @@ const constGaugeField<Nd, Nc> stapleField(const deviceGaugeField<Nd, Nc> g_in) {
   // store the field in a const gauge field
   const constGaugeField<Nd, Nc> g(g_in.field);
 
-  // tune and launch the kernel
-  tune_and_launch_for<Nd>(
-      "stapleField_GaugeField", start, end,
+  Kokkos::parallel_for(
+      Policy<Nd>(start, end),
       KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
                     const index_t i3) {
 // iterate over mu, store staple for each mu

@@ -21,7 +21,6 @@
 
 #pragma once
 #include "GLOBAL.hpp"
-#include "Tuner.hpp"
 
 namespace klft {
 
@@ -45,9 +44,8 @@ struct deviceField {
   void do_init(const index_t L0, const index_t L1, const index_t L2,
                const index_t L3, Field &V, const complex_t init) {
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1, L2, L3);
-    tune_and_launch_for<4>(
-        "init_deviceField", IndexArray<4>{0, 0, 0, 0},
-        IndexArray<4>{L0, L1, L2, L3},
+    Kokkos::parallel_for(
+        Policy<4>(IndexArray<4>{0, 0, 0, 0}, IndexArray<4>{L0, L1, L2, L3}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
                       const index_t i3) { V(i0, i1, i2, i3) = init; });
     Kokkos::fence();
@@ -115,8 +113,8 @@ struct deviceField3D {
   void do_init(const index_t L0, const index_t L1, const index_t L2, Field3D &V,
                const complex_t init) {
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1, L2);
-    tune_and_launch_for<3>(
-        "init_deviceField3D", IndexArray<3>{0, 0, 0}, IndexArray<3>{L0, L1, L2},
+    Kokkos::parallel_for(
+        Policy<3>(IndexArray<3>{0, 0, 0}, IndexArray<3>{L0, L1, L2}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2) {
           V(i0, i1, i2) = init;
         });
@@ -182,8 +180,8 @@ struct deviceField2D {
   void do_init(const index_t L0, const index_t L1, Field2D &V,
                const complex_t init) {
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1);
-    tune_and_launch_for<2>(
-        "init_deviceField2D", IndexArray<2>{0, 0}, IndexArray<2>{L0, L1},
+    Kokkos::parallel_for(
+        Policy<2>(IndexArray<2>{0, 0}, IndexArray<2>{L0, L1}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1) {
           V(i0, i1) = init;
         });

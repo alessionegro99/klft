@@ -23,7 +23,6 @@
 #include "FieldTypeHelper.hpp"
 #include "IndexHelper.hpp"
 #include "SUN.hpp"
-#include "Tuner.hpp"
 
 namespace klft {
 
@@ -117,9 +116,7 @@ real_t GaugePlaquette(const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   // define the functor
   GaugePlaq<rank, Nc> gaugePlaquette(g_in, plaq_per_site, end);
 
-  // tune and launch the kernel
-  tune_and_launch_for<rank>("GaugePlaquette_GaugeField", start, end,
-                            gaugePlaquette);
+  Kokkos::parallel_for(Policy<rank>(start, end), gaugePlaquette);
   Kokkos::fence();
 
   // sum over all sites

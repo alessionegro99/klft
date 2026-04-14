@@ -272,11 +272,4 @@ inline int KLFT_VERBOSITY = 0;
 
 inline void setVerbosity(int v) { KLFT_VERBOSITY = v; }
 
-// variable that enables tuning
-// 0 = no tuning
-// 1 = tuning enabled
-inline int KLFT_TUNING = 0;
-
-inline void setTuning(int t) { KLFT_TUNING = t; }
-
 } // namespace klft

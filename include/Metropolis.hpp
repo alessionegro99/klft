@@ -53,18 +53,15 @@ template <size_t rank, size_t Nc, class RNG> struct MetropolisGaugeField {
   const RNG rng;
   // define the parameters
   const MetropolisParams params;
-  // lattice dimensions
-  const IndexArray<rank> dimensions;
   // sublattice definitions
   const Kokkos::Array<bool, rank> oddeven;
   // constructor
   MetropolisGaugeField(const GaugeFieldType &g_in,
                        const MetropolisParams &params,
-                       const IndexArray<rank> &dimensions,
                        const ScalarFieldType &nAccepted,
                        const Kokkos::Array<bool, rank> &oddeven, const RNG &rng)
       : g_in(g_in), params(params), oddeven(oddeven), rng(rng),
-        dimensions(dimensions), nAccepted(nAccepted) {}
+        nAccepted(nAccepted) {}
 
   template <typename... Indices>
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
@@ -149,7 +146,7 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   // this results in 2^N sublattices
   for (index_t i = 0; i < std::pow(2, rank); ++i) {
     // define metropolis functor for this sublattice
-    MetropolisGaugeField<rank, Nc, RNG> metropolis(g_in, params, end, nAccepted,
+    MetropolisGaugeField<rank, Nc, RNG> metropolis(g_in, params, nAccepted,
                                                    oddeven_array<rank>(i), rng);
     if (KLFT_VERBOSITY > 1) {
       printf("Launching Metropolis for sublattice %d\n", i);
@@ -168,10 +165,7 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
       printf("\n");
       printf("Current number of accepted steps: %11.6f\n", nAccepted.sum());
     }
-    // launch the kernel
-    tune_and_launch_for<rank>("sweep_Metropolis_GaugeField_sublat_" +
-                                  std::to_string(i),
-                              start, end, metropolis);
+    Kokkos::parallel_for(Policy<rank>(start, end), metropolis);
     Kokkos::fence();
   }
   // reduce the number of accepted updates

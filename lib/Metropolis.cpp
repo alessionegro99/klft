@@ -38,22 +38,6 @@ int Metropolis(const std::string &input_file) {
                             ? std::atoi(std::getenv("KLFT_VERBOSITY"))
                             : 0;
   setVerbosity(verbosity);
-  // get tuning from environment
-  const int tuning =
-      std::getenv("KLFT_TUNING") ? std::atoi(std::getenv("KLFT_TUNING")) : 0;
-  setTuning(tuning);
-  // if tuning is enbled, check if the user has set the
-  // KLFT_CACHE_FILE environment variable
-  if (tuning) {
-    const char *cache_file = std::getenv("KLFT_CACHE_FILE");
-    // if it exists, read the cache
-    if (cache_file) {
-      if (KLFT_VERBOSITY > 0) {
-        printf("Reading cache file: %s\n", cache_file);
-      }
-      readTuneCache(cache_file);
-    }
-  }
 
   // parse input file
   MetropolisParams metropolisParams;
@@ -154,15 +138,6 @@ int Metropolis(const std::string &input_file) {
     else {
       printf("Error: Unsupported gauge group\n");
       return -1;
-    }
-  }
-  // if tuning is enabled, write the cache file
-  if (KLFT_TUNING) {
-    const char *cache_file = std::getenv("KLFT_CACHE_FILE");
-    if (cache_file) {
-      writeTuneCache(cache_file);
-    } else {
-      printf("KLFT_CACHE_FILE not set\n");
     }
   }
   return 0;

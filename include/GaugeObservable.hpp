@@ -342,44 +342,6 @@ inline void flushNestedWilsonAction(std::ofstream &file,
   }
 }
 
-inline void flushAllGaugeObservables(const GaugeObservableParams &params,
-                                     const bool HEADER = true) {
-  if (!params.write_to_file) {
-    printf("write_to_file is not enabled\n");
-    return;
-  }
-
-  if (params.plaquette_filename != "") {
-    std::ofstream file(params.plaquette_filename, std::ios::app);
-    flushPlaquette(file, params, HEADER);
-    file.close();
-  }
-
-  if (params.W_temp_filename != "") {
-    std::ofstream file(params.W_temp_filename, std::ios::app);
-    flushWilsonLoopTemporal(file, params, HEADER);
-    file.close();
-  }
-
-  if (params.W_mu_nu_filename != "") {
-    std::ofstream file(params.W_mu_nu_filename, std::ios::app);
-    flushWilsonLoopMuNu(file, params, HEADER);
-    file.close();
-  }
-
-  if (params.RetraceU_filename != "") {
-    std::ofstream file(params.RetraceU_filename, std::ios::app);
-    flushRetraceU(file, params, HEADER);
-    file.close();
-  }
-
-  if (params.nested_wilson_action_filename != "") {
-    std::ofstream file(params.nested_wilson_action_filename, std::ios::app);
-    flushNestedWilsonAction(file, params, HEADER);
-    file.close();
-  }
-}
-
 inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.measurement_steps.clear();
   params.measurement_acceptance_rates.clear();

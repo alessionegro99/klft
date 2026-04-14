@@ -219,17 +219,13 @@ void WilsonLoop_mu_nu(
     const index_t Lnu = Lmu_nu[1];
 
     if (multihit > 1) {
-      tune_and_launch_for<rank>(
-          "WilsonLoop_GaugeField_WLoop_munu_multihit_" + std::to_string(mu) +
-              "_" + std::to_string(nu),
-          start, end,
+      Kokkos::parallel_for(
+          Policy<rank>(start, end),
           WLoop_munu<rank, Nc, RNG>(g_in, Wmunu_per_site, mu, nu, Lmu, Lnu,
                                     multihit, beta, delta, rng, end));
     } else {
-      tune_and_launch_for<rank>(
-          "WilsonLoop_GaugeField_WLoop_munu_" + std::to_string(mu) + "_" +
-              std::to_string(nu),
-          start, end,
+      Kokkos::parallel_for(
+          Policy<rank>(start, end),
           WLoop_munu_raw<rank, Nc>(g_in, Wmunu_per_site, mu, nu, Lmu, Lnu,
                                    end));
     }
