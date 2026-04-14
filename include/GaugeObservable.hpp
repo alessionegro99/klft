@@ -18,7 +18,6 @@ struct GaugeObservableParams {
   bool measure_retrace_U;
   index_t wilson_loop_multihit;
 
-  // nested Wilson-action observable
   bool measure_nested_wilson_action;
   std::vector<index_t> nested_child_offset;
 
@@ -35,7 +34,6 @@ struct GaugeObservableParams {
   std::vector<std::vector<Kokkos::Array<real_t, 5>>> W_mu_nu_measurements;
   std::vector<real_t> retraceU_measurements;
 
-  // nested Wilson-action measurements
   std::vector<real_t> nested_plaq_V_measurements;
   std::vector<real_t> nested_plaq_child_measurements;
   std::vector<real_t> nested_E_V_measurements;
@@ -59,6 +57,7 @@ struct GaugeObservableParams {
 inline void appendLatestGaugeObservables(const GaugeObservableParams &params);
 inline void clearAllGaugeObservables(GaugeObservableParams &params);
 
+// Measure the requested observables and stage the results for optional output.
 template <size_t rank, size_t Nc, class UpdateParams, class RNG>
 void measureGaugeObservables(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
@@ -181,6 +180,7 @@ void measureGaugeObservables(
   }
 }
 
+// Return whether the output file still needs a header row.
 inline bool fileNeedsHeader(const std::string &filename) {
   if (filename.empty()) {
     return false;
@@ -194,6 +194,7 @@ inline bool fileNeedsHeader(const std::string &filename) {
   return fs::file_size(filename, ec) == 0;
 }
 
+// Append the staged plaquette rows to disk.
 inline void flushPlaquette(std::ofstream &file,
                            const GaugeObservableParams &params,
                            const bool HEADER = true) {
@@ -228,6 +229,7 @@ inline void flushPlaquette(std::ofstream &file,
   }
 }
 
+// Append the staged temporal Wilson-loop rows to disk.
 inline void flushWilsonLoopTemporal(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
@@ -254,6 +256,7 @@ inline void flushWilsonLoopTemporal(std::ofstream &file,
   }
 }
 
+// Append the staged planar Wilson-loop rows to disk.
 inline void flushWilsonLoopMuNu(std::ofstream &file,
                                 const GaugeObservableParams &params,
                                 const bool HEADER = true) {
@@ -281,6 +284,7 @@ inline void flushWilsonLoopMuNu(std::ofstream &file,
   }
 }
 
+// Append the staged Retrace(U) rows to disk.
 inline void flushRetraceU(std::ofstream &file,
                           const GaugeObservableParams &params,
                           const bool HEADER = true) {
@@ -305,6 +309,7 @@ inline void flushRetraceU(std::ofstream &file,
   }
 }
 
+// Append the staged nested-action rows to disk.
 inline void flushNestedWilsonAction(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
@@ -341,6 +346,7 @@ inline void flushNestedWilsonAction(std::ofstream &file,
   }
 }
 
+// Drop the current staging buffers after a successful append.
 inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.measurement_steps.clear();
   params.measurement_acceptance_rates.clear();
@@ -357,6 +363,7 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.nested_E_child_measurements.clear();
 }
 
+// Append one measurement batch to each enabled output file.
 inline void appendLatestGaugeObservables(const GaugeObservableParams &params) {
   if (!params.write_to_file) {
     return;

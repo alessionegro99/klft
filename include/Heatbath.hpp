@@ -1,22 +1,3 @@
-//******************************************************************************/
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-//
-// KLFT is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// KLFT is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with KLFT.  If not, see <http://www.gnu.org/licenses/>.
-//
-//******************************************************************************/
-
 #pragma once
 #include "FieldTypeHelper.hpp"
 #include "GaugeObservable.hpp"
@@ -29,6 +10,7 @@ using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
 
 namespace klft {
 
+// Kennedy-Pendleton / Creutz SU(2) heatbath kernel.
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION real_t randheat_SU2(const real_t k,
                                                 RNG &generator) {
@@ -176,6 +158,7 @@ KOKKOS_FORCEINLINE_FUNCTION void extract_embedded_SU2(const SUN<Nc> &in,
   u[1][1] = complex_t(a00 * invp, -b00 * invp);
 }
 
+// Fold the Wilson action and linear breaking term into one local matrix.
 template <size_t Nc>
 KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> effective_local_matrix(
     const SUN<Nc> &staple, const real_t beta, const real_t epsilon1) {
@@ -324,6 +307,7 @@ KOKKOS_FORCEINLINE_FUNCTION void overrelax_link(SUN<Nc> &link,
   }
 }
 
+// Update one odd/even sublattice with either heatbath or overrelaxation.
 template <size_t rank, size_t Nc, class RNG, bool Overrelax>
 struct HeatbathGaugeField {
   constexpr static const size_t Nd = rank;
@@ -361,6 +345,7 @@ struct HeatbathGaugeField {
   }
 };
 
+// Restore exact group projection after each full sweep.
 template <size_t rank, size_t Nc> struct UnitarizeGaugeField {
   constexpr static const size_t Nd = rank;
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
@@ -379,6 +364,7 @@ template <size_t rank, size_t Nc> struct UnitarizeGaugeField {
   }
 };
 
+// Perform one heatbath sweep plus the requested overrelaxation sweeps.
 template <size_t rank, size_t Nc, class RNG>
 void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
                          const HeatbathParams &params, const RNG &rng) {
@@ -422,6 +408,7 @@ void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   Kokkos::fence();
 }
 
+// Execute the requested number of heatbath sweeps and measurements.
 template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
 int run_heatbath(GaugeFieldType &g_in, const HeatbathParams &heatbathParams,
                  GaugeObservableParams &gaugeObsParams, const RNG &rng) {

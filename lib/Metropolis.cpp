@@ -1,46 +1,19 @@
-//******************************************************************************/
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-//
-// KLFT is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// KLFT is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with KLFT.  If not, see <http://www.gnu.org/licenses/>.
-//
-//******************************************************************************/
-
-// this file defines the main function to run the metropolis
-// for 2D, 3D and 4D SU(N) gauge fields
-
-#include "Metropolis.hpp"
 #include "CompiledTheory.hpp"
+#include "Metropolis.hpp"
 #include "InputParser.hpp"
-
-// we are hard coding the RNG now to use Kokkos::Random_XorShift64_Pool
-// we might want to use our own RNG or allow the user to choose from
-// different RNGs in the future
 #include <Kokkos_Random.hpp>
 
 using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
 
 namespace klft {
 
+// Run Metropolis for the theory compiled into the binary.
 int Metropolis(const std::string &input_file) {
-  // get verbosity from environment
   const int verbosity = std::getenv("KLFT_VERBOSITY")
                             ? std::atoi(std::getenv("KLFT_VERBOSITY"))
                             : 0;
   setVerbosity(verbosity);
 
-  // parse input file
   MetropolisParams metropolisParams;
   GaugeObservableParams gaugeObsParams;
   if (!parseInputFile(input_file, metropolisParams)) {
@@ -51,10 +24,8 @@ int Metropolis(const std::string &input_file) {
     printf("Error parsing input file\n");
     return -1;
   }
-  // print the parameters
   metropolisParams.print();
   print_compiled_theory();
-  // initialize RNG
   RNGType rng(metropolisParams.seed);
   auto gauge_field = make_identity_gauge_field<compiled_rank, compiled_nc>(
       metropolisParams.L0, metropolisParams.L1, metropolisParams.L2,

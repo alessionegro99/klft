@@ -1,41 +1,19 @@
-// Define the global types and views for Kokkos Lattice Field Theory (KLFT)
-// This file contains the definitions for the types used in KLFT, including
-// the real and complex types, gauge field types, and field view types.
-// It also includes the definitions for the policies used in Kokkos parallel
-// programming.
-
 #pragma once
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
 namespace klft {
 
-// define the global types
-// is this a good idea?
-// if we want different fields with different precision (e.g. coarse grid)
-// might be a lot of work to redefine, but on the other hand, if we want to
-// be precision agnostic, everything has to be templated with given precision
-// let's start like this and worry about mixed precision later
 using real_t = double;
 using complex_t = Kokkos::complex<real_t>;
 
-// use int for the index type
 using index_t = int;
 
-// define index_arrays
 template <size_t rank> using IndexArray = Kokkos::Array<index_t, rank>;
 
-// define groups for gauge fields
 template <size_t Nc>
 using SUN = Kokkos::Array<Kokkos::Array<complex_t, Nc>, Nc>;
 
-// define field view types
-// by default all views are 4D
-// some dimensions are set to 1 for lower dimensions
-// I'm still not sure if this is the best way to do it
-// Nd here is templated, but for a 4D gauge field,
-// shouldn't Nd always be 4?
-// Nc is the number of colors
 template <size_t Nd, size_t Nc>
 using GaugeField =
     Kokkos::View<SUN<Nc> ****[Nd], Kokkos::MemoryTraits<Kokkos::Restrict>>;
@@ -96,7 +74,6 @@ template <size_t Nd>
 using LinkScalarField2D =
     Kokkos::View<real_t **[Nd], Kokkos::MemoryTraits<Kokkos::Restrict>>;
 
-// define corresponding constant fields
 #if defined(KOKKOS_ENABLE_CUDA)
 
 template <size_t Nd, size_t Nc>
@@ -229,14 +206,11 @@ using constLinkScalarField2D =
 
 #endif
 
-// define policy as mdrange
 template <size_t rank> using Policy = Kokkos::MDRangePolicy<Kokkos::Rank<rank>>;
 
-// special case for 1D
 using Policy1D = Kokkos::RangePolicy<>;
 
-// define a global zero field generator
-// for the color x color matrix
+// Build the zero matrix for the selected gauge group.
 template <size_t Nc> constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> zeroSUN() {
   SUN<Nc> zero;
 #pragma unroll
@@ -249,8 +223,7 @@ template <size_t Nc> constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> zeroSUN() {
   return zero;
 }
 
-// define a global identity field generator
-// for the color x color matrix
+// Build the identity matrix for the selected gauge group.
 template <size_t Nc>
 constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> identitySUN() {
   SUN<Nc> id = zeroSUN<Nc>();
@@ -261,13 +234,6 @@ constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> identitySUN() {
   return id;
 }
 
-// global verbosity level
-// 0 = silent
-// 1 = normal
-// 2 = verbose
-// 3 = very verbose
-// 4 = debug
-// 5 = trace
 inline int KLFT_VERBOSITY = 0;
 
 inline void setVerbosity(int v) { KLFT_VERBOSITY = v; }

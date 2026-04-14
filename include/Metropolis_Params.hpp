@@ -1,25 +1,3 @@
-//******************************************************************************/
-//
-// This file is part of the Kokkos Lattice Field Theory (KLFT) library.
-//
-// KLFT is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// KLFT is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with KLFT.  If not, see <http://www.gnu.org/licenses/>.
-//
-//******************************************************************************/
-
-// this file defines metropolis parameters for simulating different fields and
-// actions
-
 #pragma once
 #include "GLOBAL.hpp"
 #include "KLFTConfig.hpp"
@@ -27,33 +5,18 @@
 namespace klft {
 
 struct MetropolisParams {
-
-  // general parameters
-  index_t L0;    // length of the first dimension
-  index_t L1;    // length of the second dimension
-  index_t L2;    // length of the third dimension
-  index_t L3;    // length of the fourth dimension
-  // hard cutoff at 4 for now, since we have not
-  // implemented any 5D cases yet
-  // more dimensions can and will be added when necessary
-  index_t nHits;  // number of hits per site in each sweep
-  index_t nSweep; // number of sweeps
-  index_t seed;   // seed for the random number generator
-
-  // parameters specific to the GaugeField
-  // parameters specific to the Wilson action
-  real_t beta;  // inverse coupling constant
-  real_t delta; // step size for the metropolis update
-
-  real_t epsilon1; // gauge breaking parameter, if applicable
+  index_t L0;
+  index_t L1;
+  index_t L2;
+  index_t L3;
+  index_t nHits;
+  index_t nSweep;
+  index_t seed;
+  real_t beta;
+  real_t delta;
+  real_t epsilon1;
   real_t epsilon2;
 
-  // add more parameters above this line as needed
-  // ...
-
-  // default parameters
-  // in practice, user should set these
-  // parameters after constructing the object
   MetropolisParams() {
     L0 = 4;
     L1 = 4;
@@ -67,12 +30,9 @@ struct MetropolisParams {
     delta = 0.1;
     epsilon1 = 0.0;
     epsilon2 = 0.0;
-
-    // set default values to newly added parameters
-    // above this line
-    // ...
   }
 
+  // Print the runtime parameters for the compiled theory.
   void print() const {
     if (KLFT_VERBOSITY > 0) {
       printf("Metropolis Parameters:\n");
