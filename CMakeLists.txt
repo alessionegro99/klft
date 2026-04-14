@@ -20,9 +20,11 @@ if(NOT KLFT_NC MATCHES "^[123]$")
   message(FATAL_ERROR "KLFT_NC must be one of: 1, 2, 3")
 endif()
 
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/core)
+
 configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/KLFTConfig.hpp.in
-  ${CMAKE_CURRENT_BINARY_DIR}/generated/KLFTConfig.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/core/klft_config.hpp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/generated/core/klft_config.hpp
   @ONLY
 )
 
@@ -39,9 +41,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/kokkos/kokkos ${CMAKE_CU
 # yaml-cpp
 #
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/yaml-cpp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp)
-
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/generated)
 
 # build the library
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/lib)

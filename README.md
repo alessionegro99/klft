@@ -57,6 +57,18 @@ Example:
 cmake -DKokkos_ENABLE_CUDA=ON -DKLFT_NDIM=4 -DKLFT_NC=3 /path/to/klft
 ```
 
+## Code layout
+
+The public headers are now grouped by role under `include/`:
+
+- `include/core/` for shared types, compiled-theory settings, and indexing helpers
+- `include/groups/` for gauge-group storage and algebra
+- `include/fields/` for Kokkos-backed lattice field wrappers
+- `include/updates/` for Metropolis and heatbath/overrelaxation kernels
+- `include/observables/` for plaquettes, Wilson loops, Retrace(U), and nested Wilson actions
+- `include/params/` for runtime parameter structs
+- `include/io/` for YAML parsing and driver/sample-input helpers
+
 # Usage
 
 ## Metropolis
@@ -70,6 +82,9 @@ binaries/metropolis
      Prints this message.
      Hint: use --kokkos-help to see command line options provided by Kokkos.
 ```
+
+Running `binaries/metropolis` with no arguments writes a sample `input.yaml`
+and exits.
 
 ### Example input.yaml
 
@@ -94,20 +109,19 @@ GaugeObservableParams:
   wilson_loop_multihit: 1               # Wilson-loop-only multihit; 1 keeps the current observable
   W_temp_L_T_pairs:      # pairs of (L, T) values for the temporal Wilson loop
     - [2, 2]
-    - [3, 4]             # keep a non-decreasing order (as much as possible)
-    - [4, 3]             # for maximum efficiency
+    - [3, 3]             # keep a non-decreasing order (as much as possible)
     - [4, 4]
   W_mu_nu_pairs:      # pairs of (mu, nu) values for the planar Wilson loop
     - [0, 1]
-    - [1, 2]
-    - [3, 2]
+    - [0, 2]
+    - [0, 3]
   W_Lmu_Lnu_pairs:      # pairs of (Lmu, Lnu) values for the lengths of the 
     - [2, 2]            # planar Wilson loop in the mu and nu directions
     - [3, 3]            # again, keep a non-decreasing order (as much as possible)
     - [4, 3]
   plaquette_filename: "plaquette.out"  # filename to output the plaquette
-  W_temp_filename: "W_temp.out"        # filename to output the temporal Wilson loop
-  W_mu_nu_filename: "W_mu_nu.out"      # filename to output the planar Wilson loop
+  W_temp_filename: "w_temp.out"        # filename to output the temporal Wilson loop
+  W_mu_nu_filename: "w_mu_nu.out"      # filename to output the planar Wilson loop
   write_to_file: true                  # write the measurements to file
 ```
 
@@ -152,21 +166,20 @@ GaugeObservableParams:
   measure_nested_wilson_action: false
   W_temp_L_T_pairs:
     - [2, 2]
-    - [3, 4]
-    - [4, 3]
+    - [3, 3]
     - [4, 4]
   W_mu_nu_pairs:
     - [0, 1]
-    - [1, 2]
-    - [3, 2]
+    - [0, 2]
+    - [0, 3]
   W_Lmu_Lnu_pairs:
     - [2, 2]
     - [3, 3]
     - [4, 3]
   plaquette_filename: "plaquette.out"
-  W_temp_filename: "W_temp.out"
-  W_mu_nu_filename: "W_mu_nu.out"
-  RetraceU_filename: "RetraceU.out"
+  W_temp_filename: "w_temp.out"
+  W_mu_nu_filename: "w_mu_nu.out"
+  RetraceU_filename: "retrace_u.out"
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true
 ```
