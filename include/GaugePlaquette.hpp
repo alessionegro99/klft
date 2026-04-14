@@ -37,13 +37,7 @@ template <size_t rank, size_t Nc> struct GaugePlaq {
               g_in(shift_index_plus<rank, size_t>(
                        Kokkos::Array<size_t, rank>{Idcs...}, nu, 1, dimensions),
                    mu);
-#pragma unroll
-          for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-            for (index_t c2 = 0; c2 < Nc; ++c2) {
-              tmunu += lmu[c1][c2] * Kokkos::conj(lnu[c1][c2]);
-            }
-          }
+          tmunu += trace(lmu * conj(lnu));
         }
       }
     }

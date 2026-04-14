@@ -42,6 +42,7 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
 
   void do_init(const index_t L0, const index_t L1, const index_t L2,
                const index_t L3, GaugeField<Nd, Nc> &V, complex_t init) {
+    const SUN<Nc> fill = identitySUN<Nc>() * init;
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1, L2, L3);
     Kokkos::parallel_for(
         Policy<4>(IndexArray<4>{0, 0, 0, 0}, IndexArray<4>{L0, L1, L2, L3}),
@@ -49,13 +50,7 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
                       const index_t i3) {
 #pragma unroll
           for (index_t mu = 0; mu < Nd; ++mu) {
-#pragma unroll
-            for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-              for (index_t c2 = 0; c2 < Nc; ++c2) {
-                V(i0, i1, i2, i3, mu)[c1][c2] = init;
-              }
-            }
+            V(i0, i1, i2, i3, mu) = fill;
           }
         });
     Kokkos::fence();
@@ -106,16 +101,9 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField {
           auto generator = rng.get_state();
 #pragma unroll
           for (index_t mu = 0; mu < Nd; ++mu) {
-#pragma unroll
-            for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-              for (index_t c2 = 0; c2 < Nc; ++c2) {
-                V(i0, i1, i2, i3, mu)
-                [c1][c2] = complex_t(generator.drand(-1.0, 1.0),
-                                     generator.drand(-1.0, 1.0));
-              }
-            }
+            randSUN(V(i0, i1, i2, i3, mu), generator, 1.0);
           }
+          rng.free_state(generator);
         });
     Kokkos::fence();
   }
@@ -253,19 +241,14 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField3D {
 
   void do_init(const index_t L0, const index_t L1, const index_t L2,
                GaugeField3D<Nd, Nc> &V, complex_t init) {
+    const SUN<Nc> fill = identitySUN<Nc>() * init;
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1, L2);
     Kokkos::parallel_for(
         Policy<3>(IndexArray<3>{0, 0, 0}, IndexArray<3>{L0, L1, L2}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2) {
 #pragma unroll
           for (index_t mu = 0; mu < Nd; ++mu) {
-#pragma unroll
-            for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-              for (index_t c2 = 0; c2 < Nc; ++c2) {
-                V(i0, i1, i2, mu)[c1][c2] = init;
-              }
-            }
+            V(i0, i1, i2, mu) = fill;
           }
         });
     Kokkos::fence();
@@ -312,16 +295,9 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField3D {
           auto generator = rng.get_state();
 #pragma unroll
           for (index_t mu = 0; mu < Nd; ++mu) {
-#pragma unroll
-            for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-              for (index_t c2 = 0; c2 < Nc; ++c2) {
-                V(i0, i1, i2, mu)
-                [c1][c2] = complex_t(generator.drand(-1.0, 1.0),
-                                     generator.drand(-1.0, 1.0));
-              }
-            }
+            randSUN(V(i0, i1, i2, mu), generator, 1.0);
           }
+          rng.free_state(generator);
         });
     Kokkos::fence();
   }
@@ -448,19 +424,14 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField2D {
 
   void do_init(const index_t L0, const index_t L1, GaugeField2D<Nd, Nc> &V,
                complex_t init) {
+    const SUN<Nc> fill = identitySUN<Nc>() * init;
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1);
     Kokkos::parallel_for(
         Policy<2>(IndexArray<2>{0, 0}, IndexArray<2>{L0, L1}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1) {
 #pragma unroll
           for (index_t mu = 0; mu < Nd; ++mu) {
-#pragma unroll
-            for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-              for (index_t c2 = 0; c2 < Nc; ++c2) {
-                V(i0, i1, mu)[c1][c2] = init;
-              }
-            }
+            V(i0, i1, mu) = fill;
           }
         });
     Kokkos::fence();
@@ -507,16 +478,9 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField2D {
           auto generator = rng.get_state();
 #pragma unroll
           for (index_t mu = 0; mu < Nd; ++mu) {
-#pragma unroll
-            for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-              for (index_t c2 = 0; c2 < Nc; ++c2) {
-                V(i0, i1, mu)
-                [c1][c2] = complex_t(generator.drand(-1.0, 1.0),
-                                     generator.drand(-1.0, 1.0));
-              }
-            }
+            randSUN(V(i0, i1, mu), generator, 1.0);
           }
+          rng.free_state(generator);
         });
     Kokkos::fence();
   }

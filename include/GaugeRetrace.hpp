@@ -1,6 +1,7 @@
 #pragma once
 #include "FieldTypeHelper.hpp"
 #include "GLOBAL.hpp"
+#include "SUN.hpp"
 #include <Kokkos_Core.hpp>
 
 namespace klft {
@@ -56,12 +57,7 @@ KOKKOS_INLINE_FUNCTION real_t
 Retrace_at(const typename DeviceGaugeFieldType<rank, Nc>::type &g,
            const IndexArray<rank> &site, const index_t mu) {
   const auto &U = g(site, mu);
-  real_t trr = 0.0;
-#pragma unroll
-  for (index_t a = 0; a < static_cast<index_t>(Nc); ++a) {
-    trr += real_part(U[a][a]);
-  }
-  return trr / static_cast<real_t>(Nc);
+  return trace(U).real() / static_cast<real_t>(Nc);
 }
 
 template <size_t rank, size_t Nc>

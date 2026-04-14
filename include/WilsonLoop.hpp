@@ -7,21 +7,6 @@
 
 namespace klft {
 
-// Scale every matrix entry by a real factor.
-template <size_t Nc>
-KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> scaleSUN(const SUN<Nc> &a,
-                                             const real_t factor) {
-  SUN<Nc> out = zeroSUN<Nc>();
-#pragma unroll
-  for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-    for (index_t c2 = 0; c2 < Nc; ++c2) {
-      out[c1][c2] = a[c1][c2] * factor;
-    }
-  }
-  return out;
-}
-
 template <size_t rank, size_t Nc, class RNG> struct WLoop_munu {
   constexpr static const size_t Nd = rank;
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
@@ -75,7 +60,7 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu {
       avg += link;
     }
 
-    return scaleSUN(avg, 1.0 / static_cast<real_t>(multihit));
+    return avg * (1.0 / static_cast<real_t>(multihit));
   }
 
   template <class Generator>

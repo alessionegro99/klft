@@ -1,18 +1,12 @@
 #pragma once
+#include "GaugeGroup.hpp"
+
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
 namespace klft {
 
-using real_t = double;
-using complex_t = Kokkos::complex<real_t>;
-
-using index_t = int;
-
 template <size_t rank> using IndexArray = Kokkos::Array<index_t, rank>;
-
-template <size_t Nc>
-using SUN = Kokkos::Array<Kokkos::Array<complex_t, Nc>, Nc>;
 
 template <size_t Nd, size_t Nc>
 using GaugeField =
@@ -210,26 +204,42 @@ template <size_t rank> using Policy = Kokkos::MDRangePolicy<Kokkos::Rank<rank>>;
 
 using Policy1D = Kokkos::RangePolicy<>;
 
-// Build the zero matrix for the selected gauge group.
-template <size_t Nc> constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> zeroSUN() {
-  SUN<Nc> zero;
-#pragma unroll
-  for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-    for (index_t c2 = 0; c2 < Nc; ++c2) {
-      zero[c1][c2] = complex_t(0.0, 0.0);
-    }
-  }
-  return zero;
+template <size_t Nc> constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> zeroSUN();
+
+template <>
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<1> zeroSUN<1>() {
+  return make_u1(complex_t(0.0, 0.0));
 }
 
-// Build the identity matrix for the selected gauge group.
+template <>
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<2> zeroSUN<2>() {
+  return make_su2(0.0, 0.0, 0.0, 0.0);
+}
+
+template <>
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<3> zeroSUN<3>() {
+  return make_zero_sun_matrix<3>();
+}
+
 template <size_t Nc>
-constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> identitySUN() {
-  SUN<Nc> id = zeroSUN<Nc>();
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<Nc> identitySUN();
+
+template <>
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<1> identitySUN<1>() {
+  return make_u1(complex_t(1.0, 0.0));
+}
+
+template <>
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<2> identitySUN<2>() {
+  return make_su2(1.0, 0.0, 0.0, 0.0);
+}
+
+template <>
+constexpr KOKKOS_FORCEINLINE_FUNCTION SUN<3> identitySUN<3>() {
+  auto id = zeroSUN<3>();
 #pragma unroll
-  for (index_t c1 = 0; c1 < Nc; ++c1) {
-    id[c1][c1] = complex_t(1.0, 0.0);
+  for (index_t c = 0; c < 3; ++c) {
+    matrix_ref(id, c, c) = complex_t(1.0, 0.0);
   }
   return id;
 }

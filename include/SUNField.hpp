@@ -36,18 +36,13 @@ template <size_t Nc> struct deviceSUNField {
 
   void do_init(const index_t L0, const index_t L1, const index_t L2,
                const index_t L3, SUNField<Nc> &V, const complex_t init) {
+    const SUN<Nc> fill = identitySUN<Nc>() * init;
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1, L2, L3);
     Kokkos::parallel_for(
         Policy<4>(IndexArray<4>{0, 0, 0, 0}, IndexArray<4>{L0, L1, L2, L3}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
                       const index_t i3) {
-#pragma unroll
-          for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-            for (index_t c2 = 0; c2 < Nc; ++c2) {
-              V(i0, i1, i2, i3)[c1][c2] = init;
-            }
-          }
+          V(i0, i1, i2, i3) = fill;
         });
     Kokkos::fence();
   }
@@ -124,17 +119,12 @@ template <size_t Nc> struct deviceSUNField3D {
 
   void do_init(const index_t L0, const index_t L1, const index_t L2,
                SUNField3D<Nc> &V, const complex_t init) {
+    const SUN<Nc> fill = identitySUN<Nc>() * init;
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1, L2);
     Kokkos::parallel_for(
         Policy<3>(IndexArray<3>{0, 0, 0}, IndexArray<3>{L0, L1, L2}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2) {
-#pragma unroll
-          for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-            for (index_t c2 = 0; c2 < Nc; ++c2) {
-              V(i0, i1, i2)[c1][c2] = init;
-            }
-          }
+          V(i0, i1, i2) = fill;
         });
     Kokkos::fence();
   }
@@ -208,17 +198,12 @@ template <size_t Nc> struct deviceSUNField2D {
 
   void do_init(const index_t L0, const index_t L1, SUNField2D<Nc> &V,
                const complex_t init) {
+    const SUN<Nc> fill = identitySUN<Nc>() * init;
     Kokkos::realloc(Kokkos::WithoutInitializing, V, L0, L1);
     Kokkos::parallel_for(
         Policy<2>(IndexArray<2>{0, 0}, IndexArray<2>{L0, L1}),
         KOKKOS_LAMBDA(const index_t i0, const index_t i1) {
-#pragma unroll
-          for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-            for (index_t c2 = 0; c2 < Nc; ++c2) {
-              V(i0, i1)[c1][c2] = init;
-            }
-          }
+          V(i0, i1) = fill;
         });
     Kokkos::fence();
   }

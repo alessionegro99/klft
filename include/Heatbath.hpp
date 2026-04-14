@@ -55,16 +55,13 @@ KOKKOS_FORCEINLINE_FUNCTION real_t randheat_SU2(const real_t k,
 
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION SUN<1> rand_matrix_U1(RNG &generator) {
-  SUN<1> out;
   const real_t theta =
       generator.drand(0.0, 2.0 * Kokkos::numbers::pi_v<real_t>);
-  out[0][0] = complex_t(Kokkos::cos(theta), Kokkos::sin(theta));
-  return out;
+  return make_u1(complex_t(Kokkos::cos(theta), Kokkos::sin(theta)));
 }
 
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION SUN<2> rand_matrix_SU2(RNG &generator) {
-  SUN<2> out;
   real_t p = 2.0;
   real_t p0 = 0.0, p1 = 0.0, p2 = 0.0, p3 = 0.0;
   while (p > 1.0 || p == 0.0) {
@@ -80,17 +77,12 @@ KOKKOS_FORCEINLINE_FUNCTION SUN<2> rand_matrix_SU2(RNG &generator) {
   p2 *= scale;
   p3 *= scale;
 
-  out[0][0] = complex_t(p0, p3);
-  out[0][1] = complex_t(p2, p1);
-  out[1][0] = complex_t(-p2, p1);
-  out[1][1] = complex_t(p0, -p3);
-  return out;
+  return make_su2(p0, p1, p2, p3);
 }
 
 template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION SUN<2> rand_matrix_p0_SU2(const real_t p0,
                                                       RNG &generator) {
-  SUN<2> out;
   real_t p = 2.0;
   real_t p1 = 0.0, p2 = 0.0, p3 = 0.0;
   while (p > 1.0 || p == 0.0) {
@@ -105,57 +97,49 @@ KOKKOS_FORCEINLINE_FUNCTION SUN<2> rand_matrix_p0_SU2(const real_t p0,
   p2 *= scale;
   p3 *= scale;
 
-  out[0][0] = complex_t(p0, p3);
-  out[0][1] = complex_t(p2, p1);
-  out[1][0] = complex_t(-p2, p1);
-  out[1][1] = complex_t(p0, -p3);
-  return out;
+  return make_su2(p0, p1, p2, p3);
 }
 
 KOKKOS_FORCEINLINE_FUNCTION real_t sqrtdet_SU2_like(const SUN<2> &a) {
-  const real_t p0 = a[0][0].real();
-  const real_t p1 = a[0][1].imag();
-  const real_t p2 = a[0][1].real();
-  const real_t p3 = a[0][0].imag();
-  return Kokkos::sqrt(p0 * p0 + p1 * p1 + p2 * p2 + p3 * p3);
+  return Kokkos::sqrt(a.comp[0] * a.comp[0] + a.comp[1] * a.comp[1] +
+                      a.comp[2] * a.comp[2] + a.comp[3] * a.comp[3]);
 }
 
 template <size_t Nc>
 KOKKOS_FORCEINLINE_FUNCTION void right_multiply_embedded_SU2(
-    SUN<Nc> &mat, const index_t i, const index_t j, const SUN<2> &sub) {
-  const complex_t fii = sub[0][0];
-  const complex_t fij = sub[0][1];
-  const complex_t fji = sub[1][0];
-  const complex_t fjj = sub[1][1];
+    SUNMatrix<Nc> &mat, const index_t i, const index_t j, const SUN<2> &sub) {
+  const complex_t fii = matrix_element(sub, 0, 0);
+  const complex_t fij = matrix_element(sub, 0, 1);
+  const complex_t fji = matrix_element(sub, 1, 0);
+  const complex_t fjj = matrix_element(sub, 1, 1);
 
 #pragma unroll
   for (index_t k = 0; k < Nc; ++k) {
-    const complex_t temp0 = mat[k][i] * fii + mat[k][j] * fji;
-    const complex_t temp1 = mat[k][i] * fij + mat[k][j] * fjj;
-    mat[k][i] = temp0;
-    mat[k][j] = temp1;
+    const complex_t temp0 = matrix_ref(mat, k, i) * fii + matrix_ref(mat, k, j) * fji;
+    const complex_t temp1 = matrix_ref(mat, k, i) * fij + matrix_ref(mat, k, j) * fjj;
+    matrix_ref(mat, k, i) = temp0;
+    matrix_ref(mat, k, j) = temp1;
   }
 }
 
 template <size_t Nc>
-KOKKOS_FORCEINLINE_FUNCTION void extract_embedded_SU2(const SUN<Nc> &in,
-                                                      const index_t i,
-                                                      const index_t j,
-                                                      real_t &xi,
-                                                      SUN<2> &u) {
-  const real_t a00 = in[i][i].real() + in[j][j].real();
-  const real_t b00 = in[i][i].imag() - in[j][j].imag();
-  const real_t a01 = in[i][j].real() - in[j][i].real();
-  const real_t b01 = in[i][j].imag() + in[j][i].imag();
+KOKKOS_FORCEINLINE_FUNCTION void extract_embedded_SU2(
+    const SUNMatrix<Nc> &in, const index_t i, const index_t j, real_t &xi,
+    SUN<2> &u) {
+  const real_t a00 =
+      matrix_element(in, i, i).real() + matrix_element(in, j, j).real();
+  const real_t b00 =
+      matrix_element(in, i, i).imag() - matrix_element(in, j, j).imag();
+  const real_t a01 =
+      matrix_element(in, i, j).real() - matrix_element(in, j, i).real();
+  const real_t b01 =
+      matrix_element(in, i, j).imag() + matrix_element(in, j, i).imag();
 
   const real_t p = Kokkos::sqrt(a00 * a00 + b00 * b00 + a01 * a01 + b01 * b01);
   xi = 0.5 * p;
 
   const real_t invp = p > 1.0e-13 ? 1.0 / p : 0.0;
-  u[0][0] = complex_t(a00 * invp, b00 * invp);
-  u[0][1] = complex_t(a01 * invp, b01 * invp);
-  u[1][0] = complex_t(-a01 * invp, b01 * invp);
-  u[1][1] = complex_t(a00 * invp, -b00 * invp);
+  u = make_su2(a00 * invp, b01 * invp, a01 * invp, b00 * invp);
 }
 
 // Fold the Wilson action and linear breaking term into one local matrix.
@@ -173,11 +157,11 @@ template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION void heatbath_link(SUN<1> &link,
                                                const SUN<1> &matrix,
                                                RNG &generator) {
-  const complex_t staple = matrix[0][0];
+  const complex_t staple = matrix.comp;
   const real_t k = Kokkos::sqrt(staple.real() * staple.real() +
                                 staple.imag() * staple.imag());
   if (k > 1.0e-13) {
-    const complex_t aux = link[0][0] * staple;
+    const complex_t aux = link.comp * staple;
     const real_t xold = Kokkos::atan2(aux.imag(), aux.real());
     const real_t y1 = generator.drand(0.0, 1.0);
     const real_t y2 = generator.drand(0.0, 1.0);
@@ -193,8 +177,8 @@ KOKKOS_FORCEINLINE_FUNCTION void heatbath_link(SUN<1> &link,
                          Kokkos::cos(xold) + xnew * xnew / 2.0));
 
     if (generator.drand(0.0, 1.0) < prob) {
-      link[0][0] = complex_t(Kokkos::cos(xnew), Kokkos::sin(xnew)) *
-                   Kokkos::conj(staple) / k;
+      link = make_u1(complex_t(Kokkos::cos(xnew), Kokkos::sin(xnew)) *
+                     Kokkos::conj(staple) / k);
     }
   } else {
     link = rand_matrix_U1(generator);
@@ -205,13 +189,13 @@ template <class RNG>
 KOKKOS_FORCEINLINE_FUNCTION void overrelax_link(SUN<1> &link,
                                                 const SUN<1> &matrix,
                                                 RNG &generator) {
-  const complex_t staple = matrix[0][0];
+  const complex_t staple = matrix.comp;
   const real_t k = Kokkos::sqrt(staple.real() * staple.real() +
                                 staple.imag() * staple.imag());
   if (k > 1.0e-13) {
     const complex_t helper = staple / k;
-    link[0][0] = Kokkos::conj(helper) * Kokkos::conj(link[0][0]) *
-                 Kokkos::conj(helper);
+    link = make_u1(Kokkos::conj(helper) * Kokkos::conj(link.comp) *
+                   Kokkos::conj(helper));
   } else {
     link = rand_matrix_U1(generator);
   }
@@ -251,10 +235,10 @@ KOKKOS_FORCEINLINE_FUNCTION void overrelax_link(SUN<2> &link,
 }
 
 template <size_t Nc, class RNG>
-KOKKOS_FORCEINLINE_FUNCTION void heatbath_link(SUN<Nc> &link,
-                                               const SUN<Nc> &matrix,
+KOKKOS_FORCEINLINE_FUNCTION void heatbath_link(SUNMatrix<Nc> &link,
+                                               const SUNMatrix<Nc> &matrix,
                                                RNG &generator) {
-  SUN<Nc> aux = matrix * link;
+  SUNMatrix<Nc> aux = matrix * link;
   SUN<2> u, v, w;
   real_t xi = 0.0;
 
@@ -281,10 +265,10 @@ KOKKOS_FORCEINLINE_FUNCTION void heatbath_link(SUN<Nc> &link,
 }
 
 template <size_t Nc, class RNG>
-KOKKOS_FORCEINLINE_FUNCTION void overrelax_link(SUN<Nc> &link,
-                                                const SUN<Nc> &matrix,
+KOKKOS_FORCEINLINE_FUNCTION void overrelax_link(SUNMatrix<Nc> &link,
+                                                const SUNMatrix<Nc> &matrix,
                                                 RNG &generator) {
-  SUN<Nc> aux = matrix * link;
+  SUNMatrix<Nc> aux = matrix * link;
   SUN<2> u, v;
   real_t xi = 0.0;
 

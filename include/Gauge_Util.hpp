@@ -7,7 +7,7 @@ template <size_t Nd, size_t Nc>
 const constGaugeField<Nd, Nc> stapleField(const deviceGaugeField<Nd, Nc> g_in) {
   deviceGaugeField<Nd, Nc> g_out(g_in.field.extent(0), g_in.field.extent(1),
                                  g_in.field.extent(2), g_in.field.extent(3),
-                                 complex_t(0.0, 0.0));
+                                 zeroSUN<Nc>());
   const auto &dimensions = g_in.field.layout().dimension;
   IndexArray<Nd> start;
   IndexArray<Nd> end;

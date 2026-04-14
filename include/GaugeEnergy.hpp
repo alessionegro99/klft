@@ -117,13 +117,7 @@ template <size_t rank, size_t Nc> struct BlockedGaugePlaqOneLevel {
           // lnu = U'_nu(X) U'_mu(X + 2 nu)
           lnu = blocked_link(x, nu) * blocked_link(x_plus_2nu, mu);
 
-#pragma unroll
-          for (index_t c1 = 0; c1 < Nc; ++c1) {
-#pragma unroll
-            for (index_t c2 = 0; c2 < Nc; ++c2) {
-              tmunu += lmu[c1][c2] * Kokkos::conj(lnu[c1][c2]);
-            }
-          }
+          tmunu += trace(lmu * conj(lnu));
         }
       }
     }
