@@ -124,7 +124,6 @@ inline int write_sample_heatbath_input_file(const std::string &filename) {
        << "  nOverrelax: 5\n"
        << "  seed: 32091\n"
        << "  beta: 2.0\n"
-       << "  delta: 0.1\n"
        << "  epsilon1: 0.0\n"
        << "  epsilon2: 0.0\n"
        << "\n";

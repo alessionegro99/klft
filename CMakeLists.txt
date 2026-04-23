@@ -47,3 +47,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/lib
 
 # build the binaries
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/binaries ${CMAKE_CURRENT_BINARY_DIR}/binaries)
+
+# stage Python analysis helpers into the build tree
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/analysis ${CMAKE_CURRENT_BINARY_DIR}/analysis)

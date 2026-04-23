@@ -88,6 +88,8 @@ and exits.
 
 Observable files are written incrementally and use space-separated columns.
 The plaquette file written by `metropolis` stores `step plaquette acceptance_rate time`.
+Wilson-loop multihit measurements in this executable use Metropolis local-link
+updates for the averaged links.
 
 ### Example input.yaml
 
@@ -109,7 +111,7 @@ GaugeObservableParams:
   measure_plaquette: true                # measure the plaquette
   measure_wilson_loop_temporal: true    # measure the temporal Wilson loop
   measure_wilson_loop_mu_nu: true       # measure the spatial Wilson loop
-  wilson_loop_multihit: 1               # Wilson-loop-only multihit; 1 keeps the current observable
+  wilson_loop_multihit: 1               # Metropolis Wilson-loop multihit; 1 disables averaged-link sampling
   nested_child_offset: [0, 0, 0, 0]     # required if measure_nested_wilson_action is true
   W_temp_L_T_pairs:      # pairs of (L, T) values for the temporal Wilson loop
     - [2, 2]
@@ -145,6 +147,8 @@ Running `binaries/heatbath` with no arguments writes a sample `input.yaml` and e
 
 Observable files are written incrementally and use space-separated columns.
 The plaquette file written by `heatbath` stores `step plaquette time`.
+Wilson-loop multihit measurements in this executable use heatbath plus
+`nOverrelax` local overrelaxation updates for the averaged links.
 
 ### Example heatbath input.yaml
 
@@ -159,7 +163,6 @@ HeatbathParams:
   nOverrelax: 5
   seed: 32091
   beta: 2.0
-  delta: 0.1       # only used by Wilson-loop multihit measurements
   epsilon1: 0.0    # supported by heatbath/overrelaxation
   epsilon2: 0.0    # currently not supported by heatbath/overrelaxation
 
@@ -169,7 +172,7 @@ GaugeObservableParams:
   measure_wilson_loop_temporal: true
   measure_wilson_loop_mu_nu: true
   measure_retrace_U: false
-  wilson_loop_multihit: 1
+  wilson_loop_multihit: 1  # H+OR Wilson-loop multihit; 1 disables averaged-link sampling
   measure_nested_wilson_action: false
   nested_child_offset: [0, 0, 0, 0]
   W_temp_L_T_pairs:

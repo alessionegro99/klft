@@ -191,11 +191,6 @@ inline bool parseInputFile(const std::string &filename,
     printf("Error: nOverrelax must be >= 0\n");
     return false;
   }
-  if (heatbathParams.delta <= 0.0) {
-    printf("Error: delta must be > 0\n");
-    return false;
-  }
-
   return true;
 }
 

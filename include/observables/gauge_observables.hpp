@@ -80,10 +80,8 @@ void measureGaugeObservables(
     std::vector<Kokkos::Array<real_t, 3>> temp_measurements;
     WilsonLoop_temporal<rank, Nc>(g_in, params.W_temp_L_T_pairs,
                                   temp_measurements,
-                                  params.wilson_loop_multihit,
-                                  updateParams.beta, updateParams.delta,
-                                  updateParams.epsilon1,
-                                  updateParams.epsilon2, rng);
+                                  params.wilson_loop_multihit, updateParams,
+                                  rng);
 
     params.W_temp_measurements.push_back(temp_measurements);
   }
@@ -95,9 +93,7 @@ void measureGaugeObservables(
       const index_t nu = pair_mu_nu[1];
       WilsonLoop_mu_nu<rank, Nc>(g_in, mu, nu, params.W_Lmu_Lnu_pairs,
                                  temp_measurements, params.wilson_loop_multihit,
-                                 updateParams.beta, updateParams.delta,
-                                 updateParams.epsilon1,
-                                 updateParams.epsilon2, rng);
+                                 updateParams, rng);
     }
 
     params.W_mu_nu_measurements.push_back(temp_measurements);
