@@ -111,7 +111,11 @@ GaugeObservableParams:
   measure_plaquette: true                # measure the plaquette
   measure_wilson_loop_temporal: true    # measure the temporal Wilson loop
   measure_wilson_loop_mu_nu: true       # measure the spatial Wilson loop
+  measure_polyakov_loop: true           # measure the Polyakov loop
+  measure_polyakov_correlator: true     # measure the Polyakov-loop correlator
   wilson_loop_multihit: 1               # Metropolis Wilson-loop multihit; 1 disables averaged-link sampling
+  polyakov_loop_multihit: 1             # Metropolis Polyakov-loop multihit; 1 disables averaged-link sampling
+  polyakov_correlator_max_r: 4          # measure 0 <= R <= Rmax; must not exceed half the smallest spatial extent
   nested_child_offset: [0, 0, 0, 0]     # required if measure_nested_wilson_action is true
   W_temp_L_T_pairs:      # pairs of (L, T) values for the temporal Wilson loop
     - [2, 2]
@@ -128,6 +132,8 @@ GaugeObservableParams:
   plaquette_filename: "plaquette.out"  # filename to output the plaquette
   W_temp_filename: "w_temp.out"        # filename to output the temporal Wilson loop
   W_mu_nu_filename: "w_mu_nu.out"      # filename to output the planar Wilson loop
+  polyakov_loop_filename: "polyakov_loop.out"  # filename to output the Polyakov loop
+  polyakov_correlator_filename: "polyakov_correlator.out"  # filename to output the Polyakov-loop correlator
   write_to_file: true                  # write the measurements to file
 ```
 
@@ -149,6 +155,11 @@ Observable files are written incrementally and use space-separated columns.
 The plaquette file written by `heatbath` stores `step plaquette time`.
 Wilson-loop multihit measurements in this executable use heatbath plus
 `nOverrelax` local overrelaxation updates for the averaged links.
+Polyakov-loop multihit in this executable uses the same local heatbath plus
+overrelaxation updates on every temporal link of the loop.
+Polyakov-loop correlators are written as `# step R real imaginary`; `R = 0`
+and `R = 1` always use raw Polyakov loops, while only `R >= 2` uses the
+configured Polyakov multihit.
 
 ### Example heatbath input.yaml
 
@@ -171,8 +182,12 @@ GaugeObservableParams:
   measure_plaquette: true
   measure_wilson_loop_temporal: true
   measure_wilson_loop_mu_nu: true
+  measure_polyakov_loop: true
+  measure_polyakov_correlator: true
   measure_retrace_U: false
   wilson_loop_multihit: 1  # H+OR Wilson-loop multihit; 1 disables averaged-link sampling
+  polyakov_loop_multihit: 1  # H+OR Polyakov-loop multihit; 1 disables averaged-link sampling
+  polyakov_correlator_max_r: 4  # must not exceed half the smallest spatial extent
   measure_nested_wilson_action: false
   nested_child_offset: [0, 0, 0, 0]
   W_temp_L_T_pairs:
@@ -190,6 +205,8 @@ GaugeObservableParams:
   plaquette_filename: "plaquette.out"
   W_temp_filename: "w_temp.out"
   W_mu_nu_filename: "w_mu_nu.out"
+  polyakov_loop_filename: "polyakov_loop.out"
+  polyakov_correlator_filename: "polyakov_correlator.out"
   RetraceU_filename: "retrace_u.out"
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true

@@ -2,9 +2,9 @@
 #include "core/indexing.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
+#include "observables/multihit_links.hpp"
 #include "params/heatbath_params.hpp"
 #include "params/metropolis_params.hpp"
-#include "updates/heatbath_link_updates.hpp"
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -43,39 +43,9 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_metropolis {
   KOKKOS_FORCEINLINE_FUNCTION SUN<Nc>
   multihit_link(const Kokkos::Array<index_t, rank> &site, const index_t dir,
                 Generator &generator) const {
-    if (multihit <= 1) {
-      return g_in(site, dir);
-    }
-
-    const SUN<Nc> staple = g_in.staple(site, dir);
-    SUN<Nc> link = g_in(site, dir);
-    SUN<Nc> avg = link;
-
-    for (index_t hit = 1; hit < multihit; ++hit) {
-      const SUN<Nc> updated =
-          apply_metropolis_proposal<Nc>(link, delta, generator);
-      real_t dS =
-          -(beta / static_cast<real_t>(Nc)) *
-          (trace(updated * staple).real() - trace(link * staple).real());
-      if (epsilon1 != 0.0) {
-        dS += -0.5 * epsilon1 * (trace(updated).real() - trace(link).real());
-      }
-      if (epsilon2 != 0.0) {
-        const real_t retr_updated = trace(updated).real();
-        const real_t retr_link = trace(link).real();
-        dS += -epsilon2 * (retr_updated * retr_updated - retr_link * retr_link);
-      }
-      bool accept = dS < 0.0;
-      if (!accept) {
-        accept = generator.drand(0.0, 1.0) < Kokkos::exp(-dS);
-      }
-      if (accept) {
-        link = updated;
-      }
-      avg += link;
-    }
-
-    return avg * (1.0 / static_cast<real_t>(multihit));
+    return multihit_link_metropolis<Nc>(g_in(site, dir), g_in.staple(site, dir),
+                                        multihit, beta, delta, epsilon1,
+                                        epsilon2, generator);
   }
 
   template <class Generator>
@@ -150,26 +120,9 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_heatbath {
   KOKKOS_FORCEINLINE_FUNCTION SUN<Nc>
   multihit_link(const Kokkos::Array<index_t, rank> &site, const index_t dir,
                 Generator &generator) const {
-    if (multihit <= 1) {
-      return g_in(site, dir);
-    }
-
-    const SUN<Nc> matrix =
-        effective_local_matrix<Nc>(g_in.staple(site, dir), beta, epsilon1);
-    SUN<Nc> link = g_in(site, dir);
-    SUN<Nc> avg = link;
-
-    for (index_t hit = 1; hit < multihit; ++hit) {
-      heatbath_link(link, matrix, generator);
-      restoreSUN(link);
-      for (index_t i = 0; i < nOverrelax; ++i) {
-        overrelax_link(link, matrix, generator);
-        restoreSUN(link);
-      }
-      avg += link;
-    }
-
-    return avg * (1.0 / static_cast<real_t>(multihit));
+    return multihit_link_heatbath<Nc>(g_in(site, dir), g_in.staple(site, dir),
+                                      multihit, nOverrelax, beta, epsilon1,
+                                      generator);
   }
 
   template <class Generator>

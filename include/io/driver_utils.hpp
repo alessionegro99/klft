@@ -42,8 +42,12 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  measure_plaquette: true\n"
        << "  measure_wilson_loop_temporal: true\n"
        << "  measure_wilson_loop_mu_nu: true\n"
+       << "  measure_polyakov_loop: true\n"
+       << "  measure_polyakov_correlator: true\n"
        << "  measure_retrace_U: false\n"
        << "  wilson_loop_multihit: 1\n"
+       << "  polyakov_loop_multihit: 1\n"
+       << "  polyakov_correlator_max_r: 4\n"
        << "  measure_nested_wilson_action: false\n";
   write_sample_nested_child_offset(file);
   file << "  W_temp_L_T_pairs:\n"
@@ -63,6 +67,8 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  plaquette_filename: \"plaquette.out\"\n"
        << "  W_temp_filename: \"w_temp.out\"\n"
        << "  W_mu_nu_filename: \"w_mu_nu.out\"\n"
+       << "  polyakov_loop_filename: \"polyakov_loop.out\"\n"
+       << "  polyakov_correlator_filename: \"polyakov_correlator.out\"\n"
        << "  RetraceU_filename: \"retrace_u.out\"\n"
        << "  nested_wilson_action_filename: \"nested_wilson_action.out\"\n"
        << "  write_to_file: true\n";

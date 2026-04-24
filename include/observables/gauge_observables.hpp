@@ -1,6 +1,8 @@
 #pragma once
 #include "observables/nested_wilson_action.hpp"
 #include "observables/plaquette.hpp"
+#include "observables/polyakov_correlator.hpp"
+#include "observables/polyakov_loop.hpp"
 #include "observables/retrace.hpp"
 #include "observables/wilson_loop.hpp"
 #include <filesystem>
@@ -15,8 +17,12 @@ struct GaugeObservableParams {
   bool measure_plaquette;
   bool measure_wilson_loop_temporal;
   bool measure_wilson_loop_mu_nu;
+  bool measure_polyakov_loop;
+  bool measure_polyakov_correlator;
   bool measure_retrace_U;
   index_t wilson_loop_multihit;
+  index_t polyakov_loop_multihit;
+  index_t polyakov_correlator_max_r;
 
   bool measure_nested_wilson_action;
   std::vector<index_t> nested_child_offset;
@@ -33,6 +39,9 @@ struct GaugeObservableParams {
   std::vector<real_t> plaquette_measurements;
   std::vector<std::vector<Kokkos::Array<real_t, 3>>> W_temp_measurements;
   std::vector<std::vector<Kokkos::Array<real_t, 5>>> W_mu_nu_measurements;
+  std::vector<Kokkos::Array<real_t, 2>> polyakov_measurements;
+  std::vector<std::vector<Kokkos::Array<real_t, 3>>>
+      polyakov_correlator_measurements;
   std::vector<real_t> retraceU_measurements;
 
   std::vector<real_t> nested_plaq_V_measurements;
@@ -43,6 +52,8 @@ struct GaugeObservableParams {
   std::string plaquette_filename;
   std::string W_temp_filename;
   std::string W_mu_nu_filename;
+  std::string polyakov_loop_filename;
+  std::string polyakov_correlator_filename;
   std::string RetraceU_filename;
   std::string nested_wilson_action_filename;
 
@@ -51,7 +62,9 @@ struct GaugeObservableParams {
   GaugeObservableParams()
       : measurement_interval(0), measure_plaquette(false),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
+        measure_polyakov_loop(false), measure_polyakov_correlator(false),
         measure_retrace_U(false), wilson_loop_multihit(1),
+        polyakov_loop_multihit(1), polyakov_correlator_max_r(0),
         measure_nested_wilson_action(false), include_acceptance_rate(false),
         write_to_file(false) {}
 };
@@ -97,6 +110,20 @@ void measureGaugeObservables(
     }
 
     params.W_mu_nu_measurements.push_back(temp_measurements);
+  }
+
+  if (params.measure_polyakov_loop) {
+    const auto P = PolyakovLoop<rank, Nc>(
+        g_in, params.polyakov_loop_multihit, updateParams, rng);
+    params.polyakov_measurements.push_back(P);
+  }
+
+  if (params.measure_polyakov_correlator) {
+    std::vector<Kokkos::Array<real_t, 3>> corr_measurements;
+    PolyakovCorrelator<rank, Nc>(g_in, params.polyakov_correlator_max_r,
+                                 params.polyakov_loop_multihit,
+                                 corr_measurements, updateParams, rng);
+    params.polyakov_correlator_measurements.push_back(corr_measurements);
   }
 
   if (params.measure_retrace_U) {
@@ -249,6 +276,70 @@ inline void flushWilsonLoopMuNu(std::ofstream &file,
   }
 }
 
+// Append the staged Polyakov-loop rows to disk.
+inline void flushPolyakovLoop(std::ofstream &file,
+                              const GaugeObservableParams &params,
+                              const bool HEADER = true) {
+  if (!file.is_open()) {
+    printf("Error: file is not open\n");
+    return;
+  }
+  if (!params.measure_polyakov_loop) {
+    printf("Error: no Polyakov-loop measurements available\n");
+    return;
+  }
+
+  if (params.measurement_steps.size() != params.polyakov_measurements.size()) {
+    printf("Error: inconsistent Polyakov-loop metadata sizes\n");
+    return;
+  }
+
+  if (HEADER) {
+    file << "# step RePolyakov ImPolyakov\n";
+  }
+
+  file << std::setprecision(12);
+
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    file << params.measurement_steps[i] << " "
+         << params.polyakov_measurements[i][0] << " "
+         << params.polyakov_measurements[i][1] << "\n";
+  }
+}
+
+// Append the staged Polyakov-correlator rows to disk.
+inline void flushPolyakovCorrelator(std::ofstream &file,
+                                    const GaugeObservableParams &params,
+                                    const bool HEADER = true) {
+  if (!file.is_open()) {
+    printf("Error: file is not open\n");
+    return;
+  }
+  if (!params.measure_polyakov_correlator) {
+    printf("Error: no Polyakov-correlator measurements available\n");
+    return;
+  }
+
+  if (params.measurement_steps.size() !=
+      params.polyakov_correlator_measurements.size()) {
+    printf("Error: inconsistent Polyakov-correlator metadata sizes\n");
+    return;
+  }
+
+  if (HEADER) {
+    file << "# step R real imaginary\n";
+  }
+
+  file << std::setprecision(12);
+
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    for (const auto &measurement : params.polyakov_correlator_measurements[i]) {
+      file << params.measurement_steps[i] << " " << measurement[0] << " "
+           << measurement[1] << " " << measurement[2] << "\n";
+    }
+  }
+}
+
 // Append the staged Retrace(U) rows to disk.
 inline void flushRetraceU(std::ofstream &file,
                           const GaugeObservableParams &params,
@@ -320,6 +411,8 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.plaquette_measurements.clear();
   params.W_temp_measurements.clear();
   params.W_mu_nu_measurements.clear();
+  params.polyakov_measurements.clear();
+  params.polyakov_correlator_measurements.clear();
   params.retraceU_measurements.clear();
 
   params.nested_plaq_V_measurements.clear();
@@ -351,6 +444,23 @@ inline void appendLatestGaugeObservables(const GaugeObservableParams &params) {
   if (params.measure_wilson_loop_mu_nu && params.W_mu_nu_filename != "") {
     std::ofstream file(params.W_mu_nu_filename, std::ios::app);
     flushWilsonLoopMuNu(file, params, fileNeedsHeader(params.W_mu_nu_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.measure_polyakov_loop && params.polyakov_loop_filename != "") {
+    std::ofstream file(params.polyakov_loop_filename, std::ios::app);
+    flushPolyakovLoop(file, params,
+                      fileNeedsHeader(params.polyakov_loop_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.measure_polyakov_correlator &&
+      params.polyakov_correlator_filename != "") {
+    std::ofstream file(params.polyakov_correlator_filename, std::ios::app);
+    flushPolyakovCorrelator(
+        file, params, fileNeedsHeader(params.polyakov_correlator_filename));
     file.flush();
     file.close();
   }

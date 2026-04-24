@@ -93,6 +93,17 @@ inline bool validateObservableFilenames(const GaugeObservableParams &params) {
            "is empty\n");
     return false;
   }
+  if (params.measure_polyakov_loop && params.polyakov_loop_filename.empty()) {
+    printf("Error: measure_polyakov_loop is enabled but polyakov_loop_filename "
+           "is empty\n");
+    return false;
+  }
+  if (params.measure_polyakov_correlator &&
+      params.polyakov_correlator_filename.empty()) {
+    printf("Error: measure_polyakov_correlator is enabled but "
+           "polyakov_correlator_filename is empty\n");
+    return false;
+  }
   if (params.measure_retrace_U && params.RetraceU_filename.empty()) {
     printf("Error: measure_retrace_U is enabled but RetraceU_filename is "
            "empty\n");
@@ -297,10 +308,18 @@ inline bool parseInputFile(const std::string &filename,
       gp["measure_wilson_loop_temporal"].as<bool>(false);
   gaugeObservableParams.measure_wilson_loop_mu_nu =
       gp["measure_wilson_loop_mu_nu"].as<bool>(false);
+  gaugeObservableParams.measure_polyakov_loop =
+      gp["measure_polyakov_loop"].as<bool>(false);
+  gaugeObservableParams.measure_polyakov_correlator =
+      gp["measure_polyakov_correlator"].as<bool>(false);
   gaugeObservableParams.measure_retrace_U =
       gp["measure_retrace_U"].as<bool>(false);
   gaugeObservableParams.wilson_loop_multihit =
       gp["wilson_loop_multihit"].as<index_t>(1);
+  gaugeObservableParams.polyakov_loop_multihit =
+      gp["polyakov_loop_multihit"].as<index_t>(1);
+  gaugeObservableParams.polyakov_correlator_max_r =
+      gp["polyakov_correlator_max_r"].as<index_t>(0);
   gaugeObservableParams.measure_nested_wilson_action =
       gp["measure_nested_wilson_action"].as<bool>(false);
   gaugeObservableParams.write_to_file = gp["write_to_file"].as<bool>(false);
@@ -339,6 +358,10 @@ inline bool parseInputFile(const std::string &filename,
       gp["W_temp_filename"].as<std::string>("");
   gaugeObservableParams.W_mu_nu_filename =
       gp["W_mu_nu_filename"].as<std::string>("");
+  gaugeObservableParams.polyakov_loop_filename =
+      gp["polyakov_loop_filename"].as<std::string>("");
+  gaugeObservableParams.polyakov_correlator_filename =
+      gp["polyakov_correlator_filename"].as<std::string>("");
   gaugeObservableParams.RetraceU_filename =
       gp["RetraceU_filename"].as<std::string>("");
   gaugeObservableParams.nested_wilson_action_filename =
@@ -348,6 +371,8 @@ inline bool parseInputFile(const std::string &filename,
       gaugeObservableParams.measure_plaquette ||
       gaugeObservableParams.measure_wilson_loop_temporal ||
       gaugeObservableParams.measure_wilson_loop_mu_nu ||
+      gaugeObservableParams.measure_polyakov_loop ||
+      gaugeObservableParams.measure_polyakov_correlator ||
       gaugeObservableParams.measure_retrace_U ||
       gaugeObservableParams.measure_nested_wilson_action;
 
@@ -358,6 +383,14 @@ inline bool parseInputFile(const std::string &filename,
   }
   if (gaugeObservableParams.wilson_loop_multihit < 1) {
     printf("Error: wilson_loop_multihit must be >= 1\n");
+    return false;
+  }
+  if (gaugeObservableParams.polyakov_loop_multihit < 1) {
+    printf("Error: polyakov_loop_multihit must be >= 1\n");
+    return false;
+  }
+  if (gaugeObservableParams.polyakov_correlator_max_r < 0) {
+    printf("Error: polyakov_correlator_max_r must be >= 0\n");
     return false;
   }
   if (gaugeObservableParams.measure_wilson_loop_temporal &&
