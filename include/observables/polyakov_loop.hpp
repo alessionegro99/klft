@@ -53,6 +53,7 @@ template <size_t rank, size_t Nc> struct LocalPolyakovLoopRaw {
 
   KOKKOS_FORCEINLINE_FUNCTION complex_t
   polyakov_at_site(const Kokkos::Array<index_t, rank> &origin) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
     auto site = origin;
     SUN<Nc> loop = identitySUN<Nc>();
 
@@ -100,6 +101,7 @@ template <size_t rank, size_t Nc, class RNG> struct LocalPolyakovLoopMetropolis 
   KOKKOS_FORCEINLINE_FUNCTION complex_t
   polyakov_at_site(const Kokkos::Array<index_t, rank> &origin,
                    Generator &generator) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
     auto site = origin;
     SUN<Nc> loop = identitySUN<Nc>();
 
@@ -152,6 +154,7 @@ template <size_t rank, size_t Nc, class RNG> struct LocalPolyakovLoopHeatbath {
   KOKKOS_FORCEINLINE_FUNCTION complex_t
   polyakov_at_site(const Kokkos::Array<index_t, rank> &origin,
                    Generator &generator) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
     auto site = origin;
     SUN<Nc> loop = identitySUN<Nc>();
 
@@ -208,6 +211,7 @@ struct LocalPolyakovLoopPairMetropolis {
         rng(rng), dimensions(dimensions) {}
 
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
     auto generator = rng.get_state();
     auto site = linear_to_polyakov_origin<rank>(lin, dimensions);
     SUN<Nc> raw_loop = identitySUN<Nc>();
@@ -262,6 +266,7 @@ struct LocalPolyakovLoopPairHeatbath {
         dimensions(dimensions) {}
 
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
     auto generator = rng.get_state();
     auto site = linear_to_polyakov_origin<rank>(lin, dimensions);
     SUN<Nc> raw_loop = identitySUN<Nc>();
