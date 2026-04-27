@@ -28,6 +28,21 @@
                 "Kokkos_ARCH_ZEN3": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
+        },
+        {
+            "name": "p100_4D_su2",
+            "displayName": "Production P100 4D SU(2)",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/../../Build/klft-p100-4D-su2",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "KLFT_NDIM": "4",
+                "KLFT_NC": "2",
+                "Kokkos_ENABLE_CUDA": "ON",
+                "Kokkos_ENABLE_OPENMP": "ON",
+                "Kokkos_ARCH_PASCAL60": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -38,6 +53,10 @@
         {
             "name": "debug",
             "configurePreset": "debug"
+        },
+        {
+            "name": "p100_4D_su2",
+            "configurePreset": "p100_4D_su2"
         }
     ]
 }
