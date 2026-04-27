@@ -84,14 +84,18 @@ inline void write_gradient_flow_sample(std::ofstream &file) {
        << "  times_tau: [0.0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]\n"
        << "  measure_plaquette: true\n"
        << "  measure_action: true\n"
+       << "  measure_energy_clover: true\n"
        << "  measure_wilson_loop_temporal: false\n"
        << "  measure_wilson_loop_mu_nu: false\n"
+       << "  extract_t0: false\n"
+       << "  t0_target: 0.3\n"
        << "  check_action_monotonicity: true\n"
        << "  check_group_properties: true\n"
        << "  reunitarize: false\n"
        << "  obs_filename: \"gradient_flow_obs.dat\"\n"
        << "  W_temp_filename: \"gradient_flow_wtemp.dat\"\n"
-       << "  W_mu_nu_filename: \"gradient_flow_w_mu_nu.dat\"\n";
+       << "  W_mu_nu_filename: \"gradient_flow_w_mu_nu.dat\"\n"
+       << "  t0_filename: \"gradient_flow_t0.dat\"\n";
 }
 
 inline int write_sample_metropolis_input_file(const std::string &filename) {

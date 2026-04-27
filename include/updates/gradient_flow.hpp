@@ -4,6 +4,7 @@
 #include "core/indexing.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
+#include "observables/clover_energy.hpp"
 #include "observables/gauge_observables.hpp"
 #include "params/gradient_flow_params.hpp"
 
@@ -11,6 +12,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -498,24 +500,47 @@ inline real_t gradient_flow_action_density(const real_t plaquette) {
   return 1.0 - plaquette;
 }
 
+inline real_t gradient_flow_t2e(const real_t t_over_a2, const real_t ehat) {
+  return t_over_a2 * t_over_a2 * ehat;
+}
+
+inline real_t gradient_flow_nan() {
+  return std::numeric_limits<real_t>::quiet_NaN();
+}
+
 inline void write_gradient_flow_obs_header(std::ofstream &file) {
   file << "# tau = 8 t / a^2\n"
        << "# fixed tau => smoothing radius sqrt(8t) = a sqrt(tau)\n"
-       << "# conf_id group beta tau t_over_a2 plaquette action_density "
-          "delta_action_from_tau0 delta_action_from_previous_tau "
+       << "# Ehat_plaquette = 1 - plaquette = a^4 E_plaquette\n"
+       << "# Ehat_clover = a^4 E_clover\n"
+       << "# t2E_clover = (t/a^2)^2 Ehat_clover\n"
+       << "# clover E(t) measured on flowed links V_mu(x,t)\n"
+       << "# conf_id group beta tau t_over_a2 plaquette action_density_wilson "
+          "Ehat_plaquette t2E_plaquette Ehat_clover t2E_clover "
+          "delta_action_wilson_from_tau0 "
+          "delta_action_wilson_from_previous_tau "
           "group_error_1 group_error_2\n";
 }
 
+struct GradientFlowObsRow {
+  size_t conf_id;
+  const char *group_name;
+  real_t beta;
+  real_t tau;
+  real_t t_over_a2;
+  real_t plaquette;
+  real_t action_density_wilson;
+  real_t ehat_plaquette;
+  real_t t2e_plaquette;
+  real_t ehat_clover;
+  real_t t2e_clover;
+  real_t delta_action_wilson_from_tau0;
+  real_t delta_action_wilson_from_previous_tau;
+  GradientFlowGroupErrors errors;
+};
+
 inline void append_gradient_flow_obs_row(const GradientFlowParams &params,
-                                         const size_t conf_id,
-                                         const char *group_name,
-                                         const real_t beta, const real_t tau,
-                                         const real_t t_over_a2,
-                                         const real_t plaquette,
-                                         const real_t action_density,
-                                         const real_t delta_tau0,
-                                         const real_t delta_previous,
-                                         const GradientFlowGroupErrors errors) {
+                                         const GradientFlowObsRow &row) {
   std::ofstream file(params.obs_filename, std::ios::app);
   if (!file.is_open()) {
     printf("Error: could not open gradient-flow file '%s'\n",
@@ -525,11 +550,65 @@ inline void append_gradient_flow_obs_row(const GradientFlowParams &params,
   if (fileNeedsHeader(params.obs_filename)) {
     write_gradient_flow_obs_header(file);
   }
-  file << std::setprecision(12) << conf_id << " " << group_name << " " << beta
-       << " " << tau << " " << t_over_a2 << " " << plaquette << " "
-       << action_density << " " << delta_tau0 << " " << delta_previous << " "
-       << errors.group_error_1 << " " << errors.group_error_2 << "\n";
+  file << std::setprecision(12) << row.conf_id << " " << row.group_name << " "
+       << row.beta << " " << row.tau << " " << row.t_over_a2 << " "
+       << row.plaquette << " " << row.action_density_wilson << " "
+       << row.ehat_plaquette << " " << row.t2e_plaquette << " "
+       << row.ehat_clover << " " << row.t2e_clover << " "
+       << row.delta_action_wilson_from_tau0 << " "
+       << row.delta_action_wilson_from_previous_tau << " "
+       << row.errors.group_error_1 << " " << row.errors.group_error_2 << "\n";
   file.flush();
+}
+
+inline void write_gradient_flow_t0_header(std::ofstream &file) {
+  file << "# t0 solves t^2 E_clover(t) = t0_target\n"
+       << "# tau = 8 t / a^2\n"
+       << "# conf_id group beta t0_target t0_over_a2 tau0 lower_tau upper_tau "
+          "lower_t2E_clover upper_t2E_clover\n";
+}
+
+inline void append_gradient_flow_t0_row(
+    const GradientFlowParams &params, const size_t conf_id,
+    const char *group_name, const real_t beta, const real_t lower_tau,
+    const real_t upper_tau, const real_t lower_t2e_clover,
+    const real_t upper_t2e_clover, const real_t t0_over_a2) {
+  std::ofstream file(params.t0_filename, std::ios::app);
+  if (!file.is_open()) {
+    printf("Error: could not open gradient-flow t0 file '%s'\n",
+           params.t0_filename.c_str());
+    return;
+  }
+  if (fileNeedsHeader(params.t0_filename)) {
+    write_gradient_flow_t0_header(file);
+  }
+  file << std::setprecision(12) << conf_id << " " << group_name << " " << beta
+       << " " << params.t0_target << " " << t0_over_a2 << " "
+       << 8.0 * t0_over_a2 << " " << lower_tau << " " << upper_tau << " "
+       << lower_t2e_clover << " " << upper_t2e_clover << "\n";
+  file.flush();
+}
+
+inline bool gradient_flow_interpolate_t0(
+    const real_t lower_t_over_a2, const real_t upper_t_over_a2,
+    const real_t lower_t2e_clover, const real_t upper_t2e_clover,
+    const real_t target, real_t &t0_over_a2) {
+  const real_t lower_delta = lower_t2e_clover - target;
+  const real_t upper_delta = upper_t2e_clover - target;
+  const bool crossed = (lower_delta <= 0.0 && upper_delta >= 0.0) ||
+                       (lower_delta >= 0.0 && upper_delta <= 0.0);
+  if (!crossed) {
+    return false;
+  }
+
+  const real_t denom = upper_t2e_clover - lower_t2e_clover;
+  t0_over_a2 = upper_t_over_a2;
+  if (Kokkos::abs(denom) > 1.0e-14) {
+    t0_over_a2 = lower_t_over_a2 +
+                 (target - lower_t2e_clover) *
+                     (upper_t_over_a2 - lower_t_over_a2) / denom;
+  }
+  return true;
 }
 
 inline void append_gradient_flow_temporal_wloops(
@@ -620,10 +699,20 @@ void runGradientFlowMeasurements(
   auto V = copy_gauge_field<rank, Nc>(U);
   GradientFlowWorkspace<rank, Nc> workspace(V.dimensions);
 
+  const bool write_obs = flowParams.measure_plaquette ||
+                         flowParams.measure_action ||
+                         flowParams.measure_energy_clover;
+  const bool need_clover =
+      flowParams.measure_energy_clover || flowParams.extract_t0;
   real_t current_t = 0.0;
   real_t action_tau0 = 0.0;
   real_t previous_action = 0.0;
   bool have_previous = false;
+  real_t previous_t0_t = 0.0;
+  real_t previous_t0_tau = 0.0;
+  real_t previous_t2e_clover = 0.0;
+  bool have_previous_t0 = false;
+  bool found_t0 = false;
 
   for (const real_t tau : flowParams.times_tau) {
     const real_t target_t = tau / 8.0;
@@ -633,6 +722,13 @@ void runGradientFlowMeasurements(
 
     const real_t plaquette = GaugePlaquette<rank, Nc>(V);
     const real_t action_density = gradient_flow_action_density(plaquette);
+    const real_t t2e_plaquette = gradient_flow_t2e(target_t, action_density);
+    const real_t ehat_clover =
+        need_clover ? measure_clover_energy_density<rank, Nc>(V)
+                    : gradient_flow_nan();
+    const real_t t2e_clover =
+        need_clover ? gradient_flow_t2e(target_t, ehat_clover)
+                    : gradient_flow_nan();
     if (!have_previous) {
       action_tau0 = action_density;
     } else if (flowParams.check_action_monotonicity &&
@@ -654,12 +750,50 @@ void runGradientFlowMeasurements(
       }
     }
 
-    if (flowParams.measure_plaquette || flowParams.measure_action) {
+    if (flowParams.extract_t0 && !found_t0) {
+      if (have_previous_t0) {
+        real_t t0_over_a2 = 0.0;
+        if (gradient_flow_interpolate_t0(
+                previous_t0_t, target_t, previous_t2e_clover, t2e_clover,
+                flowParams.t0_target, t0_over_a2)) {
+          append_gradient_flow_t0_row(
+              flowParams, step, gradient_flow_group_name<Nc>(),
+              updateParams.beta, previous_t0_tau, tau, previous_t2e_clover,
+              t2e_clover, t0_over_a2);
+          found_t0 = true;
+        }
+      }
+      previous_t0_t = target_t;
+      previous_t0_tau = tau;
+      previous_t2e_clover = t2e_clover;
+      have_previous_t0 = true;
+    }
+
+    if (write_obs) {
+      const real_t nan = gradient_flow_nan();
+      const real_t output_plaquette =
+          flowParams.measure_plaquette ? plaquette : nan;
+      const real_t output_action =
+          flowParams.measure_action ? action_density : nan;
+      const real_t output_t2e_plaquette =
+          flowParams.measure_action ? t2e_plaquette : nan;
+      const real_t output_ehat_clover =
+          flowParams.measure_energy_clover ? ehat_clover : nan;
+      const real_t output_t2e_clover =
+          flowParams.measure_energy_clover ? t2e_clover : nan;
+      const real_t output_delta_tau0 =
+          flowParams.measure_action ? action_density - action_tau0 : nan;
+      const real_t output_delta_previous =
+          flowParams.measure_action
+              ? have_previous ? action_density - previous_action : 0.0
+              : nan;
       append_gradient_flow_obs_row(
-          flowParams, step, gradient_flow_group_name<Nc>(), updateParams.beta,
-          tau, target_t, plaquette, action_density,
-          action_density - action_tau0,
-          have_previous ? action_density - previous_action : 0.0, errors);
+          flowParams,
+          GradientFlowObsRow{
+              step, gradient_flow_group_name<Nc>(), updateParams.beta, tau,
+              target_t, output_plaquette, output_action, output_action,
+              output_t2e_plaquette, output_ehat_clover, output_t2e_clover,
+              output_delta_tau0, output_delta_previous, errors});
     }
 
     measure_flowed_wilson_loops<rank, Nc>(V, updateParams, gaugeParams,
@@ -667,6 +801,12 @@ void runGradientFlowMeasurements(
 
     previous_action = action_density;
     have_previous = true;
+  }
+
+  if (flowParams.extract_t0 && !found_t0) {
+    printf("Warning: gradient-flow t0 target %.12g not reached at step %zu "
+           "up to tau %.12g\n",
+           flowParams.t0_target, step, flowParams.times_tau.back());
   }
 }
 

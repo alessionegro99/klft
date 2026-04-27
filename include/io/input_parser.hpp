@@ -461,10 +461,14 @@ inline bool parseInputFile(const std::string &filename,
   gradientFlowParams.measure_plaquette =
       fp["measure_plaquette"].as<bool>(true);
   gradientFlowParams.measure_action = fp["measure_action"].as<bool>(true);
+  gradientFlowParams.measure_energy_clover =
+      fp["measure_energy_clover"].as<bool>(true);
   gradientFlowParams.measure_wilson_loop_temporal =
       fp["measure_wilson_loop_temporal"].as<bool>(false);
   gradientFlowParams.measure_wilson_loop_mu_nu =
       fp["measure_wilson_loop_mu_nu"].as<bool>(false);
+  gradientFlowParams.extract_t0 = fp["extract_t0"].as<bool>(false);
+  gradientFlowParams.t0_target = fp["t0_target"].as<real_t>(0.3);
   gradientFlowParams.check_action_monotonicity =
       fp["check_action_monotonicity"].as<bool>(true);
   gradientFlowParams.check_group_properties =
@@ -476,6 +480,8 @@ inline bool parseInputFile(const std::string &filename,
       fp["W_temp_filename"].as<std::string>("gradient_flow_wtemp.dat");
   gradientFlowParams.W_mu_nu_filename =
       fp["W_mu_nu_filename"].as<std::string>("gradient_flow_w_mu_nu.dat");
+  gradientFlowParams.t0_filename =
+      fp["t0_filename"].as<std::string>("gradient_flow_t0.dat");
 
   gradientFlowParams.times_tau.clear();
   if (fp["times_tau"]) {
@@ -498,6 +504,10 @@ inline bool parseInputFile(const std::string &filename,
     printf("Error: GradientFlowParams.epsilon must be > 0\n");
     return false;
   }
+  if (gradientFlowParams.t0_target <= 0.0) {
+    printf("Error: GradientFlowParams.t0_target must be > 0\n");
+    return false;
+  }
 
   return true;
 }
@@ -515,10 +525,16 @@ validateGradientFlowParams(const GradientFlowParams &gradientFlowParams,
     return false;
   }
   if ((gradientFlowParams.measure_plaquette ||
-       gradientFlowParams.measure_action) &&
+       gradientFlowParams.measure_action ||
+       gradientFlowParams.measure_energy_clover) &&
       gradientFlowParams.obs_filename.empty()) {
-    printf("Error: gradient-flow plaquette/action output requires "
+    printf("Error: gradient-flow observable output requires "
            "obs_filename\n");
+    return false;
+  }
+  if (gradientFlowParams.extract_t0 &&
+      gradientFlowParams.t0_filename.empty()) {
+    printf("Error: GradientFlowParams.extract_t0 requires t0_filename\n");
     return false;
   }
   if (gradientFlowParams.measure_wilson_loop_temporal) {

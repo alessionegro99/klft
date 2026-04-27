@@ -21,6 +21,26 @@ bool check_condition(const bool condition, const char *message) {
   return true;
 }
 
+template <size_t Nc> real_t cold_clover_q_error(const SUN<Nc> &q) {
+  if constexpr (Nc == 1) {
+    return complex_abs(q.comp - complex_t(4.0, 0.0));
+  } else if constexpr (Nc == 2) {
+    return Kokkos::sqrt((q.comp[0] - 4.0) * (q.comp[0] - 4.0) +
+                        q.comp[1] * q.comp[1] + q.comp[2] * q.comp[2] +
+                        q.comp[3] * q.comp[3]);
+  } else {
+    real_t sum = 0.0;
+    for (index_t row = 0; row < 3; ++row) {
+      for (index_t col = 0; col < 3; ++col) {
+        const complex_t target(row == col ? 4.0 : 0.0, 0.0);
+        const complex_t diff = matrix_ref(q, row, col) - target;
+        sum += diff.real() * diff.real() + diff.imag() * diff.imag();
+      }
+    }
+    return Kokkos::sqrt(sum);
+  }
+}
+
 template <size_t rank> IndexArray<rank> check_dimensions() {
   IndexArray<rank> dims;
   for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
@@ -46,9 +66,17 @@ bool check_cold_configuration() {
   flow_to_target_time<rank, Nc>(cold, workspace, current_t, 0.25, 0.01, false);
 
   const real_t plaquette = GaugePlaquette<rank, Nc>(cold);
+  const IndexArray<rank> origin{};
+  const real_t q_error =
+      cold_clover_q_error<Nc>(clover_q_mu_nu<rank, Nc>(cold, origin, 0, 1));
+  const real_t clover_energy = measure_clover_energy_density<rank, Nc>(cold);
   const auto errors = measure_group_errors<rank, Nc>(cold);
   ok &= check_condition(Kokkos::abs(plaquette - 1.0) < 1.0e-12,
                         "cold plaquette remains one");
+  ok &= check_condition(q_error < 1.0e-12,
+                        "cold clover Q_mu_nu equals four times identity");
+  ok &= check_condition(Kokkos::abs(clover_energy) < 1.0e-12,
+                        "cold clover energy density is zero");
   ok &= check_condition(errors.group_error_1 < gradient_flow_group_tolerance<Nc>(),
                         "cold flow preserves unitarity/modulus");
   ok &= check_condition(errors.group_error_2 < gradient_flow_group_tolerance<Nc>(),
@@ -65,8 +93,12 @@ bool check_zero_flow_consistency(RNG &rng) {
 
   const real_t p_original = GaugePlaquette<rank, Nc>(original);
   const real_t p_flowed = GaugePlaquette<rank, Nc>(flowed);
+  const real_t e_original = measure_clover_energy_density<rank, Nc>(original);
+  const real_t e_flowed = measure_clover_energy_density<rank, Nc>(flowed);
   ok &= check_condition(Kokkos::abs(p_original - p_flowed) < 1.0e-13,
                         "tau=0 copy reproduces original plaquette");
+  ok &= check_condition(Kokkos::abs(e_original - e_flowed) < 1.0e-13,
+                        "tau=0 copy reproduces original clover energy");
   return ok;
 }
 
@@ -88,12 +120,15 @@ bool check_monotonicity_and_group(RNG &rng) {
                                   false);
     const real_t plaquette = GaugePlaquette<rank, Nc>(V);
     const real_t action = gradient_flow_action_density(plaquette);
+    const real_t clover_energy = measure_clover_energy_density<rank, Nc>(V);
     const auto errors = measure_group_errors<rank, Nc>(V);
 
     ok &= check_condition(action <= previous_action + 1.0e-10,
                           "Wilson action is monotone under flow");
     ok &= check_condition(plaquette + 1.0e-10 >= previous_plaquette,
                           "plaquette is monotone under flow");
+    ok &= check_condition(clover_energy > -1.0e-12,
+                          "clover energy density is non-negative");
     ok &= check_condition(errors.group_error_1 <
                               10.0 * gradient_flow_group_tolerance<Nc>(),
                           "flow preserves unitarity/modulus on random field");
@@ -141,6 +176,16 @@ bool check_step_size_dependence(RNG &rng) {
   return ok;
 }
 
+bool check_t0_interpolation() {
+  real_t t0_over_a2 = 0.0;
+  const bool found =
+      gradient_flow_interpolate_t0(0.0, 0.25, 0.1, 0.6, 0.3, t0_over_a2);
+  bool ok = check_condition(found, "t0 interpolation detects a crossing");
+  ok &= check_condition(Kokkos::abs(t0_over_a2 - 0.1) < 1.0e-14,
+                        "t0 interpolation is linear in t/a^2");
+  return ok;
+}
+
 template <size_t rank, size_t Nc> bool run_checks() {
   RNGType rng(12345);
   bool ok = true;
@@ -150,6 +195,7 @@ template <size_t rank, size_t Nc> bool run_checks() {
   ok &= check_zero_flow_consistency<rank, Nc>(rng);
   ok &= check_monotonicity_and_group<rank, Nc>(rng);
   ok &= check_step_size_dependence<rank, Nc>(rng);
+  ok &= check_t0_interpolation();
   return ok;
 }
 

@@ -14,8 +14,12 @@ struct GradientFlowParams {
 
   bool measure_plaquette;
   bool measure_action;
+  bool measure_energy_clover;
   bool measure_wilson_loop_temporal;
   bool measure_wilson_loop_mu_nu;
+
+  bool extract_t0;
+  real_t t0_target;
 
   bool check_action_monotonicity;
   bool check_group_properties;
@@ -24,15 +28,19 @@ struct GradientFlowParams {
   std::string obs_filename;
   std::string W_temp_filename;
   std::string W_mu_nu_filename;
+  std::string t0_filename;
 
   GradientFlowParams()
       : enabled(false), epsilon(0.01), times_tau{0.0},
         measure_plaquette(true), measure_action(true),
+        measure_energy_clover(true),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
+        extract_t0(false), t0_target(0.3),
         check_action_monotonicity(true), check_group_properties(true),
         reunitarize(false), obs_filename("gradient_flow_obs.dat"),
         W_temp_filename("gradient_flow_wtemp.dat"),
-        W_mu_nu_filename("gradient_flow_w_mu_nu.dat") {}
+        W_mu_nu_filename("gradient_flow_w_mu_nu.dat"),
+        t0_filename("gradient_flow_t0.dat") {}
 };
 
 } // namespace klft
