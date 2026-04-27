@@ -2,9 +2,11 @@
 
 #include "core/klft_config.hpp"
 #include "observables/gauge_observables.hpp"
+#include "params/gradient_flow_params.hpp"
 #include "params/heatbath_params.hpp"
 #include "params/metropolis_params.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -416,6 +418,134 @@ inline bool parseInputFile(const std::string &filename,
     return false;
   }
 
+  return true;
+}
+
+inline void normalizeGradientFlowTimes(std::vector<real_t> &times_tau) {
+  times_tau.push_back(0.0);
+  std::sort(times_tau.begin(), times_tau.end());
+  times_tau.erase(std::unique(times_tau.begin(), times_tau.end(),
+                              [](const real_t a, const real_t b) {
+                                return Kokkos::abs(a - b) < 1.0e-14;
+                              }),
+                  times_tau.end());
+}
+
+inline bool parseInputFile(const std::string &filename,
+                           GradientFlowParams &gradientFlowParams) {
+  YAML::Node config;
+  if (!loadInputConfig(filename, config)) {
+    return false;
+  }
+
+  gradientFlowParams = GradientFlowParams{};
+  if (!config["GradientFlowParams"]) {
+    return true;
+  }
+
+  const auto &fp = config["GradientFlowParams"];
+  const std::string time_definition =
+      fp["time_definition"].as<std::string>("fixed_tau");
+  if (time_definition != "fixed_tau") {
+    printf("Error: GradientFlowParams.time_definition must be fixed_tau\n");
+    return false;
+  }
+  const std::string integrator = fp["integrator"].as<std::string>("rk3");
+  if (integrator != "rk3") {
+    printf("Error: GradientFlowParams.integrator must be rk3\n");
+    return false;
+  }
+
+  gradientFlowParams.enabled = fp["enabled"].as<bool>(false);
+  gradientFlowParams.epsilon = fp["epsilon"].as<real_t>(0.01);
+  gradientFlowParams.measure_plaquette =
+      fp["measure_plaquette"].as<bool>(true);
+  gradientFlowParams.measure_action = fp["measure_action"].as<bool>(true);
+  gradientFlowParams.measure_wilson_loop_temporal =
+      fp["measure_wilson_loop_temporal"].as<bool>(false);
+  gradientFlowParams.measure_wilson_loop_mu_nu =
+      fp["measure_wilson_loop_mu_nu"].as<bool>(false);
+  gradientFlowParams.check_action_monotonicity =
+      fp["check_action_monotonicity"].as<bool>(true);
+  gradientFlowParams.check_group_properties =
+      fp["check_group_properties"].as<bool>(true);
+  gradientFlowParams.reunitarize = fp["reunitarize"].as<bool>(false);
+  gradientFlowParams.obs_filename =
+      fp["obs_filename"].as<std::string>("gradient_flow_obs.dat");
+  gradientFlowParams.W_temp_filename =
+      fp["W_temp_filename"].as<std::string>("gradient_flow_wtemp.dat");
+  gradientFlowParams.W_mu_nu_filename =
+      fp["W_mu_nu_filename"].as<std::string>("gradient_flow_w_mu_nu.dat");
+
+  gradientFlowParams.times_tau.clear();
+  if (fp["times_tau"]) {
+    if (!fp["times_tau"].IsSequence()) {
+      printf("Error: GradientFlowParams.times_tau must be a YAML sequence\n");
+      return false;
+    }
+    for (const auto &entry : fp["times_tau"]) {
+      const real_t tau = entry.as<real_t>();
+      if (tau < 0.0) {
+        printf("Error: GradientFlowParams.times_tau entries must be >= 0\n");
+        return false;
+      }
+      gradientFlowParams.times_tau.push_back(tau);
+    }
+  }
+  normalizeGradientFlowTimes(gradientFlowParams.times_tau);
+
+  if (gradientFlowParams.epsilon <= 0.0) {
+    printf("Error: GradientFlowParams.epsilon must be > 0\n");
+    return false;
+  }
+
+  return true;
+}
+
+inline bool
+validateGradientFlowParams(const GradientFlowParams &gradientFlowParams,
+                           const GaugeObservableParams &gaugeObservableParams) {
+  if (!gradientFlowParams.enabled) {
+    return true;
+  }
+
+  if (gaugeObservableParams.measurement_interval == 0) {
+    printf("Error: GradientFlowParams.enabled requires "
+           "GaugeObservableParams.measurement_interval > 0\n");
+    return false;
+  }
+  if ((gradientFlowParams.measure_plaquette ||
+       gradientFlowParams.measure_action) &&
+      gradientFlowParams.obs_filename.empty()) {
+    printf("Error: gradient-flow plaquette/action output requires "
+           "obs_filename\n");
+    return false;
+  }
+  if (gradientFlowParams.measure_wilson_loop_temporal) {
+    if (gradientFlowParams.W_temp_filename.empty()) {
+      printf("Error: gradient-flow temporal Wilson loops require "
+             "W_temp_filename\n");
+      return false;
+    }
+    if (gaugeObservableParams.W_temp_L_T_pairs.empty()) {
+      printf("Error: gradient-flow temporal Wilson loops require "
+             "GaugeObservableParams.W_temp_L_T_pairs\n");
+      return false;
+    }
+  }
+  if (gradientFlowParams.measure_wilson_loop_mu_nu) {
+    if (gradientFlowParams.W_mu_nu_filename.empty()) {
+      printf("Error: gradient-flow planar Wilson loops require "
+             "W_mu_nu_filename\n");
+      return false;
+    }
+    if (gaugeObservableParams.W_mu_nu_pairs.empty() ||
+        gaugeObservableParams.W_Lmu_Lnu_pairs.empty()) {
+      printf("Error: gradient-flow planar Wilson loops require "
+             "GaugeObservableParams.W_mu_nu_pairs and W_Lmu_Lnu_pairs\n");
+      return false;
+    }
+  }
   return true;
 }
 

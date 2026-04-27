@@ -74,6 +74,26 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  write_to_file: true\n";
 }
 
+inline void write_gradient_flow_sample(std::ofstream &file) {
+  file << "\n"
+       << "GradientFlowParams:\n"
+       << "  enabled: false\n"
+       << "  time_definition: \"fixed_tau\"\n"
+       << "  integrator: \"rk3\"\n"
+       << "  epsilon: 0.01\n"
+       << "  times_tau: [0.0, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0]\n"
+       << "  measure_plaquette: true\n"
+       << "  measure_action: true\n"
+       << "  measure_wilson_loop_temporal: false\n"
+       << "  measure_wilson_loop_mu_nu: false\n"
+       << "  check_action_monotonicity: true\n"
+       << "  check_group_properties: true\n"
+       << "  reunitarize: false\n"
+       << "  obs_filename: \"gradient_flow_obs.dat\"\n"
+       << "  W_temp_filename: \"gradient_flow_wtemp.dat\"\n"
+       << "  W_mu_nu_filename: \"gradient_flow_w_mu_nu.dat\"\n";
+}
+
 inline int write_sample_metropolis_input_file(const std::string &filename) {
   namespace fs = std::filesystem;
   if (fs::exists(filename)) {
@@ -102,6 +122,7 @@ inline int write_sample_metropolis_input_file(const std::string &filename) {
        << "  epsilon2: 0.0\n"
        << "\n";
   write_common_observable_sample(file);
+  write_gradient_flow_sample(file);
 
   printf("Wrote sample input file: %s\n", filename.c_str());
   return 0;
@@ -134,6 +155,7 @@ inline int write_sample_heatbath_input_file(const std::string &filename) {
        << "  epsilon2: 0.0\n"
        << "\n";
   write_common_observable_sample(file);
+  write_gradient_flow_sample(file);
 
   printf("Wrote sample input file: %s\n", filename.c_str());
   return 0;

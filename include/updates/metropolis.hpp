@@ -3,7 +3,9 @@
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/gauge_observables.hpp"
+#include "params/gradient_flow_params.hpp"
 #include "params/metropolis_params.hpp"
+#include "updates/gradient_flow.hpp"
 
 #include <Kokkos_Random.hpp>
 
@@ -110,7 +112,9 @@ real_t sweep_Metropolis(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
 template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
 int run_metropolis(GaugeFieldType &g_in,
                    const MetropolisParams &metropolisParams,
-                   GaugeObservableParams &gaugeObsParams, const RNG &rng) {
+                   GaugeObservableParams &gaugeObsParams,
+                   const GradientFlowParams &gradientFlowParams,
+                   const RNG &rng) {
   const auto &dimensions = g_in.dimensions;
   validate_even_extents<rank>(dimensions, "Metropolis");
   gaugeObsParams.include_acceptance_rate = true;
@@ -130,6 +134,9 @@ int run_metropolis(GaugeFieldType &g_in,
     const real_t time = timer.seconds();
     measureGaugeObservables<rank, Nc>(g_in, metropolisParams, gaugeObsParams,
                                       step + 1, acc_rate, time, rng);
+    runGradientFlowMeasurements<rank, Nc>(
+        g_in, metropolisParams, gaugeObsParams, gradientFlowParams, step + 1,
+        rng);
   }
   return 0;
 }

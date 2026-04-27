@@ -12,12 +12,21 @@ namespace klft {
 int Heatbath(const std::string &input_file) {
   HeatbathParams heatbathParams;
   GaugeObservableParams gaugeObsParams;
+  GradientFlowParams gradientFlowParams;
   if (!parseInputFile(input_file, heatbathParams)) {
     printf("Error parsing input file\n");
     return -1;
   }
   if (!parseInputFile(input_file, gaugeObsParams)) {
     printf("Error parsing input file\n");
+    return -1;
+  }
+  if (!parseInputFile(input_file, gradientFlowParams)) {
+    printf("Error parsing input file\n");
+    return -1;
+  }
+  if (!validateGradientFlowParams(gradientFlowParams, gaugeObsParams)) {
+    printf("Error validating gradient-flow input\n");
     return -1;
   }
 
@@ -32,7 +41,8 @@ int Heatbath(const std::string &input_file) {
       heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
       heatbathParams.L3);
   run_heatbath<compiled_rank, compiled_nc>(gauge_field, heatbathParams,
-                                           gaugeObsParams, rng);
+                                           gaugeObsParams, gradientFlowParams,
+                                           rng);
 
   return 0;
 }

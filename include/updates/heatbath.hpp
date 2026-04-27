@@ -3,7 +3,9 @@
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/gauge_observables.hpp"
+#include "params/gradient_flow_params.hpp"
 #include "params/heatbath_params.hpp"
+#include "updates/gradient_flow.hpp"
 #include "updates/heatbath_link_updates.hpp"
 
 #include <Kokkos_Random.hpp>
@@ -114,7 +116,9 @@ void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
 // Execute the requested number of heatbath sweeps and measurements.
 template <size_t rank, size_t Nc, class RNG, class GaugeFieldType>
 int run_heatbath(GaugeFieldType &g_in, const HeatbathParams &heatbathParams,
-                 GaugeObservableParams &gaugeObsParams, const RNG &rng) {
+                 GaugeObservableParams &gaugeObsParams,
+                 const GradientFlowParams &gradientFlowParams,
+                 const RNG &rng) {
   const auto &dimensions = g_in.dimensions;
   validate_even_extents<rank>(dimensions, "Heatbath");
   gaugeObsParams.include_acceptance_rate = false;
@@ -136,6 +140,9 @@ int run_heatbath(GaugeFieldType &g_in, const HeatbathParams &heatbathParams,
 
     measureGaugeObservables<rank, Nc>(g_in, heatbathParams, gaugeObsParams,
                                       step + 1, 0.0, time, rng);
+    runGradientFlowMeasurements<rank, Nc>(
+        g_in, heatbathParams, gaugeObsParams, gradientFlowParams, step + 1,
+        rng);
   }
   return 0;
 }
