@@ -9,7 +9,7 @@
             "name": "relwithdebinfo",
             "displayName": "Release with Debug Info",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/../../Build/klft-rel",
+            "binaryDir": "${sourceDir}/../../build/klft-rel",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "Kokkos_ENABLE_OPENMP": "ON",
@@ -21,7 +21,7 @@
             "name": "debug",
             "displayName": "Debug",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/../../Build/klft-debug",
+            "binaryDir": "${sourceDir}/../../build/klft-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
                 "Kokkos_ENABLE_OPENMP": "ON",
@@ -33,7 +33,7 @@
             "name": "p100_4D_su2",
             "displayName": "Production P100 4D SU(2)",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/../../Build/klft-p100-4D-su2",
+            "binaryDir": "${sourceDir}/../../build/klft-p100-4D-su2",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
                 "KLFT_NDIM": "4",
