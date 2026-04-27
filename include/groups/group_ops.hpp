@@ -349,29 +349,91 @@ KOKKOS_FORCEINLINE_FUNCTION void restoreSUN(SUN<2> &a) {
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3> restoreSUN(const SUN<3> &a) {
   SUN<3> c = a;
-  const real_t norm0 = Kokkos::sqrt(
+  real_t norm0 = Kokkos::sqrt(
       (Kokkos::conj(matrix_ref(c, 0, 0)) * matrix_ref(c, 0, 0) +
        Kokkos::conj(matrix_ref(c, 0, 1)) * matrix_ref(c, 0, 1) +
        Kokkos::conj(matrix_ref(c, 0, 2)) * matrix_ref(c, 0, 2))
           .real());
-  const real_t norm1 = Kokkos::sqrt(
+
+  if (norm0 <= 1.0e-30) {
+    return identitySUN<3>();
+  }
+
+#pragma unroll
+  for (index_t col = 0; col < 3; ++col) {
+    matrix_ref(c, 0, col) /= norm0;
+  }
+
+  complex_t row10_overlap(0.0, 0.0);
+#pragma unroll
+  for (index_t col = 0; col < 3; ++col) {
+    row10_overlap += matrix_ref(c, 1, col) *
+                     Kokkos::conj(matrix_ref(c, 0, col));
+  }
+#pragma unroll
+  for (index_t col = 0; col < 3; ++col) {
+    matrix_ref(c, 1, col) -= row10_overlap * matrix_ref(c, 0, col);
+  }
+
+  real_t norm1 = Kokkos::sqrt(
       (Kokkos::conj(matrix_ref(c, 1, 0)) * matrix_ref(c, 1, 0) +
        Kokkos::conj(matrix_ref(c, 1, 1)) * matrix_ref(c, 1, 1) +
        Kokkos::conj(matrix_ref(c, 1, 2)) * matrix_ref(c, 1, 2))
           .real());
 
-  matrix_ref(c, 0, 0) /= norm0;
-  matrix_ref(c, 0, 1) /= norm0;
-  matrix_ref(c, 0, 2) /= norm0;
-  matrix_ref(c, 1, 0) /= norm1;
-  matrix_ref(c, 1, 1) /= norm1;
-  matrix_ref(c, 1, 2) /= norm1;
+  if (norm1 <= 1.0e-30) {
+    const real_t row0_norm_0 =
+        (Kokkos::conj(matrix_ref(c, 0, 0)) * matrix_ref(c, 0, 0)).real();
+    const real_t row0_norm_1 =
+        (Kokkos::conj(matrix_ref(c, 0, 1)) * matrix_ref(c, 0, 1)).real();
+    const real_t row0_norm_2 =
+        (Kokkos::conj(matrix_ref(c, 0, 2)) * matrix_ref(c, 0, 2)).real();
+    const index_t basis =
+        (row0_norm_0 <= row0_norm_1 && row0_norm_0 <= row0_norm_2)
+            ? 0
+            : ((row0_norm_1 <= row0_norm_2) ? 1 : 2);
+#pragma unroll
+    for (index_t col = 0; col < 3; ++col) {
+      matrix_ref(c, 1, col) = complex_t(col == basis ? 1.0 : 0.0, 0.0);
+    }
+    row10_overlap = complex_t(0.0, 0.0);
+#pragma unroll
+    for (index_t col = 0; col < 3; ++col) {
+      row10_overlap += matrix_ref(c, 1, col) *
+                       Kokkos::conj(matrix_ref(c, 0, col));
+    }
+#pragma unroll
+    for (index_t col = 0; col < 3; ++col) {
+      matrix_ref(c, 1, col) -= row10_overlap * matrix_ref(c, 0, col);
+    }
+    norm1 = Kokkos::sqrt(
+        (Kokkos::conj(matrix_ref(c, 1, 0)) * matrix_ref(c, 1, 0) +
+         Kokkos::conj(matrix_ref(c, 1, 1)) * matrix_ref(c, 1, 1) +
+         Kokkos::conj(matrix_ref(c, 1, 2)) * matrix_ref(c, 1, 2))
+            .real());
+  }
+
+#pragma unroll
+  for (index_t col = 0; col < 3; ++col) {
+    matrix_ref(c, 1, col) /= norm1;
+  }
+
   matrix_ref(c, 2, 0) = Kokkos::conj(matrix_ref(c, 0, 1) * matrix_ref(c, 1, 2) -
                                      matrix_ref(c, 0, 2) * matrix_ref(c, 1, 1));
   matrix_ref(c, 2, 1) = Kokkos::conj(matrix_ref(c, 0, 2) * matrix_ref(c, 1, 0) -
                                      matrix_ref(c, 0, 0) * matrix_ref(c, 1, 2));
   matrix_ref(c, 2, 2) = Kokkos::conj(matrix_ref(c, 0, 0) * matrix_ref(c, 1, 1) -
                                      matrix_ref(c, 0, 1) * matrix_ref(c, 1, 0));
+  const real_t norm2 = Kokkos::sqrt(
+      (Kokkos::conj(matrix_ref(c, 2, 0)) * matrix_ref(c, 2, 0) +
+       Kokkos::conj(matrix_ref(c, 2, 1)) * matrix_ref(c, 2, 1) +
+       Kokkos::conj(matrix_ref(c, 2, 2)) * matrix_ref(c, 2, 2))
+          .real());
+#pragma unroll
+  for (index_t col = 0; col < 3; ++col) {
+    matrix_ref(c, 2, col) /= norm2;
+  }
+
   matrix_ref(c, 1, 0) = Kokkos::conj(matrix_ref(c, 2, 1) * matrix_ref(c, 0, 2) -
                                      matrix_ref(c, 2, 2) * matrix_ref(c, 0, 1));
   matrix_ref(c, 1, 1) = Kokkos::conj(matrix_ref(c, 2, 2) * matrix_ref(c, 0, 0) -
