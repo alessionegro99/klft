@@ -1,5 +1,6 @@
 set(KLFT_ANALYSIS_SCRIPTS
   plaquette_stats.py
+  polyakov_stats.py
   wtemp_stats.py)
 
 set(KLFT_ANALYSIS_OUTPUT_DIR ${CMAKE_BINARY_DIR}/analysis)
