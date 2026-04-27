@@ -69,8 +69,41 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  W_mu_nu_filename: \"w_mu_nu.out\"\n"
        << "  polyakov_loop_filename: \"polyakov_loop.out\"\n"
        << "  polyakov_correlator_filename: \"polyakov_correlator.out\"\n"
+       << "  polyakov_loop_multilevel_filename: \"\"\n"
+       << "  polyakov_correlator_multilevel_filename: \"\"\n"
        << "  RetraceU_filename: \"retrace_u.out\"\n"
        << "  nested_wilson_action_filename: \"nested_wilson_action.out\"\n"
+       << "  write_to_file: true\n";
+}
+
+inline void write_multilevel_observable_sample(std::ofstream &file) {
+  file << "GaugeObservableParams:\n"
+       << "  measurement_interval: 10\n"
+       << "  measure_plaquette: false\n"
+       << "  measure_wilson_loop_temporal: false\n"
+       << "  measure_wilson_loop_mu_nu: false\n"
+       << "  measure_polyakov_loop: true\n"
+       << "  measure_polyakov_correlator: true\n"
+       << "  measure_retrace_U: false\n"
+       << "  wilson_loop_multihit: 1\n"
+       << "  polyakov_loop_multihit: 4\n"
+       << "  polyakov_correlator_max_r: 2\n"
+       << "  measure_nested_wilson_action: false\n";
+  write_sample_nested_child_offset(file);
+  file << "  W_temp_L_T_pairs: []\n"
+       << "  W_mu_nu_pairs: []\n"
+       << "  W_Lmu_Lnu_pairs: []\n"
+       << "  plaquette_filename: \"\"\n"
+       << "  W_temp_filename: \"\"\n"
+       << "  W_mu_nu_filename: \"\"\n"
+       << "  polyakov_loop_filename: \"\"\n"
+       << "  polyakov_correlator_filename: \"\"\n"
+       << "  polyakov_loop_multilevel_filename: "
+          "\"polyakov_loop_multilevel.out\"\n"
+       << "  polyakov_correlator_multilevel_filename: "
+          "\"polyakov_correlator_multilevel.out\"\n"
+       << "  RetraceU_filename: \"\"\n"
+       << "  nested_wilson_action_filename: \"\"\n"
        << "  write_to_file: true\n";
 }
 
@@ -134,6 +167,46 @@ inline int write_sample_heatbath_input_file(const std::string &filename) {
        << "  epsilon2: 0.0\n"
        << "\n";
   write_common_observable_sample(file);
+
+  printf("Wrote sample input file: %s\n", filename.c_str());
+  return 0;
+}
+
+inline int
+write_sample_heatbath_multilevel_input_file(const std::string &filename) {
+  namespace fs = std::filesystem;
+  if (fs::exists(filename)) {
+    printf("Sample input file already exists: %s\n", filename.c_str());
+    return 0;
+  }
+
+  std::ofstream file(filename);
+  if (!file.is_open()) {
+    printf("Error: could not create sample input file: %s\n", filename.c_str());
+    return -1;
+  }
+
+  file << "# input.yaml\n"
+       << "HeatbathParams:\n"
+       << "  L0: 8\n"
+       << "  L1: 8\n"
+       << "  L2: " << (compiled_rank > 2 ? 8 : 4) << "\n"
+       << "  L3: " << (compiled_rank > 3 ? 8 : 4) << "\n"
+       << "  nSweep: 1000\n"
+       << "  nOverrelax: 5\n"
+       << "  seed: 32091\n"
+       << "  beta: 2.0\n"
+       << "  epsilon1: 0.0\n"
+       << "  epsilon2: 0.0\n"
+       << "\n"
+       << "MultilevelParams:\n"
+       << "  levels:\n"
+       << "    - slab_links: 2\n"
+       << "      updates: 10\n"
+       << "    - slab_links: 4\n"
+       << "      updates: 20\n"
+       << "\n";
+  write_multilevel_observable_sample(file);
 
   printf("Wrote sample input file: %s\n", filename.c_str());
   return 0;

@@ -4,6 +4,7 @@
 #include "observables/gauge_observables.hpp"
 #include "params/heatbath_params.hpp"
 #include "params/metropolis_params.hpp"
+#include "params/multilevel_params.hpp"
 
 #include <cstdio>
 #include <string>
@@ -74,42 +75,80 @@ inline bool validateLatticeExtents(const index_t L0, const index_t L1,
   return true;
 }
 
-inline bool validateObservableFilenames(const GaugeObservableParams &params) {
+inline bool validateObservableFilenames(const GaugeObservableParams &params,
+                                        const bool multilevel_output = false) {
+  if (multilevel_output && params.measure_plaquette) {
+    printf("Error: heatbath_multilevel does not support plaquette output\n");
+    return false;
+  }
+  if (multilevel_output && params.measure_wilson_loop_temporal) {
+    printf("Error: heatbath_multilevel does not support temporal Wilson loops\n");
+    return false;
+  }
+  if (multilevel_output && params.measure_wilson_loop_mu_nu) {
+    printf("Error: heatbath_multilevel does not support planar Wilson loops\n");
+    return false;
+  }
+  if (multilevel_output && params.measure_retrace_U) {
+    printf("Error: heatbath_multilevel does not support Retrace(U)\n");
+    return false;
+  }
+  if (multilevel_output && params.measure_nested_wilson_action) {
+    printf("Error: heatbath_multilevel does not support nested Wilson action\n");
+    return false;
+  }
   if (!params.write_to_file) {
     return true;
   }
-  if (params.measure_plaquette && params.plaquette_filename.empty()) {
+  if (!multilevel_output && params.measure_plaquette &&
+      params.plaquette_filename.empty()) {
     printf("Error: measure_plaquette is enabled but plaquette_filename is "
            "empty\n");
     return false;
   }
-  if (params.measure_wilson_loop_temporal && params.W_temp_filename.empty()) {
+  if (!multilevel_output && params.measure_wilson_loop_temporal &&
+      params.W_temp_filename.empty()) {
     printf("Error: measure_wilson_loop_temporal is enabled but W_temp_filename "
            "is empty\n");
     return false;
   }
-  if (params.measure_wilson_loop_mu_nu && params.W_mu_nu_filename.empty()) {
+  if (!multilevel_output && params.measure_wilson_loop_mu_nu &&
+      params.W_mu_nu_filename.empty()) {
     printf("Error: measure_wilson_loop_mu_nu is enabled but W_mu_nu_filename "
            "is empty\n");
     return false;
   }
-  if (params.measure_polyakov_loop && params.polyakov_loop_filename.empty()) {
+  if (params.measure_polyakov_loop && !multilevel_output &&
+      params.polyakov_loop_filename.empty()) {
     printf("Error: measure_polyakov_loop is enabled but polyakov_loop_filename "
            "is empty\n");
     return false;
   }
-  if (params.measure_polyakov_correlator &&
+  if (params.measure_polyakov_loop && multilevel_output &&
+      params.polyakov_loop_multilevel_filename.empty()) {
+    printf("Error: measure_polyakov_loop is enabled but "
+           "polyakov_loop_multilevel_filename is empty\n");
+    return false;
+  }
+  if (params.measure_polyakov_correlator && !multilevel_output &&
       params.polyakov_correlator_filename.empty()) {
     printf("Error: measure_polyakov_correlator is enabled but "
            "polyakov_correlator_filename is empty\n");
     return false;
   }
-  if (params.measure_retrace_U && params.RetraceU_filename.empty()) {
+  if (params.measure_polyakov_correlator && multilevel_output &&
+      params.polyakov_correlator_multilevel_filename.empty()) {
+    printf("Error: measure_polyakov_correlator is enabled but "
+           "polyakov_correlator_multilevel_filename is empty\n");
+    return false;
+  }
+  if (!multilevel_output && params.measure_retrace_U &&
+      params.RetraceU_filename.empty()) {
     printf("Error: measure_retrace_U is enabled but RetraceU_filename is "
            "empty\n");
     return false;
   }
-  if (params.measure_nested_wilson_action &&
+  if (!multilevel_output && params.measure_nested_wilson_action &&
       params.nested_wilson_action_filename.empty()) {
     printf("Error: measure_nested_wilson_action is enabled but "
            "nested_wilson_action_filename is empty\n");
@@ -205,6 +244,79 @@ inline bool parseInputFile(const std::string &filename,
   return true;
 }
 
+inline bool parseInputFile(const std::string &filename,
+                           MultilevelParams &multilevelParams) {
+  YAML::Node config;
+  if (!loadInputConfig(filename, config)) {
+    return false;
+  }
+  if (!config["MultilevelParams"]) {
+    printf("Error: MultilevelParams not found in input file\n");
+    return false;
+  }
+
+  multilevelParams = MultilevelParams{};
+  const auto &mp = config["MultilevelParams"];
+  const auto levels = mp["levels"];
+  if (!levels || !levels.IsSequence() || levels.size() == 0) {
+    printf("Error: MultilevelParams.levels must be a non-empty YAML sequence\n");
+    return false;
+  }
+
+  for (const auto &level : levels) {
+    if (!level.IsMap()) {
+      printf("Error: each MultilevelParams.levels entry must be a map\n");
+      return false;
+    }
+    const index_t slab_links = level["slab_links"].as<index_t>(0);
+    const index_t updates = level["updates"].as<index_t>(0);
+    if (slab_links < 2) {
+      printf("Error: each multilevel slab_links must be >= 2\n");
+      return false;
+    }
+    if (updates < 1) {
+      printf("Error: each multilevel updates value must be >= 1\n");
+      return false;
+    }
+    multilevelParams.levels.emplace_back(slab_links, updates);
+  }
+
+  for (size_t i = 1; i < multilevelParams.levels.size(); ++i) {
+    const index_t prev = multilevelParams.levels[i - 1].slab_links;
+    const index_t cur = multilevelParams.levels[i].slab_links;
+    if (cur <= prev) {
+      printf("Error: multilevel slab_links must be strictly ascending\n");
+      return false;
+    }
+    if (cur % prev != 0) {
+      printf("Error: each multilevel slab_links value must be divisible by the "
+             "previous one\n");
+      return false;
+    }
+  }
+
+  return true;
+}
+
+inline bool validateMultilevelParams(const MultilevelParams &multilevelParams,
+                                     const HeatbathParams &heatbathParams) {
+  if (multilevelParams.levels.empty()) {
+    printf("Error: MultilevelParams.levels must not be empty\n");
+    return false;
+  }
+
+  const index_t dims[4] = {heatbathParams.L0, heatbathParams.L1,
+                           heatbathParams.L2, heatbathParams.L3};
+  const index_t Nt = dims[compiled_rank - 1];
+  const index_t largest = multilevelParams.levels.back().slab_links;
+  if (Nt % largest != 0) {
+    printf("Error: the largest multilevel slab_links value must divide Nt\n");
+    return false;
+  }
+
+  return true;
+}
+
 inline bool parseLoopLengthPairs(
     const YAML::Node &node, const char *field_name,
     std::vector<Kokkos::Array<index_t, 2>> &output) {
@@ -287,7 +399,8 @@ inline bool parsePlanePairs(
 }
 
 inline bool parseInputFile(const std::string &filename,
-                           GaugeObservableParams &gaugeObservableParams) {
+                           GaugeObservableParams &gaugeObservableParams,
+                           const bool multilevel_output = false) {
   YAML::Node config;
   if (!loadInputConfig(filename, config)) {
     return false;
@@ -362,6 +475,10 @@ inline bool parseInputFile(const std::string &filename,
       gp["polyakov_loop_filename"].as<std::string>("");
   gaugeObservableParams.polyakov_correlator_filename =
       gp["polyakov_correlator_filename"].as<std::string>("");
+  gaugeObservableParams.polyakov_loop_multilevel_filename =
+      gp["polyakov_loop_multilevel_filename"].as<std::string>("");
+  gaugeObservableParams.polyakov_correlator_multilevel_filename =
+      gp["polyakov_correlator_multilevel_filename"].as<std::string>("");
   gaugeObservableParams.RetraceU_filename =
       gp["RetraceU_filename"].as<std::string>("");
   gaugeObservableParams.nested_wilson_action_filename =
@@ -412,7 +529,7 @@ inline bool parseInputFile(const std::string &filename,
       return false;
     }
   }
-  if (!validateObservableFilenames(gaugeObservableParams)) {
+  if (!validateObservableFilenames(gaugeObservableParams, multilevel_output)) {
     return false;
   }
 

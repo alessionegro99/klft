@@ -54,6 +54,8 @@ struct GaugeObservableParams {
   std::string W_mu_nu_filename;
   std::string polyakov_loop_filename;
   std::string polyakov_correlator_filename;
+  std::string polyakov_loop_multilevel_filename;
+  std::string polyakov_correlator_multilevel_filename;
   std::string RetraceU_filename;
   std::string nested_wilson_action_filename;
 
@@ -70,6 +72,8 @@ struct GaugeObservableParams {
 };
 
 inline void appendLatestGaugeObservables(const GaugeObservableParams &params);
+inline void
+appendLatestMultilevelGaugeObservables(const GaugeObservableParams &params);
 inline void clearAllGaugeObservables(GaugeObservableParams &params);
 
 // Measure the requested observables and stage the results for optional output.
@@ -477,6 +481,34 @@ inline void appendLatestGaugeObservables(const GaugeObservableParams &params) {
     std::ofstream file(params.nested_wilson_action_filename, std::ios::app);
     flushNestedWilsonAction(
         file, params, fileNeedsHeader(params.nested_wilson_action_filename));
+    file.flush();
+    file.close();
+  }
+}
+
+// Append one multilevel measurement batch to the dedicated output files.
+inline void
+appendLatestMultilevelGaugeObservables(const GaugeObservableParams &params) {
+  if (!params.write_to_file) {
+    return;
+  }
+
+  if (params.measure_polyakov_loop &&
+      params.polyakov_loop_multilevel_filename != "") {
+    std::ofstream file(params.polyakov_loop_multilevel_filename, std::ios::app);
+    flushPolyakovLoop(
+        file, params, fileNeedsHeader(params.polyakov_loop_multilevel_filename));
+    file.flush();
+    file.close();
+  }
+
+  if (params.measure_polyakov_correlator &&
+      params.polyakov_correlator_multilevel_filename != "") {
+    std::ofstream file(params.polyakov_correlator_multilevel_filename,
+                       std::ios::app);
+    flushPolyakovCorrelator(
+        file, params,
+        fileNeedsHeader(params.polyakov_correlator_multilevel_filename));
     file.flush();
     file.close();
   }

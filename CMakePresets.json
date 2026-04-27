@@ -18,6 +18,22 @@
             }
         },
         {
+            "name": "relwithdebinfo-p100-su2",
+            "displayName": "Release with Debug Info, P100 CUDA + OpenMP, 4D SU(2)",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/../../Build/klft-rel-p100-su2",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "KLFT_NDIM": "4",
+                "KLFT_NC": "2",
+                "Kokkos_ENABLE_CUDA": "ON",
+                "Kokkos_ENABLE_CUDA_LAMBDA": "ON",
+                "Kokkos_ENABLE_OPENMP": "ON",
+                "Kokkos_ARCH_PASCAL60": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
             "name": "debug",
             "displayName": "Debug",
             "generator": "Unix Makefiles",
@@ -34,6 +50,10 @@
         {
             "name": "relwithdebinfo",
             "configurePreset": "relwithdebinfo"
+        },
+        {
+            "name": "relwithdebinfo-p100-su2",
+            "configurePreset": "relwithdebinfo-p100-su2"
         },
         {
             "name": "debug",

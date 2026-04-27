@@ -211,3 +211,81 @@ GaugeObservableParams:
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true
 ```
+
+## Heatbath multilevel
+
+```bash
+binaries/heatbath_multilevel
+  -f <file_name> --filename <file_name>
+     Name of the input file.
+     Default: input.yaml
+  -h, --help
+     Prints this message.
+     Hint: use --kokkos-help to see command line options provided by Kokkos.
+```
+
+Running `binaries/heatbath_multilevel` with no arguments writes a sample
+`input.yaml` and exits. This executable performs the usual heatbath plus
+overrelaxation sweeps and measures only the Polyakov loop and Polyakov-loop
+correlator with the multilevel estimator. The one-link multihit is controlled by
+`polyakov_loop_multihit`; `MultilevelParams.levels` then lists the slab levels in
+ascending `slab_links` order. The full temporal extent is the implicit final
+product of the largest listed slabs.
+
+During multilevel updates at slab size `s`, temporal links are updated
+everywhere, while spatial links on boundary time slices satisfying `t % s == 0`
+are held fixed. Polyakov correlators are written as `# step R real imaginary`;
+`R = 0` and `R = 1` stay raw, while `R >= 2` uses the multilevel tensor-product
+estimator. For production runs, keep `polyakov_correlator_max_r` conservative
+such as at most one quarter of the smallest spatial extent.
+
+### Example heatbath_multilevel input.yaml
+
+```yaml
+# input.yaml
+HeatbathParams:
+  L0: 8
+  L1: 8
+  L2: 8
+  L3: 8
+  nSweep: 1000
+  nOverrelax: 5
+  seed: 32091
+  beta: 2.0
+  epsilon1: 0.0
+  epsilon2: 0.0
+
+MultilevelParams:
+  levels:
+    - slab_links: 2
+      updates: 10
+    - slab_links: 4
+      updates: 20
+
+GaugeObservableParams:
+  measurement_interval: 10
+  measure_plaquette: false
+  measure_wilson_loop_temporal: false
+  measure_wilson_loop_mu_nu: false
+  measure_polyakov_loop: true
+  measure_polyakov_correlator: true
+  measure_retrace_U: false
+  wilson_loop_multihit: 1
+  polyakov_loop_multihit: 4
+  polyakov_correlator_max_r: 2
+  measure_nested_wilson_action: false
+  nested_child_offset: [0, 0, 0, 0]
+  W_temp_L_T_pairs: []
+  W_mu_nu_pairs: []
+  W_Lmu_Lnu_pairs: []
+  plaquette_filename: ""
+  W_temp_filename: ""
+  W_mu_nu_filename: ""
+  polyakov_loop_filename: ""
+  polyakov_correlator_filename: ""
+  polyakov_loop_multilevel_filename: "polyakov_loop_multilevel.out"
+  polyakov_correlator_multilevel_filename: "polyakov_correlator_multilevel.out"
+  RetraceU_filename: ""
+  nested_wilson_action_filename: ""
+  write_to_file: true
+```

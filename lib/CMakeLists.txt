@@ -1,6 +1,7 @@
 add_library(klft STATIC
   metropolis.cpp
-  heatbath.cpp)
+  heatbath.cpp
+  heatbath_multilevel.cpp)
 target_include_directories(klft PUBLIC
   ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_BINARY_DIR}/generated)
