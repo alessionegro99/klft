@@ -166,6 +166,19 @@ bool check_t0_interpolation() {
   return ok;
 }
 
+bool check_flowed_wilson_loop_multihit_policy() {
+  GaugeObservableParams params;
+  params.wilson_loop_multihit = 7;
+
+  bool ok = check_condition(
+      gradient_flow_wilson_loop_multihit(params, 0.0) == 7,
+      "t=0 flowed Wilson loops use configured multihit");
+  ok &= check_condition(
+      gradient_flow_wilson_loop_multihit(params, 0.125) == 1,
+      "t>0 flowed Wilson loops use one standard hit");
+  return ok;
+}
+
 template <size_t rank, size_t Nc> bool run_checks() {
   RNGType rng(12345);
   bool ok = true;
@@ -176,6 +189,7 @@ template <size_t rank, size_t Nc> bool run_checks() {
   ok &= check_clover_energy_and_group<rank, Nc>(rng);
   ok &= check_step_size_dependence<rank, Nc>(rng);
   ok &= check_t0_interpolation();
+  ok &= check_flowed_wilson_loop_multihit_policy();
   return ok;
 }
 

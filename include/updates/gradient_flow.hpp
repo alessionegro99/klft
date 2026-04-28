@@ -582,6 +582,17 @@ inline bool gradient_flow_interpolate_t0(
   return true;
 }
 
+inline bool gradient_flow_is_initial_time(const real_t t_over_a2) {
+  return Kokkos::abs(t_over_a2) <= 1.0e-14;
+}
+
+inline index_t gradient_flow_wilson_loop_multihit(
+    const GaugeObservableParams &params, const real_t t_over_a2) {
+  return gradient_flow_is_initial_time(t_over_a2)
+             ? params.wilson_loop_multihit
+             : static_cast<index_t>(1);
+}
+
 inline void append_gradient_flow_temporal_wloops(
     const GradientFlowParams &params, const size_t conf_id,
     const real_t t_over_a2,
@@ -632,12 +643,12 @@ void measure_flowed_wilson_loops(
     const UpdateParams &updateParams, const GaugeObservableParams &gaugeParams,
     const GradientFlowParams &flowParams, const size_t conf_id,
     const real_t t_over_a2, const RNG &rng) {
+  const index_t multihit =
+      gradient_flow_wilson_loop_multihit(gaugeParams, t_over_a2);
   if (flowParams.measure_wilson_loop_temporal) {
     std::vector<Kokkos::Array<real_t, 3>> measurements;
     WilsonLoop_temporal<rank, Nc>(V, gaugeParams.W_temp_L_T_pairs,
-                                  measurements,
-                                  gaugeParams.wilson_loop_multihit,
-                                  updateParams, rng);
+                                  measurements, multihit, updateParams, rng);
     append_gradient_flow_temporal_wloops(flowParams, conf_id, t_over_a2,
                                          measurements);
   }
@@ -647,7 +658,7 @@ void measure_flowed_wilson_loops(
     for (const auto &pair_mu_nu : gaugeParams.W_mu_nu_pairs) {
       WilsonLoop_mu_nu<rank, Nc>(
           V, pair_mu_nu[0], pair_mu_nu[1], gaugeParams.W_Lmu_Lnu_pairs,
-          measurements, gaugeParams.wilson_loop_multihit, updateParams, rng);
+          measurements, multihit, updateParams, rng);
     }
     append_gradient_flow_planar_wloops(flowParams, conf_id, t_over_a2,
                                        measurements);
