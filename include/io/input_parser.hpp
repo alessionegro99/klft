@@ -421,14 +421,14 @@ inline bool parseInputFile(const std::string &filename,
   return true;
 }
 
-inline void normalizeGradientFlowTimes(std::vector<real_t> &times_tau) {
-  times_tau.push_back(0.0);
-  std::sort(times_tau.begin(), times_tau.end());
-  times_tau.erase(std::unique(times_tau.begin(), times_tau.end(),
+inline void normalizeGradientFlowTValues(std::vector<real_t> &t_values) {
+  t_values.push_back(0.0);
+  std::sort(t_values.begin(), t_values.end());
+  t_values.erase(std::unique(t_values.begin(), t_values.end(),
                               [](const real_t a, const real_t b) {
                                 return Kokkos::abs(a - b) < 1.0e-14;
                               }),
-                  times_tau.end());
+                  t_values.end());
 }
 
 inline bool parseInputFile(const std::string &filename,
@@ -444,11 +444,13 @@ inline bool parseInputFile(const std::string &filename,
   }
 
   const auto &fp = config["GradientFlowParams"];
-  const std::string time_definition =
-      fp["time_definition"].as<std::string>("fixed_tau");
-  if (time_definition != "fixed_tau") {
-    printf("Error: GradientFlowParams.time_definition must be fixed_tau\n");
-    return false;
+  if (fp["time_definition"]) {
+    const std::string time_definition = fp["time_definition"].as<std::string>();
+    if (time_definition != "fixed_t") {
+      printf("Error: GradientFlowParams.time_definition must be fixed_t; "
+             "flow times are t/a^2\n");
+      return false;
+    }
   }
   const std::string integrator = fp["integrator"].as<std::string>("rk3");
   if (integrator != "rk3") {
@@ -457,10 +459,11 @@ inline bool parseInputFile(const std::string &filename,
   }
 
   gradientFlowParams.enabled = fp["enabled"].as<bool>(false);
-  gradientFlowParams.epsilon = fp["epsilon"].as<real_t>(0.01);
-  gradientFlowParams.measure_plaquette =
-      fp["measure_plaquette"].as<bool>(true);
-  gradientFlowParams.measure_action = fp["measure_action"].as<bool>(true);
+  if (fp["epsilon"]) {
+    printf("Error: GradientFlowParams.epsilon was renamed to dt\n");
+    return false;
+  }
+  gradientFlowParams.dt = fp["dt"].as<real_t>(0.01);
   gradientFlowParams.measure_energy_clover =
       fp["measure_energy_clover"].as<bool>(true);
   gradientFlowParams.measure_wilson_loop_temporal =
@@ -469,11 +472,6 @@ inline bool parseInputFile(const std::string &filename,
       fp["measure_wilson_loop_mu_nu"].as<bool>(false);
   gradientFlowParams.extract_t0 = fp["extract_t0"].as<bool>(false);
   gradientFlowParams.t0_target = fp["t0_target"].as<real_t>(0.3);
-  gradientFlowParams.check_action_monotonicity =
-      fp["check_action_monotonicity"].as<bool>(true);
-  gradientFlowParams.check_group_properties =
-      fp["check_group_properties"].as<bool>(true);
-  gradientFlowParams.reunitarize = fp["reunitarize"].as<bool>(false);
   gradientFlowParams.obs_filename =
       fp["obs_filename"].as<std::string>("gradient_flow_obs.dat");
   gradientFlowParams.W_temp_filename =
@@ -483,25 +481,33 @@ inline bool parseInputFile(const std::string &filename,
   gradientFlowParams.t0_filename =
       fp["t0_filename"].as<std::string>("gradient_flow_t0.dat");
 
-  gradientFlowParams.times_tau.clear();
   if (fp["times_tau"]) {
-    if (!fp["times_tau"].IsSequence()) {
-      printf("Error: GradientFlowParams.times_tau must be a YAML sequence\n");
+    printf("Error: GradientFlowParams.times_tau was renamed to t_values\n");
+    return false;
+  }
+  if (fp["tau_values"]) {
+    printf("Error: GradientFlowParams.tau_values was renamed to t_values\n");
+    return false;
+  }
+  gradientFlowParams.t_values.clear();
+  if (fp["t_values"]) {
+    if (!fp["t_values"].IsSequence()) {
+      printf("Error: GradientFlowParams.t_values must be a YAML sequence\n");
       return false;
     }
-    for (const auto &entry : fp["times_tau"]) {
-      const real_t tau = entry.as<real_t>();
-      if (tau < 0.0) {
-        printf("Error: GradientFlowParams.times_tau entries must be >= 0\n");
+    for (const auto &entry : fp["t_values"]) {
+      const real_t t = entry.as<real_t>();
+      if (t < 0.0) {
+        printf("Error: GradientFlowParams.t_values entries must be >= 0\n");
         return false;
       }
-      gradientFlowParams.times_tau.push_back(tau);
+      gradientFlowParams.t_values.push_back(t);
     }
   }
-  normalizeGradientFlowTimes(gradientFlowParams.times_tau);
+  normalizeGradientFlowTValues(gradientFlowParams.t_values);
 
-  if (gradientFlowParams.epsilon <= 0.0) {
-    printf("Error: GradientFlowParams.epsilon must be > 0\n");
+  if (gradientFlowParams.dt <= 0.0) {
+    printf("Error: GradientFlowParams.dt must be > 0\n");
     return false;
   }
   if (gradientFlowParams.t0_target <= 0.0) {
@@ -524,9 +530,7 @@ validateGradientFlowParams(const GradientFlowParams &gradientFlowParams,
            "GaugeObservableParams.measurement_interval > 0\n");
     return false;
   }
-  if ((gradientFlowParams.measure_plaquette ||
-       gradientFlowParams.measure_action ||
-       gradientFlowParams.measure_energy_clover) &&
+  if (gradientFlowParams.measure_energy_clover &&
       gradientFlowParams.obs_filename.empty()) {
     printf("Error: gradient-flow observable output requires "
            "obs_filename\n");

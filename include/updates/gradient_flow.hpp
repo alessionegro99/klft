@@ -18,8 +18,6 @@
 
 namespace klft {
 
-inline constexpr real_t gradient_flow_action_tolerance = 1.0e-10;
-
 template <size_t Nc> constexpr const char *gradient_flow_group_name() {
   if constexpr (Nc == 1) {
     return "U(1)";
@@ -171,19 +169,19 @@ template <size_t rank, size_t Nc> struct ComputeFlowForce {
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
   GaugeFieldType V;
   GaugeFieldType Z;
-  const real_t epsilon;
+  const real_t dt;
 
   ComputeFlowForce(const GaugeFieldType &V, const GaugeFieldType &Z,
-                   const real_t epsilon)
-      : V(V), Z(Z), epsilon(epsilon) {}
+                   const real_t dt)
+      : V(V), Z(Z), dt(dt) {}
 
   template <typename... Indices>
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
-    const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
+      const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
       const SUN<Nc> m = V(site, mu) * V.staple(site, mu);
-      Z(site, mu) = flow_force_from_link_staple_product<Nc>(m) * epsilon;
+      Z(site, mu) = flow_force_from_link_staple_product<Nc>(m) * dt;
     }
   }
 };
@@ -191,9 +189,9 @@ template <size_t rank, size_t Nc> struct ComputeFlowForce {
 template <size_t rank, size_t Nc>
 void compute_flow_force(
     const typename DeviceGaugeFieldType<rank, Nc>::type &V,
-    typename DeviceGaugeFieldType<rank, Nc>::type &Z, const real_t epsilon) {
+    typename DeviceGaugeFieldType<rank, Nc>::type &Z, const real_t dt) {
   Kokkos::parallel_for(Policy<rank>(IndexArray<rank>{}, V.dimensions),
-                       ComputeFlowForce<rank, Nc>(V, Z, epsilon));
+                       ComputeFlowForce<rank, Nc>(V, Z, dt));
   Kokkos::fence();
 }
 
@@ -275,33 +273,31 @@ void apply_flow_stage(
 template <size_t rank, size_t Nc>
 void flow_step_rk3(typename DeviceGaugeFieldType<rank, Nc>::type &V,
                    GradientFlowWorkspace<rank, Nc> &workspace,
-                   const real_t epsilon, const bool reunitarize = false) {
-  compute_flow_force<rank, Nc>(V, workspace.Z0, epsilon);
+                   const real_t dt) {
+  compute_flow_force<rank, Nc>(V, workspace.Z0, dt);
   apply_flow_stage<rank, Nc>(V, workspace.W1, workspace.Z0, workspace.Z1,
                              workspace.Z2, 0.25, 0.0, 0.0);
 
-  compute_flow_force<rank, Nc>(workspace.W1, workspace.Z1, epsilon);
+  compute_flow_force<rank, Nc>(workspace.W1, workspace.Z1, dt);
   apply_flow_stage<rank, Nc>(workspace.W1, workspace.W2, workspace.Z0,
                              workspace.Z1, workspace.Z2, -17.0 / 36.0,
                              8.0 / 9.0, 0.0);
 
-  compute_flow_force<rank, Nc>(workspace.W2, workspace.Z2, epsilon);
+  compute_flow_force<rank, Nc>(workspace.W2, workspace.Z2, dt);
   apply_flow_stage<rank, Nc>(workspace.W2, V, workspace.Z0, workspace.Z1,
                              workspace.Z2, 17.0 / 36.0, -8.0 / 9.0, 0.75);
 
-  if (reunitarize) {
-    reunitarize_flow_field<rank, Nc>(V);
-  }
+  reunitarize_flow_field<rank, Nc>(V);
 }
 
 template <size_t rank, size_t Nc>
 void flow_to_target_time(typename DeviceGaugeFieldType<rank, Nc>::type &V,
                          GradientFlowWorkspace<rank, Nc> &workspace,
                          real_t &current_t, const real_t target_t,
-                         const real_t epsilon, const bool reunitarize) {
+                         const real_t dt) {
   while (current_t + 1.0e-14 < target_t) {
-    const real_t step = std::min(epsilon, target_t - current_t);
-    flow_step_rk3<rank, Nc>(V, workspace, step, reunitarize);
+    const real_t step = std::min(dt, target_t - current_t);
+    flow_step_rk3<rank, Nc>(V, workspace, step);
     current_t += step;
   }
   current_t = target_t;
@@ -496,10 +492,6 @@ GradientFlowGroupErrors measure_group_errors(
   }
 }
 
-inline real_t gradient_flow_action_density(const real_t plaquette) {
-  return 1.0 - plaquette;
-}
-
 inline real_t gradient_flow_t2e(const real_t t_over_a2, const real_t ehat) {
   return t_over_a2 * t_over_a2 * ehat;
 }
@@ -509,34 +501,19 @@ inline real_t gradient_flow_nan() {
 }
 
 inline void write_gradient_flow_obs_header(std::ofstream &file) {
-  file << "# tau = 8 t / a^2\n"
-       << "# fixed tau => smoothing radius sqrt(8t) = a sqrt(tau)\n"
-       << "# Ehat_plaquette = 1 - plaquette = a^4 E_plaquette\n"
+  file << "# t_over_a2 = t / a^2\n"
+       << "# smoothing radius sqrt(8t) / a = sqrt(8 * t_over_a2)\n"
        << "# Ehat_clover = a^4 E_clover\n"
        << "# t2E_clover = (t/a^2)^2 Ehat_clover\n"
        << "# clover E(t) measured on flowed links V_mu(x,t)\n"
-       << "# conf_id group beta tau t_over_a2 plaquette action_density_wilson "
-          "Ehat_plaquette t2E_plaquette Ehat_clover t2E_clover "
-          "delta_action_wilson_from_tau0 "
-          "delta_action_wilson_from_previous_tau "
-          "group_error_1 group_error_2\n";
+       << "# conf_id t_over_a2 Ehat_clover t2E_clover\n";
 }
 
 struct GradientFlowObsRow {
   size_t conf_id;
-  const char *group_name;
-  real_t beta;
-  real_t tau;
   real_t t_over_a2;
-  real_t plaquette;
-  real_t action_density_wilson;
-  real_t ehat_plaquette;
-  real_t t2e_plaquette;
   real_t ehat_clover;
   real_t t2e_clover;
-  real_t delta_action_wilson_from_tau0;
-  real_t delta_action_wilson_from_previous_tau;
-  GradientFlowGroupErrors errors;
 };
 
 inline void append_gradient_flow_obs_row(const GradientFlowParams &params,
@@ -550,29 +527,23 @@ inline void append_gradient_flow_obs_row(const GradientFlowParams &params,
   if (fileNeedsHeader(params.obs_filename)) {
     write_gradient_flow_obs_header(file);
   }
-  file << std::setprecision(12) << row.conf_id << " " << row.group_name << " "
-       << row.beta << " " << row.tau << " " << row.t_over_a2 << " "
-       << row.plaquette << " " << row.action_density_wilson << " "
-       << row.ehat_plaquette << " " << row.t2e_plaquette << " "
-       << row.ehat_clover << " " << row.t2e_clover << " "
-       << row.delta_action_wilson_from_tau0 << " "
-       << row.delta_action_wilson_from_previous_tau << " "
-       << row.errors.group_error_1 << " " << row.errors.group_error_2 << "\n";
+  file << std::setprecision(12) << row.conf_id << " " << row.t_over_a2 << " "
+       << row.ehat_clover << " " << row.t2e_clover << "\n";
   file.flush();
 }
 
 inline void write_gradient_flow_t0_header(std::ofstream &file) {
   file << "# t0 solves t^2 E_clover(t) = t0_target\n"
-       << "# tau = 8 t / a^2\n"
-       << "# conf_id group beta t0_target t0_over_a2 tau0 lower_tau upper_tau "
+       << "# t0_over_a2 = t0 / a^2\n"
+       << "# conf_id t0_target t0_over_a2 lower_t_over_a2 upper_t_over_a2 "
           "lower_t2E_clover upper_t2E_clover\n";
 }
 
 inline void append_gradient_flow_t0_row(
     const GradientFlowParams &params, const size_t conf_id,
-    const char *group_name, const real_t beta, const real_t lower_tau,
-    const real_t upper_tau, const real_t lower_t2e_clover,
-    const real_t upper_t2e_clover, const real_t t0_over_a2) {
+    const real_t lower_t_over_a2, const real_t upper_t_over_a2,
+    const real_t lower_t2e_clover, const real_t upper_t2e_clover,
+    const real_t t0_over_a2) {
   std::ofstream file(params.t0_filename, std::ios::app);
   if (!file.is_open()) {
     printf("Error: could not open gradient-flow t0 file '%s'\n",
@@ -582,10 +553,10 @@ inline void append_gradient_flow_t0_row(
   if (fileNeedsHeader(params.t0_filename)) {
     write_gradient_flow_t0_header(file);
   }
-  file << std::setprecision(12) << conf_id << " " << group_name << " " << beta
-       << " " << params.t0_target << " " << t0_over_a2 << " "
-       << 8.0 * t0_over_a2 << " " << lower_tau << " " << upper_tau << " "
-       << lower_t2e_clover << " " << upper_t2e_clover << "\n";
+  file << std::setprecision(12) << conf_id << " " << params.t0_target << " "
+       << t0_over_a2 << " " << lower_t_over_a2 << " "
+       << upper_t_over_a2 << " " << lower_t2e_clover << " " << upper_t2e_clover
+       << "\n";
   file.flush();
 }
 
@@ -613,7 +584,7 @@ inline bool gradient_flow_interpolate_t0(
 
 inline void append_gradient_flow_temporal_wloops(
     const GradientFlowParams &params, const size_t conf_id,
-    const char *group_name, const real_t beta, const real_t tau,
+    const real_t t_over_a2,
     const std::vector<Kokkos::Array<real_t, 3>> &measurements) {
   std::ofstream file(params.W_temp_filename, std::ios::app);
   if (!file.is_open()) {
@@ -623,20 +594,19 @@ inline void append_gradient_flow_temporal_wloops(
     return;
   }
   if (fileNeedsHeader(params.W_temp_filename)) {
-    file << "# conf_id group beta tau L T W_temp\n";
+    file << "# conf_id t_over_a2 L T W_temp\n";
   }
   file << std::setprecision(12);
   for (const auto &measurement : measurements) {
-    file << conf_id << " " << group_name << " " << beta << " " << tau << " "
-         << measurement[0] << " " << measurement[1] << " " << measurement[2]
-         << "\n";
+    file << conf_id << " " << t_over_a2 << " " << measurement[0] << " "
+         << measurement[1] << " " << measurement[2] << "\n";
   }
   file.flush();
 }
 
 inline void append_gradient_flow_planar_wloops(
     const GradientFlowParams &params, const size_t conf_id,
-    const char *group_name, const real_t beta, const real_t tau,
+    const real_t t_over_a2,
     const std::vector<Kokkos::Array<real_t, 5>> &measurements) {
   std::ofstream file(params.W_mu_nu_filename, std::ios::app);
   if (!file.is_open()) {
@@ -645,13 +615,13 @@ inline void append_gradient_flow_planar_wloops(
     return;
   }
   if (fileNeedsHeader(params.W_mu_nu_filename)) {
-    file << "# conf_id group beta tau mu nu Lmu Lnu W_mu_nu\n";
+    file << "# conf_id t_over_a2 mu nu Lmu Lnu W_mu_nu\n";
   }
   file << std::setprecision(12);
   for (const auto &measurement : measurements) {
-    file << conf_id << " " << group_name << " " << beta << " " << tau << " "
-         << measurement[0] << " " << measurement[1] << " " << measurement[2]
-         << " " << measurement[3] << " " << measurement[4] << "\n";
+    file << conf_id << " " << t_over_a2 << " " << measurement[0] << " "
+         << measurement[1] << " " << measurement[2] << " " << measurement[3]
+         << " " << measurement[4] << "\n";
   }
   file.flush();
 }
@@ -661,16 +631,15 @@ void measure_flowed_wilson_loops(
     const typename DeviceGaugeFieldType<rank, Nc>::type &V,
     const UpdateParams &updateParams, const GaugeObservableParams &gaugeParams,
     const GradientFlowParams &flowParams, const size_t conf_id,
-    const real_t tau, const RNG &rng) {
+    const real_t t_over_a2, const RNG &rng) {
   if (flowParams.measure_wilson_loop_temporal) {
     std::vector<Kokkos::Array<real_t, 3>> measurements;
     WilsonLoop_temporal<rank, Nc>(V, gaugeParams.W_temp_L_T_pairs,
                                   measurements,
                                   gaugeParams.wilson_loop_multihit,
                                   updateParams, rng);
-    append_gradient_flow_temporal_wloops(
-        flowParams, conf_id, gradient_flow_group_name<Nc>(), updateParams.beta,
-        tau, measurements);
+    append_gradient_flow_temporal_wloops(flowParams, conf_id, t_over_a2,
+                                         measurements);
   }
 
   if (flowParams.measure_wilson_loop_mu_nu) {
@@ -680,9 +649,8 @@ void measure_flowed_wilson_loops(
           V, pair_mu_nu[0], pair_mu_nu[1], gaugeParams.W_Lmu_Lnu_pairs,
           measurements, gaugeParams.wilson_loop_multihit, updateParams, rng);
     }
-    append_gradient_flow_planar_wloops(
-        flowParams, conf_id, gradient_flow_group_name<Nc>(), updateParams.beta,
-        tau, measurements);
+    append_gradient_flow_planar_wloops(flowParams, conf_id, t_over_a2,
+                                       measurements);
   }
 }
 
@@ -699,114 +667,89 @@ void runGradientFlowMeasurements(
   auto V = copy_gauge_field<rank, Nc>(U);
   GradientFlowWorkspace<rank, Nc> workspace(V.dimensions);
 
-  const bool write_obs = flowParams.measure_plaquette ||
-                         flowParams.measure_action ||
-                         flowParams.measure_energy_clover;
-  const bool need_clover =
-      flowParams.measure_energy_clover || flowParams.extract_t0;
+  const bool write_obs = flowParams.measure_energy_clover;
+  constexpr real_t time_tol = 1.0e-14;
   real_t current_t = 0.0;
-  real_t action_tau0 = 0.0;
-  real_t previous_action = 0.0;
-  bool have_previous = false;
   real_t previous_t0_t = 0.0;
-  real_t previous_t0_tau = 0.0;
   real_t previous_t2e_clover = 0.0;
-  bool have_previous_t0 = false;
   bool found_t0 = false;
+  size_t output_index = 0;
+  const real_t max_t = flowParams.t_values.back();
 
-  for (const real_t tau : flowParams.times_tau) {
-    const real_t target_t = tau / 8.0;
-    flow_to_target_time<rank, Nc>(V, workspace, current_t, target_t,
-                                  flowParams.epsilon,
-                                  flowParams.reunitarize);
-
-    const real_t plaquette = GaugePlaquette<rank, Nc>(V);
-    const real_t action_density = gradient_flow_action_density(plaquette);
-    const real_t t2e_plaquette = gradient_flow_t2e(target_t, action_density);
-    const real_t ehat_clover =
-        need_clover ? measure_clover_energy_density<rank, Nc>(V)
-                    : gradient_flow_nan();
-    const real_t t2e_clover =
-        need_clover ? gradient_flow_t2e(target_t, ehat_clover)
-                    : gradient_flow_nan();
-    if (!have_previous) {
-      action_tau0 = action_density;
-    } else if (flowParams.check_action_monotonicity &&
-               action_density > previous_action +
-                                    gradient_flow_action_tolerance) {
-      printf("Warning: gradient-flow action increased at step %zu, tau %.12g: "
-             "%.12g -> %.12g\n",
-             step, tau, previous_action, action_density);
-    }
-
-    GradientFlowGroupErrors errors{0.0, 0.0};
-    if (flowParams.check_group_properties) {
-      errors = measure_group_errors<rank, Nc>(V);
-      const real_t tol = gradient_flow_group_tolerance<Nc>();
-      if (errors.group_error_1 > tol || errors.group_error_2 > tol) {
-        printf("Warning: gradient-flow group error at step %zu, tau %.12g: "
-               "%.12g %.12g\n",
-               step, tau, errors.group_error_1, errors.group_error_2);
-      }
-    }
-
-    if (flowParams.extract_t0 && !found_t0) {
-      if (have_previous_t0) {
-        real_t t0_over_a2 = 0.0;
-        if (gradient_flow_interpolate_t0(
-                previous_t0_t, target_t, previous_t2e_clover, t2e_clover,
-                flowParams.t0_target, t0_over_a2)) {
-          append_gradient_flow_t0_row(
-              flowParams, step, gradient_flow_group_name<Nc>(),
-              updateParams.beta, previous_t0_tau, tau, previous_t2e_clover,
-              t2e_clover, t0_over_a2);
-          found_t0 = true;
-        }
-      }
-      previous_t0_t = target_t;
-      previous_t0_tau = tau;
-      previous_t2e_clover = t2e_clover;
-      have_previous_t0 = true;
-    }
-
+  auto emit_output = [&](const real_t t_over_a2, real_t ehat_clover,
+                         real_t t2e_clover, bool have_clover) {
     if (write_obs) {
-      const real_t nan = gradient_flow_nan();
-      const real_t output_plaquette =
-          flowParams.measure_plaquette ? plaquette : nan;
-      const real_t output_action =
-          flowParams.measure_action ? action_density : nan;
-      const real_t output_t2e_plaquette =
-          flowParams.measure_action ? t2e_plaquette : nan;
-      const real_t output_ehat_clover =
-          flowParams.measure_energy_clover ? ehat_clover : nan;
-      const real_t output_t2e_clover =
-          flowParams.measure_energy_clover ? t2e_clover : nan;
-      const real_t output_delta_tau0 =
-          flowParams.measure_action ? action_density - action_tau0 : nan;
-      const real_t output_delta_previous =
-          flowParams.measure_action
-              ? have_previous ? action_density - previous_action : 0.0
-              : nan;
+      if (!have_clover) {
+        ehat_clover = measure_clover_energy_density<rank, Nc>(V);
+        t2e_clover = gradient_flow_t2e(t_over_a2, ehat_clover);
+      }
       append_gradient_flow_obs_row(
           flowParams,
-          GradientFlowObsRow{
-              step, gradient_flow_group_name<Nc>(), updateParams.beta, tau,
-              target_t, output_plaquette, output_action, output_action,
-              output_t2e_plaquette, output_ehat_clover, output_t2e_clover,
-              output_delta_tau0, output_delta_previous, errors});
+          GradientFlowObsRow{step, t_over_a2, ehat_clover, t2e_clover});
     }
 
     measure_flowed_wilson_loops<rank, Nc>(V, updateParams, gaugeParams,
-                                          flowParams, step, tau, rng);
+                                          flowParams, step, t_over_a2, rng);
+  };
 
-    previous_action = action_density;
-    have_previous = true;
+  while (output_index < flowParams.t_values.size() &&
+         flowParams.t_values[output_index] <= time_tol) {
+    emit_output(flowParams.t_values[output_index], gradient_flow_nan(),
+                gradient_flow_nan(), false);
+    ++output_index;
+  }
+
+  while (current_t + time_tol < max_t) {
+    const real_t next_output_t =
+        output_index < flowParams.t_values.size()
+            ? flowParams.t_values[output_index]
+            : max_t;
+    const real_t next_stop_t = std::min(max_t, next_output_t);
+    const real_t step_t = std::min(flowParams.dt, next_stop_t - current_t);
+
+    flow_step_rk3<rank, Nc>(V, workspace, step_t);
+    current_t += step_t;
+    if (Kokkos::abs(current_t - next_stop_t) < time_tol) {
+      current_t = next_stop_t;
+    }
+
+    real_t ehat_clover = gradient_flow_nan();
+    real_t t2e_clover = gradient_flow_nan();
+    bool have_clover = false;
+
+    if (flowParams.extract_t0 && !found_t0) {
+      ehat_clover = measure_clover_energy_density<rank, Nc>(V);
+      t2e_clover = gradient_flow_t2e(current_t, ehat_clover);
+      have_clover = true;
+
+      real_t t0_over_a2 = 0.0;
+      if (gradient_flow_interpolate_t0(
+              previous_t0_t, current_t, previous_t2e_clover, t2e_clover,
+              flowParams.t0_target, t0_over_a2)) {
+        append_gradient_flow_t0_row(flowParams, step, previous_t0_t,
+                                    current_t, previous_t2e_clover,
+                                    t2e_clover, t0_over_a2);
+        found_t0 = true;
+      }
+
+      previous_t0_t = current_t;
+      previous_t2e_clover = t2e_clover;
+    }
+
+    while (output_index < flowParams.t_values.size() &&
+           flowParams.t_values[output_index] <= current_t + time_tol) {
+      const real_t target_t = flowParams.t_values[output_index];
+      const bool output_has_clover =
+          have_clover && Kokkos::abs(target_t - current_t) < time_tol;
+      emit_output(target_t, ehat_clover, t2e_clover, output_has_clover);
+      ++output_index;
+    }
   }
 
   if (flowParams.extract_t0 && !found_t0) {
     printf("Warning: gradient-flow t0 target %.12g not reached at step %zu "
-           "up to tau %.12g\n",
-           flowParams.t0_target, step, flowParams.times_tau.back());
+           "up to t/a^2 %.12g\n",
+           flowParams.t0_target, step, flowParams.t_values.back());
   }
 }
 
