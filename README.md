@@ -95,46 +95,67 @@ updates for the averaged links.
 
 ```yaml
 # input.yaml
-MetropolisParams:    # parameters for the Metropolis algorithm
-  L0: 8       # lattice extent in 0 direction
-  L1: 8       # lattice extent in 1 direction
-  L2: 8       # lattice extent in 2 direction
-  L3: 8       # lattice extent in 3 direction
-  nHits: 10       # number of hits per sweep
-  nSweep: 1000      # number of sweeps
-  seed: 32091     # random seed
-  beta: 2.0       # inverse coupling constant
-  delta: 0.1      # step size for the Metropolis algorithm
+MetropolisParams:
+  L0: 8
+  L1: 8
+  L2: 8
+  L3: 8
+  nHits: 10
+  nSweep: 1000
+  seed: 32091
+  beta: 2.0
+  delta: 0.1
+  epsilon1: 0.0
+  epsilon2: 0.0
 
 GaugeObservableParams:
-  measurement_interval: 10               # interval for measurements
-  measure_plaquette: true                # measure the plaquette
-  measure_wilson_loop_temporal: true    # measure the temporal Wilson loop
-  measure_wilson_loop_mu_nu: true       # measure the spatial Wilson loop
-  measure_polyakov_loop: true           # measure the Polyakov loop
-  measure_polyakov_correlator: true     # measure the Polyakov-loop correlator
-  wilson_loop_multihit: 1               # Metropolis Wilson-loop multihit; 1 disables averaged-link sampling
-  polyakov_loop_multihit: 1             # Metropolis Polyakov-loop multihit; 1 disables averaged-link sampling
-  polyakov_correlator_max_r: 4          # measure 0 <= R <= Rmax; must not exceed half the smallest spatial extent
-  nested_child_offset: [0, 0, 0, 0]     # required if measure_nested_wilson_action is true
-  W_temp_L_T_pairs:      # pairs of (L, T) values for the temporal Wilson loop
+  measurement_interval: 10
+  measure_plaquette: true
+  measure_wilson_loop_temporal: true
+  measure_wilson_loop_mu_nu: true
+  measure_polyakov_loop: true
+  measure_polyakov_correlator: true
+  measure_retrace_U: false
+  wilson_loop_multihit: 1
+  polyakov_loop_multihit: 1
+  polyakov_correlator_max_r: 4
+  measure_nested_wilson_action: false
+  nested_child_offset: [0, 0, 0, 0]
+  W_temp_L_T_pairs:
     - [2, 2]
-    - [3, 3]             # keep a non-decreasing order (as much as possible)
+    - [3, 3]
     - [4, 4]
-  W_mu_nu_pairs:      # pairs of (mu, nu) values for the planar Wilson loop
+  W_mu_nu_pairs:
     - [0, 1]
     - [0, 2]
     - [0, 3]
-  W_Lmu_Lnu_pairs:      # pairs of (Lmu, Lnu) values for the lengths of the 
-    - [2, 2]            # planar Wilson loop in the mu and nu directions
-    - [3, 3]            # again, keep a non-decreasing order (as much as possible)
+  W_Lmu_Lnu_pairs:
+    - [2, 2]
+    - [3, 3]
     - [4, 3]
-  plaquette_filename: "plaquette.out"  # filename to output the plaquette
-  W_temp_filename: "w_temp.out"        # filename to output the temporal Wilson loop
-  W_mu_nu_filename: "w_mu_nu.out"      # filename to output the planar Wilson loop
-  polyakov_loop_filename: "polyakov_loop.out"  # filename to output the Polyakov loop
-  polyakov_correlator_filename: "polyakov_correlator.out"  # filename to output the Polyakov-loop correlator
-  write_to_file: true                  # write the measurements to file
+  plaquette_filename: "plaquette.out"
+  W_temp_filename: "w_temp.out"
+  W_mu_nu_filename: "w_mu_nu.out"
+  polyakov_loop_filename: "polyakov_loop.out"
+  polyakov_correlator_filename: "polyakov_correlator.out"
+  RetraceU_filename: "retrace_u.out"
+  nested_wilson_action_filename: "nested_wilson_action.out"
+  write_to_file: true
+
+GradientFlowParams:
+  enabled: false
+  integrator: "rk3"
+  dt: 0.01
+  t_values: [0.0, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0]
+  measure_energy_clover: true
+  measure_wilson_loop_temporal: false
+  measure_wilson_loop_mu_nu: false
+  extract_t0: false
+  t0_target: 0.3
+  obs_filename: "gradient_flow_obs.dat"
+  W_temp_filename: "gradient_flow_wtemp.dat"
+  W_mu_nu_filename: "gradient_flow_w_mu_nu.dat"
+  t0_filename: "gradient_flow_t0.dat"
 ```
 
 ## Heatbath
@@ -210,4 +231,19 @@ GaugeObservableParams:
   RetraceU_filename: "retrace_u.out"
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true
+
+GradientFlowParams:
+  enabled: false
+  integrator: "rk3"
+  dt: 0.01
+  t_values: [0.0, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0]
+  measure_energy_clover: true
+  measure_wilson_loop_temporal: false
+  measure_wilson_loop_mu_nu: false
+  extract_t0: false
+  t0_target: 0.3
+  obs_filename: "gradient_flow_obs.dat"
+  W_temp_filename: "gradient_flow_wtemp.dat"
+  W_mu_nu_filename: "gradient_flow_w_mu_nu.dat"
+  t0_filename: "gradient_flow_t0.dat"
 ```
