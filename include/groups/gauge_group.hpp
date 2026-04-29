@@ -20,7 +20,10 @@ template <size_t Nc> struct SUNMatrix {
   Kokkos::Array<complex_t, Nc * Nc> comp;
 };
 
-template <size_t Nc> struct GaugeGroupSelector;
+template <size_t Nc> struct GaugeGroupSelector {
+  static_assert(Nc >= 1 && Nc <= 3,
+                "KLFT supports only Nc = 1, 2, or 3.");
+};
 
 template <> struct GaugeGroupSelector<1> {
   using type = U1;

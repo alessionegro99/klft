@@ -292,6 +292,109 @@ struct LocalPolyakovLoopPairHeatbath {
 };
 
 template <size_t rank, size_t Nc, class RNG>
+struct PolyakovLoopReduceMetropolis {
+  constexpr static const size_t time_dir = rank - 1;
+  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+
+  const GaugeFieldType g_in;
+  const index_t multihit;
+  const real_t beta;
+  const real_t delta;
+  const real_t epsilon1;
+  const real_t epsilon2;
+  const RNG rng;
+  const IndexArray<rank> dimensions;
+
+  PolyakovLoopReduceMetropolis(const GaugeFieldType &g_in,
+                               const index_t multihit, const real_t beta,
+                               const real_t delta, const real_t epsilon1,
+                               const real_t epsilon2, const RNG &rng,
+                               const IndexArray<rank> &dimensions)
+      : g_in(g_in), multihit(multihit), beta(beta), delta(delta),
+        epsilon1(epsilon1), epsilon2(epsilon2), rng(rng),
+        dimensions(dimensions) {}
+
+  template <class Generator>
+  KOKKOS_FORCEINLINE_FUNCTION complex_t
+  polyakov_at_site(const Kokkos::Array<index_t, rank> &origin,
+                   Generator &generator) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
+    auto site = origin;
+    SUN<Nc> loop = identitySUN<Nc>();
+
+    for (index_t t = 0; t < dimensions[time_dir]; ++t) {
+      loop *= (multihit > 1)
+                  ? multihit_link_metropolis<Nc>(
+                        g_in(site, time_dir), g_in.staple(site, time_dir),
+                        multihit, beta, delta, epsilon1, epsilon2, generator)
+                  : g_in(site, time_dir);
+      site = shift_index_plus<rank>(site, time_dir, 1, dimensions);
+    }
+
+    return trace(loop) * (1.0 / static_cast<real_t>(Nc));
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin,
+                                              complex_t &lsum) const {
+    auto generator = rng.get_state();
+    lsum += polyakov_at_site(linear_to_polyakov_origin<rank>(lin, dimensions),
+                             generator);
+    rng.free_state(generator);
+  }
+};
+
+template <size_t rank, size_t Nc, class RNG>
+struct PolyakovLoopReduceHeatbath {
+  constexpr static const size_t time_dir = rank - 1;
+  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+
+  const GaugeFieldType g_in;
+  const index_t multihit;
+  const index_t nOverrelax;
+  const real_t beta;
+  const real_t epsilon1;
+  const RNG rng;
+  const IndexArray<rank> dimensions;
+
+  PolyakovLoopReduceHeatbath(const GaugeFieldType &g_in,
+                             const index_t multihit, const index_t nOverrelax,
+                             const real_t beta, const real_t epsilon1,
+                             const RNG &rng,
+                             const IndexArray<rank> &dimensions)
+      : g_in(g_in), multihit(multihit), nOverrelax(nOverrelax), beta(beta),
+        epsilon1(epsilon1), rng(rng), dimensions(dimensions) {}
+
+  template <class Generator>
+  KOKKOS_FORCEINLINE_FUNCTION complex_t
+  polyakov_at_site(const Kokkos::Array<index_t, rank> &origin,
+                   Generator &generator) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
+    auto site = origin;
+    SUN<Nc> loop = identitySUN<Nc>();
+
+    for (index_t t = 0; t < dimensions[time_dir]; ++t) {
+      loop *=
+          (multihit > 1)
+              ? multihit_link_heatbath<Nc>(
+                    g_in(site, time_dir), g_in.staple(site, time_dir),
+                    multihit, nOverrelax, beta, epsilon1, generator)
+              : g_in(site, time_dir);
+      site = shift_index_plus<rank>(site, time_dir, 1, dimensions);
+    }
+
+    return trace(loop) * (1.0 / static_cast<real_t>(Nc));
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin,
+                                              complex_t &lsum) const {
+    auto generator = rng.get_state();
+    lsum += polyakov_at_site(linear_to_polyakov_origin<rank>(lin, dimensions),
+                             generator);
+    rng.free_state(generator);
+  }
+};
+
+template <size_t rank, size_t Nc, class RNG>
 void LocalPolyakovLoop(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
     Kokkos::View<complex_t *, Kokkos::MemoryTraits<Kokkos::Restrict>>
@@ -392,43 +495,58 @@ void LocalPolyakovLoop(
   Kokkos::fence();
 }
 
+template <size_t rank, size_t Nc, class RNG>
+complex_t PolyakovLoopSum(
+    const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
+    const index_t multihit, const MetropolisParams &updateParams,
+    const RNG &rng) {
+  using Exec = Kokkos::DefaultExecutionSpace;
+  const auto dimensions = g_in.dimensions;
+  const size_t nSpatial = spatial_volume<rank>(dimensions);
+  complex_t total(0.0, 0.0);
+
+  Kokkos::parallel_reduce(
+      "PolyakovLoopMetropolis", Kokkos::RangePolicy<Exec>(0, nSpatial),
+      PolyakovLoopReduceMetropolis<rank, Nc, RNG>(
+          g_in, multihit, updateParams.beta, updateParams.delta,
+          updateParams.epsilon1, updateParams.epsilon2, rng, dimensions),
+      Kokkos::Sum<complex_t>(total));
+  return total;
+}
+
+template <size_t rank, size_t Nc, class RNG>
+complex_t PolyakovLoopSum(
+    const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
+    const index_t multihit, const HeatbathParams &updateParams,
+    const RNG &rng) {
+  using Exec = Kokkos::DefaultExecutionSpace;
+  const auto dimensions = g_in.dimensions;
+  const size_t nSpatial = spatial_volume<rank>(dimensions);
+  complex_t total(0.0, 0.0);
+
+  Kokkos::parallel_reduce(
+      "PolyakovLoopHeatbath", Kokkos::RangePolicy<Exec>(0, nSpatial),
+      PolyakovLoopReduceHeatbath<rank, Nc, RNG>(
+          g_in, multihit, updateParams.nOverrelax, updateParams.beta,
+          updateParams.epsilon1, rng, dimensions),
+      Kokkos::Sum<complex_t>(total));
+  return total;
+}
+
 template <size_t rank, size_t Nc, class UpdateParams, class RNG>
 Kokkos::Array<real_t, 2> PolyakovLoop(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
     const index_t multihit, const UpdateParams &updateParams, const RNG &rng) {
-  using Exec = Kokkos::DefaultExecutionSpace;
-  using LocalFieldType =
-      Kokkos::View<complex_t *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
-
   const auto dimensions = g_in.dimensions;
   const size_t nSpatial = spatial_volume<rank>(dimensions);
-  LocalFieldType local_polyakov("local_polyakov", nSpatial);
-
-  LocalPolyakovLoop<rank, Nc>(g_in, local_polyakov, multihit, updateParams,
-                              rng);
-
-  real_t rep = 0.0;
-  real_t imp = 0.0;
-  Kokkos::parallel_reduce(
-      "PolyakovLoopReal", Kokkos::RangePolicy<Exec>(0, nSpatial),
-      KOKKOS_LAMBDA(const size_t i, real_t &lsum) {
-        lsum += local_polyakov(i).real();
-      },
-      rep);
-  Kokkos::parallel_reduce(
-      "PolyakovLoopImag", Kokkos::RangePolicy<Exec>(0, nSpatial),
-      KOKKOS_LAMBDA(const size_t i, real_t &lsum) {
-        lsum += local_polyakov(i).imag();
-      },
-      imp);
+  complex_t total = PolyakovLoopSum<rank, Nc>(g_in, multihit, updateParams, rng);
 
   if (nSpatial > 0) {
     const real_t invSpatial = 1.0 / static_cast<real_t>(nSpatial);
-    rep *= invSpatial;
-    imp *= invSpatial;
+    total *= invSpatial;
   }
 
-  return Kokkos::Array<real_t, 2>{rep, imp};
+  return Kokkos::Array<real_t, 2>{total.real(), total.imag()};
 }
 
 } // namespace klft

@@ -20,11 +20,11 @@ if(NOT KLFT_NC MATCHES "^[123]$")
   message(FATAL_ERROR "KLFT_NC must be one of: 1, 2, 3")
 endif()
 
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/generated/core)
+file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/generated/core)
 
 configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/core/klft_config.hpp.in
-  ${CMAKE_CURRENT_BINARY_DIR}/generated/core/klft_config.hpp
+  ${PROJECT_SOURCE_DIR}/include/core/klft_config.hpp.in
+  ${PROJECT_BINARY_DIR}/generated/core/klft_config.hpp
   @ONLY
 )
 
@@ -35,18 +35,18 @@ configure_file(
 set(Kokkos_ENABLE_COMPILER_WARNINGS "ON" CACHE BOOL "CMakeLists: Kokkos_ENABLE_COMPILER_WARNINGS" FORCE)
 set(Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION "ON" CACHE BOOL "CMakeLists: Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION" FORCE)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/kokkos/kokkos ${CMAKE_CURRENT_BINARY_DIR}/kokkos)
+add_subdirectory(${PROJECT_SOURCE_DIR}/thirdparty/kokkos/kokkos ${PROJECT_BINARY_DIR}/kokkos)
 
 #
 # yaml-cpp
 #
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/yaml-cpp ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp)
+add_subdirectory(${PROJECT_SOURCE_DIR}/thirdparty/yaml-cpp ${PROJECT_BINARY_DIR}/yaml-cpp)
 
 # build the library
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib ${CMAKE_CURRENT_BINARY_DIR}/lib)
+add_subdirectory(${PROJECT_SOURCE_DIR}/lib ${PROJECT_BINARY_DIR}/lib)
 
 # build the binaries
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/binaries ${CMAKE_CURRENT_BINARY_DIR}/binaries)
+add_subdirectory(${PROJECT_SOURCE_DIR}/binaries ${PROJECT_BINARY_DIR}/binaries)
 
 # stage Python analysis helpers into the build tree
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/analysis ${CMAKE_CURRENT_BINARY_DIR}/analysis)
+add_subdirectory(${PROJECT_SOURCE_DIR}/analysis ${PROJECT_BINARY_DIR}/analysis)

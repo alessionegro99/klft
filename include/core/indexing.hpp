@@ -17,7 +17,10 @@ shift_index_plus(const Kokkos::Array<indexType, rank> &idx, const index_t mu,
   for (index_t i = 0; i < rank; ++i) {
     new_idx[i] = static_cast<index_t>(idx[i]);
   }
-  new_idx[mu] = (idx[mu] + shift) % dimensions[mu];
+  const index_t extent = dimensions[mu];
+  const index_t normalized_shift = shift % extent;
+  new_idx[mu] =
+      (static_cast<index_t>(idx[mu]) + normalized_shift) % extent;
   return new_idx;
 }
 
@@ -32,7 +35,10 @@ shift_index_minus(const Kokkos::Array<indexType, rank> &idx, const index_t mu,
   for (index_t i = 0; i < rank; ++i) {
     new_idx[i] = static_cast<index_t>(idx[i]);
   }
-  new_idx[mu] = (idx[mu] - shift + dimensions[mu]) % dimensions[mu];
+  const index_t extent = dimensions[mu];
+  const index_t normalized_shift = shift % extent;
+  new_idx[mu] =
+      (static_cast<index_t>(idx[mu]) - normalized_shift + extent) % extent;
   return new_idx;
 }
 

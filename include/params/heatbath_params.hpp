@@ -13,14 +13,12 @@ struct HeatbathParams {
   index_t seed;
 
   real_t beta;
-  real_t delta;
   real_t epsilon1;
   real_t epsilon2;
 
   HeatbathParams()
       : L0(4), L1(4), L2(4), L3(4), nSweep(1000), nOverrelax(5),
-        seed(1234), beta(1.0), delta(0.1), epsilon1(0.0),
-        epsilon2(0.0) {}
+        seed(1234), beta(1.0), epsilon1(0.0), epsilon2(0.0) {}
 };
 
 } // namespace klft

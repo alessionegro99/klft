@@ -14,10 +14,8 @@ namespace klft {
 template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_metropolis {
   constexpr static const size_t Nd = rank;
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
-  using FieldType = typename DeviceFieldType<rank>::type;
 
   const GaugeFieldType g_in;
-  FieldType Wmunu_per_site;
   const index_t mu, nu;
   const index_t Lmu, Lnu;
   const index_t multihit;
@@ -28,16 +26,15 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_metropolis {
   const RNG rng;
   const IndexArray<rank> dimensions;
 
-  WLoop_munu_metropolis(const GaugeFieldType &g_in, FieldType &Wmunu_per_site,
-                        const index_t mu, const index_t nu, const index_t Lmu,
+  WLoop_munu_metropolis(const GaugeFieldType &g_in, const index_t mu,
+                        const index_t nu, const index_t Lmu,
                         const index_t Lnu, const index_t multihit,
                         const real_t beta, const real_t delta,
                         const real_t epsilon1, const real_t epsilon2,
                         const RNG &rng, const IndexArray<rank> &dimensions)
-      : g_in(g_in), Wmunu_per_site(Wmunu_per_site), mu(mu), nu(nu), Lmu(Lmu),
-        Lnu(Lnu), multihit(multihit), beta(beta), delta(delta),
-        epsilon1(epsilon1), epsilon2(epsilon2), rng(rng),
-        dimensions(dimensions) {}
+      : g_in(g_in), mu(mu), nu(nu), Lmu(Lmu), Lnu(Lnu),
+        multihit(multihit), beta(beta), delta(delta), epsilon1(epsilon1),
+        epsilon2(epsilon2), rng(rng), dimensions(dimensions) {}
 
   template <class Generator>
   KOKKOS_FORCEINLINE_FUNCTION SUN<Nc>
@@ -81,22 +78,44 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_metropolis {
     return trace(loop);
   }
 
-  template <typename... Indices>
-  KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
-    const Kokkos::Array<index_t, rank> site{static_cast<index_t>(Idcs)...};
+  KOKKOS_FORCEINLINE_FUNCTION void
+  contribute(const Kokkos::Array<index_t, rank> &site,
+             complex_t &lsum) const {
     auto generator = rng.get_state();
-    Wmunu_per_site(Idcs...) = loop_at_site(site, generator);
+    lsum += loop_at_site(site, generator);
     rng.free_state(generator);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              complex_t &lsum) const {
+    static_assert(rank == 2, "2-index overload requires rank 2.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              complex_t &lsum) const {
+    static_assert(rank == 3, "3-index overload requires rank 3.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              const index_t i3,
+                                              complex_t &lsum) const {
+    static_assert(rank == 4, "4-index overload requires rank 4.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2, i3}, lsum);
   }
 };
 
 template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_heatbath {
   constexpr static const size_t Nd = rank;
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
-  using FieldType = typename DeviceFieldType<rank>::type;
 
   const GaugeFieldType g_in;
-  FieldType Wmunu_per_site;
   const index_t mu, nu;
   const index_t Lmu, Lnu;
   const index_t multihit;
@@ -106,14 +125,14 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_heatbath {
   const RNG rng;
   const IndexArray<rank> dimensions;
 
-  WLoop_munu_heatbath(const GaugeFieldType &g_in, FieldType &Wmunu_per_site,
-                      const index_t mu, const index_t nu, const index_t Lmu,
+  WLoop_munu_heatbath(const GaugeFieldType &g_in, const index_t mu,
+                      const index_t nu, const index_t Lmu,
                       const index_t Lnu, const index_t multihit,
                       const index_t nOverrelax, const real_t beta,
                       const real_t epsilon1, const RNG &rng,
                       const IndexArray<rank> &dimensions)
-      : g_in(g_in), Wmunu_per_site(Wmunu_per_site), mu(mu), nu(nu), Lmu(Lmu),
-        Lnu(Lnu), multihit(multihit), nOverrelax(nOverrelax), beta(beta),
+      : g_in(g_in), mu(mu), nu(nu), Lmu(Lmu), Lnu(Lnu),
+        multihit(multihit), nOverrelax(nOverrelax), beta(beta),
         epsilon1(epsilon1), rng(rng), dimensions(dimensions) {}
 
   template <class Generator>
@@ -158,12 +177,36 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_heatbath {
     return trace(loop);
   }
 
-  template <typename... Indices>
-  KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
-    const Kokkos::Array<index_t, rank> site{static_cast<index_t>(Idcs)...};
+  KOKKOS_FORCEINLINE_FUNCTION void
+  contribute(const Kokkos::Array<index_t, rank> &site,
+             complex_t &lsum) const {
     auto generator = rng.get_state();
-    Wmunu_per_site(Idcs...) = loop_at_site(site, generator);
+    lsum += loop_at_site(site, generator);
     rng.free_state(generator);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              complex_t &lsum) const {
+    static_assert(rank == 2, "2-index overload requires rank 2.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              complex_t &lsum) const {
+    static_assert(rank == 3, "3-index overload requires rank 3.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              const index_t i3,
+                                              complex_t &lsum) const {
+    static_assert(rank == 4, "4-index overload requires rank 4.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2, i3}, lsum);
   }
 };
 
@@ -198,25 +241,47 @@ WilsonLoopRawAtSite(const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
 
 template <size_t rank, size_t Nc> struct WLoop_munu_raw {
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
-  using FieldType = typename DeviceFieldType<rank>::type;
 
   const GaugeFieldType g_in;
-  FieldType Wmunu_per_site;
   const index_t mu, nu;
   const index_t Lmu, Lnu;
   const IndexArray<rank> dimensions;
 
-  WLoop_munu_raw(const GaugeFieldType &g_in, FieldType &Wmunu_per_site,
-                 const index_t mu, const index_t nu, const index_t Lmu,
+  WLoop_munu_raw(const GaugeFieldType &g_in, const index_t mu,
+                 const index_t nu, const index_t Lmu,
                  const index_t Lnu, const IndexArray<rank> &dimensions)
-      : g_in(g_in), Wmunu_per_site(Wmunu_per_site), mu(mu), nu(nu), Lmu(Lmu),
-        Lnu(Lnu), dimensions(dimensions) {}
+      : g_in(g_in), mu(mu), nu(nu), Lmu(Lmu), Lnu(Lnu),
+        dimensions(dimensions) {}
 
-  template <typename... Indices>
-  KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
-    const Kokkos::Array<index_t, rank> site{static_cast<index_t>(Idcs)...};
-    Wmunu_per_site(Idcs...) =
+  KOKKOS_FORCEINLINE_FUNCTION void
+  contribute(const Kokkos::Array<index_t, rank> &site,
+             complex_t &lsum) const {
+    lsum +=
         WilsonLoopRawAtSite<rank, Nc>(g_in, site, mu, nu, Lmu, Lnu, dimensions);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              complex_t &lsum) const {
+    static_assert(rank == 2, "2-index overload requires rank 2.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              complex_t &lsum) const {
+    static_assert(rank == 3, "3-index overload requires rank 3.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              const index_t i3,
+                                              complex_t &lsum) const {
+    static_assert(rank == 4, "4-index overload requires rank 4.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2, i3}, lsum);
   }
 };
 
@@ -228,43 +293,37 @@ void WilsonLoop_mu_nu(
     std::vector<Kokkos::Array<real_t, 5>> &Wmunu_vals, const index_t multihit,
     const real_t beta, const real_t delta, const real_t epsilon1,
     const real_t epsilon2, const RNG &rng, const bool normalize = true) {
-  constexpr static const size_t Nd = rank;
-  complex_t Wmunu;
-
-  const auto &dimensions = g_in.field.layout().dimension;
+  const auto dimensions = g_in.dimensions;
   IndexArray<rank> start;
   IndexArray<rank> end;
-  for (index_t i = 0; i < Nd; ++i) {
+  for (index_t i = 0; i < rank; ++i) {
     start[i] = 0;
     end[i] = dimensions[i];
   }
 
-  using FieldType = typename DeviceFieldType<rank>::type;
-  FieldType Wmunu_per_site(end, complex_t(0.0, 0.0));
-
   for (const auto &Lmu_nu : Lmu_nu_pairs) {
     const index_t Lmu = Lmu_nu[0];
     const index_t Lnu = Lmu_nu[1];
+    complex_t Wmunu(0.0, 0.0);
 
     if (multihit > 1) {
-      Kokkos::parallel_for(Policy<rank>(start, end),
-                           WLoop_munu_metropolis<rank, Nc, RNG>(
-                               g_in, Wmunu_per_site, mu, nu, Lmu, Lnu, multihit,
-                               beta, delta, epsilon1, epsilon2, rng, end));
+      Kokkos::parallel_reduce(
+          "WilsonLoopMuNuMetropolis", Policy<rank>(start, end),
+          WLoop_munu_metropolis<rank, Nc, RNG>(
+              g_in, mu, nu, Lmu, Lnu, multihit, beta, delta, epsilon1,
+              epsilon2, rng, dimensions),
+          Kokkos::Sum<complex_t>(Wmunu));
     } else {
-      Kokkos::parallel_for(Policy<rank>(start, end),
-                           WLoop_munu_raw<rank, Nc>(g_in, Wmunu_per_site, mu,
-                                                    nu, Lmu, Lnu, end));
+      Kokkos::parallel_reduce(
+          "WilsonLoopMuNuRaw", Policy<rank>(start, end),
+          WLoop_munu_raw<rank, Nc>(g_in, mu, nu, Lmu, Lnu, dimensions),
+          Kokkos::Sum<complex_t>(Wmunu));
     }
-    Kokkos::fence();
-
-    Wmunu = Wmunu_per_site.sum();
-    Kokkos::fence();
 
     if (normalize) {
 #pragma unroll
       for (index_t i = 0; i < rank; ++i) {
-        Wmunu /= static_cast<real_t>(end[i]);
+        Wmunu /= static_cast<real_t>(dimensions[i]);
       }
       Wmunu /= static_cast<real_t>(Nc);
     }
@@ -297,44 +356,37 @@ void WilsonLoop_mu_nu(
     std::vector<Kokkos::Array<real_t, 5>> &Wmunu_vals, const index_t multihit,
     const HeatbathParams &updateParams, const RNG &rng,
     const bool normalize = true) {
-  constexpr static const size_t Nd = rank;
-  complex_t Wmunu;
-
-  const auto &dimensions = g_in.field.layout().dimension;
+  const auto dimensions = g_in.dimensions;
   IndexArray<rank> start;
   IndexArray<rank> end;
-  for (index_t i = 0; i < Nd; ++i) {
+  for (index_t i = 0; i < rank; ++i) {
     start[i] = 0;
     end[i] = dimensions[i];
   }
 
-  using FieldType = typename DeviceFieldType<rank>::type;
-  FieldType Wmunu_per_site(end, complex_t(0.0, 0.0));
-
   for (const auto &Lmu_nu : Lmu_nu_pairs) {
     const index_t Lmu = Lmu_nu[0];
     const index_t Lnu = Lmu_nu[1];
+    complex_t Wmunu(0.0, 0.0);
 
     if (multihit > 1) {
-      Kokkos::parallel_for(Policy<rank>(start, end),
-                           WLoop_munu_heatbath<rank, Nc, RNG>(
-                               g_in, Wmunu_per_site, mu, nu, Lmu, Lnu, multihit,
-                               updateParams.nOverrelax, updateParams.beta,
-                               updateParams.epsilon1, rng, end));
+      Kokkos::parallel_reduce(
+          "WilsonLoopMuNuHeatbath", Policy<rank>(start, end),
+          WLoop_munu_heatbath<rank, Nc, RNG>(
+              g_in, mu, nu, Lmu, Lnu, multihit, updateParams.nOverrelax,
+              updateParams.beta, updateParams.epsilon1, rng, dimensions),
+          Kokkos::Sum<complex_t>(Wmunu));
     } else {
-      Kokkos::parallel_for(Policy<rank>(start, end),
-                           WLoop_munu_raw<rank, Nc>(g_in, Wmunu_per_site, mu,
-                                                    nu, Lmu, Lnu, end));
+      Kokkos::parallel_reduce(
+          "WilsonLoopMuNuRaw", Policy<rank>(start, end),
+          WLoop_munu_raw<rank, Nc>(g_in, mu, nu, Lmu, Lnu, dimensions),
+          Kokkos::Sum<complex_t>(Wmunu));
     }
-    Kokkos::fence();
-
-    Wmunu = Wmunu_per_site.sum();
-    Kokkos::fence();
 
     if (normalize) {
 #pragma unroll
       for (index_t i = 0; i < rank; ++i) {
-        Wmunu /= static_cast<real_t>(end[i]);
+        Wmunu /= static_cast<real_t>(dimensions[i]);
       }
       Wmunu /= static_cast<real_t>(Nc);
     }

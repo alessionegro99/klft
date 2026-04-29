@@ -187,7 +187,6 @@ inline bool parseInputFile(const std::string &filename,
   heatbathParams.nOverrelax = hp["nOverrelax"].as<index_t>(5);
   heatbathParams.seed = hp["seed"].as<index_t>(1234);
   heatbathParams.beta = hp["beta"].as<real_t>(1.0);
-  heatbathParams.delta = hp["delta"].as<real_t>(0.1);
   heatbathParams.epsilon1 = hp["epsilon1"].as<real_t>(0.0);
   heatbathParams.epsilon2 = hp["epsilon2"].as<real_t>(0.0);
 

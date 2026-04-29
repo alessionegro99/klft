@@ -67,18 +67,16 @@ template <size_t rank, size_t Nc> struct BlockedGaugePlaqOneLevel {
   constexpr static const size_t Nd = rank;
 
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
-  using FieldType = typename DeviceFieldType<rank>::type;
 
   const GaugeFieldType g_in;
-  FieldType plaq_per_site;
   const IndexArray<rank> fine_dimensions;
   const IndexArray<rank> child_offset;
 
-  BlockedGaugePlaqOneLevel(const GaugeFieldType &g_in, FieldType &plaq_per_site,
+  BlockedGaugePlaqOneLevel(const GaugeFieldType &g_in,
                            const IndexArray<rank> &fine_dimensions,
                            const IndexArray<rank> &child_offset)
-      : g_in(g_in), plaq_per_site(plaq_per_site),
-        fine_dimensions(fine_dimensions), child_offset(child_offset) {}
+      : g_in(g_in), fine_dimensions(fine_dimensions),
+        child_offset(child_offset) {}
 
   KOKKOS_FORCEINLINE_FUNCTION
   SUN<Nc> blocked_link(const IndexArray<rank> &x, const index_t mu) const {
@@ -86,19 +84,17 @@ template <size_t rank, size_t Nc> struct BlockedGaugePlaqOneLevel {
     return g_in(x, mu) * g_in(x_plus_mu, mu);
   }
 
-  template <typename... Indices>
-  KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
+  KOKKOS_FORCEINLINE_FUNCTION void
+  contribute(const Kokkos::Array<index_t, rank> &coarse_site,
+             complex_t &lsum) const {
     SUN<Nc> lmu, lnu;
     complex_t tmunu(0.0, 0.0);
-
-    // coarse coordinates X
-    const index_t coarse_idx[rank] = {static_cast<index_t>(Idcs)...};
 
     // corresponding fine coordinates x = 2X + offset
     IndexArray<rank> x;
 #pragma unroll
     for (index_t d = 0; d < rank; ++d) {
-      x[d] = 2 * coarse_idx[d] + child_offset[d];
+      x[d] = 2 * coarse_site[d] + child_offset[d];
     }
 
 #pragma unroll
@@ -122,7 +118,31 @@ template <size_t rank, size_t Nc> struct BlockedGaugePlaqOneLevel {
       }
     }
 
-    plaq_per_site(Idcs...) = tmunu;
+    lsum += tmunu;
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              complex_t &lsum) const {
+    static_assert(rank == 2, "2-index overload requires rank 2.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              complex_t &lsum) const {
+    static_assert(rank == 3, "3-index overload requires rank 3.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2}, lsum);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              const index_t i3,
+                                              complex_t &lsum) const {
+    static_assert(rank == 4, "4-index overload requires rank 4.");
+    contribute(Kokkos::Array<index_t, rank>{i0, i1, i2, i3}, lsum);
   }
 };
 
@@ -143,6 +163,7 @@ real_t BlockedGaugePlaquetteOneLevel(
   IndexArray<rank> coarse_start;
   IndexArray<rank> coarse_end;
   IndexArray<rank> fine_dimensions;
+  size_t nCoarseSites = 1;
 
   for (index_t d = 0; d < rank; ++d) {
     fine_dimensions[d] = fine_dims[d];
@@ -153,26 +174,17 @@ real_t BlockedGaugePlaquetteOneLevel(
           "BlockedGaugePlaquetteOneLevel requires even lattice extents.");
     }
     coarse_end[d] = fine_dims[d] / 2;
+    nCoarseSites *= static_cast<size_t>(coarse_end[d]);
   }
 
-  using FieldType = typename DeviceFieldType<rank>::type;
-  FieldType plaq_per_site(coarse_end, complex_t(0.0, 0.0));
-
-  BlockedGaugePlaqOneLevel<rank, Nc> blockedPlaq(g_in, plaq_per_site,
-                                                 fine_dimensions, child_offset);
-
-  Kokkos::parallel_for(Policy<rank>(coarse_start, coarse_end), blockedPlaq);
-  Kokkos::fence();
-
-  complex_t plaq = plaq_per_site.sum();
-  Kokkos::fence();
+  complex_t plaq(0.0, 0.0);
+  Kokkos::parallel_reduce(
+      "BlockedGaugePlaquetteOneLevel", Policy<rank>(coarse_start, coarse_end),
+      BlockedGaugePlaqOneLevel<rank, Nc>(g_in, fine_dimensions, child_offset),
+      Kokkos::Sum<complex_t>(plaq));
 
   if (normalize) {
-    real_t norm = 1.0;
-#pragma unroll
-    for (index_t d = 0; d < rank; ++d) {
-      norm *= static_cast<real_t>(coarse_end[d]);
-    }
+    real_t norm = static_cast<real_t>(nCoarseSites);
     norm *= static_cast<real_t>((Nd * (Nd - 1) / 2) * Nc);
     plaq /= norm;
   }

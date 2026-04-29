@@ -43,52 +43,33 @@ Kokkos::Array<real_t, 3> PolyakovCorrelatorAtR(
   const size_t nSpatial = spatial_volume<rank>(dimensions);
   const real_t spatial_dirs = static_cast<real_t>(rank - 1);
 
-  real_t rep = 0.0;
-  real_t imp = 0.0;
+  complex_t total(0.0, 0.0);
 
   Kokkos::parallel_reduce(
-      "PolyakovCorrelatorReal", Kokkos::RangePolicy<Exec>(0, nSpatial),
-      KOKKOS_LAMBDA(const size_t i, real_t &lsum) {
+      "PolyakovCorrelator", Kokkos::RangePolicy<Exec>(0, nSpatial),
+      KOKKOS_LAMBDA(const size_t i, complex_t &lsum) {
         const auto site = linear_to_polyakov_origin<rank>(i, dimensions);
         const complex_t p0 = local_polyakov(i);
-        real_t local = 0.0;
+        complex_t local(0.0, 0.0);
 
 #pragma unroll
         for (index_t mu = 0; mu < rank - 1; ++mu) {
           const auto shifted = shift_index_plus<rank>(site, mu, R, dimensions);
           const size_t j = polyakov_origin_to_linear<rank>(shifted, dimensions);
-          local += (Kokkos::conj(p0) * local_polyakov(j)).real();
+          local += Kokkos::conj(p0) * local_polyakov(j);
         }
 
         lsum += local;
       },
-      rep);
-
-  Kokkos::parallel_reduce(
-      "PolyakovCorrelatorImag", Kokkos::RangePolicy<Exec>(0, nSpatial),
-      KOKKOS_LAMBDA(const size_t i, real_t &lsum) {
-        const auto site = linear_to_polyakov_origin<rank>(i, dimensions);
-        const complex_t p0 = local_polyakov(i);
-        real_t local = 0.0;
-
-#pragma unroll
-        for (index_t mu = 0; mu < rank - 1; ++mu) {
-          const auto shifted = shift_index_plus<rank>(site, mu, R, dimensions);
-          const size_t j = polyakov_origin_to_linear<rank>(shifted, dimensions);
-          local += (Kokkos::conj(p0) * local_polyakov(j)).imag();
-        }
-
-        lsum += local;
-      },
-      imp);
+      Kokkos::Sum<complex_t>(total));
 
   if (nSpatial > 0) {
     const real_t norm = 1.0 / (static_cast<real_t>(nSpatial) * spatial_dirs);
-    rep *= norm;
-    imp *= norm;
+    total *= norm;
   }
 
-  return Kokkos::Array<real_t, 3>{static_cast<real_t>(R), rep, imp};
+  return Kokkos::Array<real_t, 3>{static_cast<real_t>(R), total.real(),
+                                  total.imag()};
 }
 
 template <size_t rank, size_t Nc, class UpdateParams, class RNG>

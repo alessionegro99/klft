@@ -69,7 +69,7 @@ struct GaugeObservableParams {
         write_to_file(false) {}
 };
 
-inline void appendLatestGaugeObservables(const GaugeObservableParams &params);
+inline bool appendLatestGaugeObservables(const GaugeObservableParams &params);
 inline void clearAllGaugeObservables(GaugeObservableParams &params);
 
 // Measure the requested observables and stage the results for optional output.
@@ -158,8 +158,9 @@ void measureGaugeObservables(
   params.measurement_times.push_back(time);
 
   if (params.write_to_file) {
-    appendLatestGaugeObservables(params);
-    clearAllGaugeObservables(params);
+    if (appendLatestGaugeObservables(params)) {
+      clearAllGaugeObservables(params);
+    }
   }
 }
 
@@ -178,27 +179,27 @@ inline bool fileNeedsHeader(const std::string &filename) {
 }
 
 // Append the staged plaquette rows to disk.
-inline void flushPlaquette(std::ofstream &file,
+inline bool flushPlaquette(std::ofstream &file,
                            const GaugeObservableParams &params,
                            const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_plaquette) {
     printf("Error: no plaquette measurements available\n");
-    return;
+    return false;
   }
 
   if (params.measurement_steps.size() != params.plaquette_measurements.size() ||
       params.measurement_steps.size() != params.measurement_times.size()) {
     printf("Error: inconsistent plaquette metadata sizes\n");
-    return;
+    return false;
   }
   if (params.include_acceptance_rate &&
       params.measurement_steps.size() != params.measurement_acceptance_rates.size()) {
     printf("Error: inconsistent plaquette acceptance metadata sizes\n");
-    return;
+    return false;
   }
 
   if (HEADER) {
@@ -219,19 +220,24 @@ inline void flushPlaquette(std::ofstream &file,
     }
     file << " " << params.measurement_times[i] << "\n";
   }
+  return static_cast<bool>(file);
 }
 
 // Append the staged temporal Wilson-loop rows to disk.
-inline void flushWilsonLoopTemporal(std::ofstream &file,
+inline bool flushWilsonLoopTemporal(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_wilson_loop_temporal) {
     printf("Error: no temporal Wilson loop measurements available\n");
-    return;
+    return false;
+  }
+  if (params.measurement_steps.size() != params.W_temp_measurements.size()) {
+    printf("Error: inconsistent temporal Wilson-loop metadata sizes\n");
+    return false;
   }
 
   if (HEADER) {
@@ -246,19 +252,24 @@ inline void flushWilsonLoopTemporal(std::ofstream &file,
            << measurement[1] << " " << measurement[2] << "\n";
     }
   }
+  return static_cast<bool>(file);
 }
 
 // Append the staged planar Wilson-loop rows to disk.
-inline void flushWilsonLoopMuNu(std::ofstream &file,
+inline bool flushWilsonLoopMuNu(std::ofstream &file,
                                 const GaugeObservableParams &params,
                                 const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_wilson_loop_mu_nu) {
     printf("Error: no mu-nu Wilson loop measurements available\n");
-    return;
+    return false;
+  }
+  if (params.measurement_steps.size() != params.W_mu_nu_measurements.size()) {
+    printf("Error: inconsistent mu-nu Wilson-loop metadata sizes\n");
+    return false;
   }
 
   if (HEADER) {
@@ -274,24 +285,25 @@ inline void flushWilsonLoopMuNu(std::ofstream &file,
            << " " << measurement[4] << "\n";
     }
   }
+  return static_cast<bool>(file);
 }
 
 // Append the staged Polyakov-loop rows to disk.
-inline void flushPolyakovLoop(std::ofstream &file,
+inline bool flushPolyakovLoop(std::ofstream &file,
                               const GaugeObservableParams &params,
                               const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_polyakov_loop) {
     printf("Error: no Polyakov-loop measurements available\n");
-    return;
+    return false;
   }
 
   if (params.measurement_steps.size() != params.polyakov_measurements.size()) {
     printf("Error: inconsistent Polyakov-loop metadata sizes\n");
-    return;
+    return false;
   }
 
   if (HEADER) {
@@ -305,25 +317,26 @@ inline void flushPolyakovLoop(std::ofstream &file,
          << params.polyakov_measurements[i][0] << " "
          << params.polyakov_measurements[i][1] << "\n";
   }
+  return static_cast<bool>(file);
 }
 
 // Append the staged Polyakov-correlator rows to disk.
-inline void flushPolyakovCorrelator(std::ofstream &file,
+inline bool flushPolyakovCorrelator(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_polyakov_correlator) {
     printf("Error: no Polyakov-correlator measurements available\n");
-    return;
+    return false;
   }
 
   if (params.measurement_steps.size() !=
       params.polyakov_correlator_measurements.size()) {
     printf("Error: inconsistent Polyakov-correlator metadata sizes\n");
-    return;
+    return false;
   }
 
   if (HEADER) {
@@ -338,19 +351,24 @@ inline void flushPolyakovCorrelator(std::ofstream &file,
            << measurement[1] << " " << measurement[2] << "\n";
     }
   }
+  return static_cast<bool>(file);
 }
 
 // Append the staged Retrace(U) rows to disk.
-inline void flushRetraceU(std::ofstream &file,
+inline bool flushRetraceU(std::ofstream &file,
                           const GaugeObservableParams &params,
                           const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_retrace_U) {
     printf("Error: no Retrace(U) measurements available\n");
-    return;
+    return false;
+  }
+  if (params.measurement_steps.size() != params.retraceU_measurements.size()) {
+    printf("Error: inconsistent Retrace(U) metadata sizes\n");
+    return false;
   }
 
   if (HEADER) {
@@ -363,19 +381,20 @@ inline void flushRetraceU(std::ofstream &file,
     file << params.measurement_steps[i] << " "
          << params.retraceU_measurements[i] << "\n";
   }
+  return static_cast<bool>(file);
 }
 
 // Append the staged nested-action rows to disk.
-inline void flushNestedWilsonAction(std::ofstream &file,
+inline bool flushNestedWilsonAction(std::ofstream &file,
                                     const GaugeObservableParams &params,
                                     const bool HEADER = true) {
   if (!file.is_open()) {
     printf("Error: file is not open\n");
-    return;
+    return false;
   }
   if (!params.measure_nested_wilson_action) {
     printf("Error: no nested Wilson action measurements available\n");
-    return;
+    return false;
   }
 
   const size_t n = params.measurement_steps.size();
@@ -384,7 +403,7 @@ inline void flushNestedWilsonAction(std::ofstream &file,
       n != params.nested_E_V_measurements.size() ||
       n != params.nested_E_child_measurements.size()) {
     printf("Error: inconsistent nested Wilson action metadata sizes\n");
-    return;
+    return false;
   }
 
   if (HEADER) {
@@ -400,6 +419,7 @@ inline void flushNestedWilsonAction(std::ofstream &file,
          << params.nested_E_V_measurements[i] << " "
          << params.nested_E_child_measurements[i] << "\n";
   }
+  return static_cast<bool>(file);
 }
 
 // Drop the current staging buffers after a successful append.
@@ -421,65 +441,113 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.nested_E_child_measurements.clear();
 }
 
+inline bool canOpenObservableOutputFile(const std::string &filename) {
+  std::ofstream file(filename, std::ios::app);
+  if (!file.is_open()) {
+    printf("Error: could not open observable file '%s'\n", filename.c_str());
+    return false;
+  }
+  return true;
+}
+
+inline bool closeObservableOutputFile(std::ofstream &file,
+                                      const std::string &filename) {
+  file.flush();
+  const bool ok = static_cast<bool>(file);
+  file.close();
+  if (!ok) {
+    printf("Error: failed while writing observable file '%s'\n",
+           filename.c_str());
+  }
+  return ok;
+}
+
 // Append one measurement batch to each enabled output file.
-inline void appendLatestGaugeObservables(const GaugeObservableParams &params) {
+inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
   if (!params.write_to_file) {
-    return;
+    return true;
   }
 
+  bool can_open_all = true;
+  if (params.measure_plaquette && params.plaquette_filename != "") {
+    can_open_all &= canOpenObservableOutputFile(params.plaquette_filename);
+  }
+  if (params.measure_wilson_loop_temporal && params.W_temp_filename != "") {
+    can_open_all &= canOpenObservableOutputFile(params.W_temp_filename);
+  }
+  if (params.measure_wilson_loop_mu_nu && params.W_mu_nu_filename != "") {
+    can_open_all &= canOpenObservableOutputFile(params.W_mu_nu_filename);
+  }
+  if (params.measure_polyakov_loop && params.polyakov_loop_filename != "") {
+    can_open_all &= canOpenObservableOutputFile(params.polyakov_loop_filename);
+  }
+  if (params.measure_polyakov_correlator &&
+      params.polyakov_correlator_filename != "") {
+    can_open_all &=
+        canOpenObservableOutputFile(params.polyakov_correlator_filename);
+  }
+  if (params.measure_retrace_U && params.RetraceU_filename != "") {
+    can_open_all &= canOpenObservableOutputFile(params.RetraceU_filename);
+  }
+  if (params.measure_nested_wilson_action &&
+      params.nested_wilson_action_filename != "") {
+    can_open_all &=
+        canOpenObservableOutputFile(params.nested_wilson_action_filename);
+  }
+  if (!can_open_all) {
+    return false;
+  }
+
+  bool ok = true;
   if (params.measure_plaquette && params.plaquette_filename != "") {
     std::ofstream file(params.plaquette_filename, std::ios::app);
-    flushPlaquette(file, params, fileNeedsHeader(params.plaquette_filename));
-    file.flush();
-    file.close();
+    ok &= flushPlaquette(file, params, fileNeedsHeader(params.plaquette_filename));
+    ok &= closeObservableOutputFile(file, params.plaquette_filename);
   }
 
   if (params.measure_wilson_loop_temporal && params.W_temp_filename != "") {
     std::ofstream file(params.W_temp_filename, std::ios::app);
-    flushWilsonLoopTemporal(file, params, fileNeedsHeader(params.W_temp_filename));
-    file.flush();
-    file.close();
+    ok &= flushWilsonLoopTemporal(file, params,
+                                  fileNeedsHeader(params.W_temp_filename));
+    ok &= closeObservableOutputFile(file, params.W_temp_filename);
   }
 
   if (params.measure_wilson_loop_mu_nu && params.W_mu_nu_filename != "") {
     std::ofstream file(params.W_mu_nu_filename, std::ios::app);
-    flushWilsonLoopMuNu(file, params, fileNeedsHeader(params.W_mu_nu_filename));
-    file.flush();
-    file.close();
+    ok &=
+        flushWilsonLoopMuNu(file, params, fileNeedsHeader(params.W_mu_nu_filename));
+    ok &= closeObservableOutputFile(file, params.W_mu_nu_filename);
   }
 
   if (params.measure_polyakov_loop && params.polyakov_loop_filename != "") {
     std::ofstream file(params.polyakov_loop_filename, std::ios::app);
-    flushPolyakovLoop(file, params,
-                      fileNeedsHeader(params.polyakov_loop_filename));
-    file.flush();
-    file.close();
+    ok &= flushPolyakovLoop(file, params,
+                            fileNeedsHeader(params.polyakov_loop_filename));
+    ok &= closeObservableOutputFile(file, params.polyakov_loop_filename);
   }
 
   if (params.measure_polyakov_correlator &&
       params.polyakov_correlator_filename != "") {
     std::ofstream file(params.polyakov_correlator_filename, std::ios::app);
-    flushPolyakovCorrelator(
+    ok &= flushPolyakovCorrelator(
         file, params, fileNeedsHeader(params.polyakov_correlator_filename));
-    file.flush();
-    file.close();
+    ok &= closeObservableOutputFile(file, params.polyakov_correlator_filename);
   }
 
   if (params.measure_retrace_U && params.RetraceU_filename != "") {
     std::ofstream file(params.RetraceU_filename, std::ios::app);
-    flushRetraceU(file, params, fileNeedsHeader(params.RetraceU_filename));
-    file.flush();
-    file.close();
+    ok &= flushRetraceU(file, params, fileNeedsHeader(params.RetraceU_filename));
+    ok &= closeObservableOutputFile(file, params.RetraceU_filename);
   }
 
   if (params.measure_nested_wilson_action &&
       params.nested_wilson_action_filename != "") {
     std::ofstream file(params.nested_wilson_action_filename, std::ios::app);
-    flushNestedWilsonAction(
+    ok &= flushNestedWilsonAction(
         file, params, fileNeedsHeader(params.nested_wilson_action_filename));
-    file.flush();
-    file.close();
+    ok &= closeObservableOutputFile(file, params.nested_wilson_action_filename);
   }
+  return ok;
 }
 
 } // namespace klft
