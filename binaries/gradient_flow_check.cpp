@@ -4,8 +4,10 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 using namespace klft;
 using RNGType = Kokkos::Random_XorShift64_Pool<Kokkos::DefaultExecutionSpace>;
@@ -47,6 +49,77 @@ template <size_t rank> IndexArray<rank> check_dimensions() {
     dims[d] = 4;
   }
   return dims;
+}
+
+template <size_t rank, size_t Nc, class RNG> struct FillGaugeTransform {
+  using TransformView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  TransformView transform;
+  RNG rng;
+
+  FillGaugeTransform(TransformView &transform, const RNG &rng)
+      : transform(transform), rng(rng) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
+    auto generator = rng.get_state();
+    SUN<Nc> omega;
+    rand_matrix(omega, generator);
+    restoreSUN(omega);
+    transform(lin) = omega;
+    rng.free_state(generator);
+  }
+};
+
+template <size_t rank, size_t Nc> struct ApplyGaugeTransform {
+  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+  using TransformView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  const GaugeFieldType in;
+  GaugeFieldType out;
+  TransformView transform;
+  const IndexArray<rank> dimensions;
+
+  ApplyGaugeTransform(const GaugeFieldType &in, GaugeFieldType &out,
+                      TransformView &transform,
+                      const IndexArray<rank> &dimensions)
+      : in(in), out(out), transform(transform), dimensions(dimensions) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
+    const auto site = wilson_linear_to_site<rank>(lin, dimensions);
+    const SUN<Nc> omega = transform(lin);
+#pragma unroll
+    for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      const auto shifted = shift_index_plus<rank>(site, mu, 1, dimensions);
+      const size_t shifted_lin =
+          wilson_site_to_linear<rank>(shifted, dimensions);
+      out(site, mu) = omega * in(site, mu) * conj(transform(shifted_lin));
+    }
+  }
+};
+
+template <size_t rank, size_t Nc, class RNG>
+typename DeviceGaugeFieldType<rank, Nc>::type
+random_gauge_transform(
+    const typename DeviceGaugeFieldType<rank, Nc>::type &in, RNG &rng) {
+  using TransformView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  const auto dims = in.dimensions;
+  const size_t nSites = wilson_site_count<rank>(dims);
+  TransformView transform("gauge_transform", nSites);
+  auto out = make_gauge_field_with<rank, Nc>(dims, identitySUN<Nc>());
+
+  Kokkos::parallel_for(
+      "FillGaugeTransform",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nSites),
+      FillGaugeTransform<rank, Nc, RNG>(transform, rng));
+  Kokkos::parallel_for(
+      "ApplyGaugeTransform",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nSites),
+      ApplyGaugeTransform<rank, Nc>(in, out, transform, dims));
+  return out;
 }
 
 template <size_t rank, size_t Nc>
@@ -179,6 +252,78 @@ bool check_flowed_wilson_loop_multihit_policy() {
   return ok;
 }
 
+template <size_t rank, size_t Nc, class RNG>
+void temporal_wilson_reference(
+    const typename DeviceGaugeFieldType<rank, Nc>::type &g,
+    const std::vector<Kokkos::Array<index_t, 2>> &pairs,
+    std::vector<Kokkos::Array<real_t, 3>> &reference, RNG &rng) {
+  MetropolisParams params;
+  std::vector<Kokkos::Array<real_t, 5>> dir_values;
+
+  WilsonLoop_mu_nu<rank, Nc>(g, 0, rank - 1, pairs, dir_values, 1, params, rng);
+  for (const auto &value : dir_values) {
+    reference.push_back(Kokkos::Array<real_t, 3>{value[2], value[3], value[4]});
+  }
+
+  for (index_t mu = 1; mu < static_cast<index_t>(rank - 1); ++mu) {
+    dir_values.clear();
+    WilsonLoop_mu_nu<rank, Nc>(g, mu, rank - 1, pairs, dir_values, 1, params,
+                               rng);
+    for (size_t i = 0; i < dir_values.size(); ++i) {
+      reference[i][2] += dir_values[i][4];
+    }
+  }
+
+  const real_t inv_spatial_dirs = 1.0 / static_cast<real_t>(rank - 1);
+  for (auto &value : reference) {
+    value[2] *= inv_spatial_dirs;
+  }
+}
+
+template <size_t rank, size_t Nc, class RNG>
+bool check_temporal_wilson_loop_fusion(RNG &rng) {
+  bool ok = true;
+  const auto dims = check_dimensions<rank>();
+  auto original = make_random_gauge_field_with<rank, Nc>(dims, rng, 0.35);
+  MetropolisParams params;
+  std::vector<Kokkos::Array<index_t, 2>> pairs = {
+      Kokkos::Array<index_t, 2>{1, 1}, Kokkos::Array<index_t, 2>{2, 1},
+      Kokkos::Array<index_t, 2>{1, 2}, Kokkos::Array<index_t, 2>{3, 3},
+      Kokkos::Array<index_t, 2>{4, 4}};
+
+  std::vector<Kokkos::Array<real_t, 3>> fused;
+  std::vector<Kokkos::Array<real_t, 3>> reference;
+  WilsonLoop_temporal<rank, Nc>(original, pairs, fused, 1, params, rng);
+  temporal_wilson_reference<rank, Nc>(original, pairs, reference, rng);
+
+  if (fused.size() != reference.size()) {
+    ok &= check_condition(false, "fused temporal Wilson-loop row count");
+    return ok;
+  }
+
+  real_t max_diff = 0.0;
+  for (size_t i = 0; i < fused.size(); ++i) {
+    max_diff =
+        std::max(max_diff, Kokkos::abs(fused[i][2] - reference[i][2]));
+  }
+  ok &= check_condition(max_diff < 1.0e-12,
+                        "fused temporal Wilson loops match raw reference");
+
+  auto transformed = random_gauge_transform<rank, Nc>(original, rng);
+  std::vector<Kokkos::Array<real_t, 3>> transformed_fused;
+  WilsonLoop_temporal<rank, Nc>(transformed, pairs, transformed_fused, 1,
+                                params, rng);
+
+  real_t max_gauge_diff = 0.0;
+  for (size_t i = 0; i < fused.size(); ++i) {
+    max_gauge_diff = std::max(
+        max_gauge_diff, Kokkos::abs(fused[i][2] - transformed_fused[i][2]));
+  }
+  ok &= check_condition(max_gauge_diff < 1.0e-12,
+                        "fused temporal Wilson loops are gauge invariant");
+  return ok;
+}
+
 template <size_t rank, size_t Nc> bool run_checks() {
   RNGType rng(12345);
   bool ok = true;
@@ -190,6 +335,7 @@ template <size_t rank, size_t Nc> bool run_checks() {
   ok &= check_step_size_dependence<rank, Nc>(rng);
   ok &= check_t0_interpolation();
   ok &= check_flowed_wilson_loop_multihit_policy();
+  ok &= check_temporal_wilson_loop_fusion<rank, Nc>(rng);
   return ok;
 }
 

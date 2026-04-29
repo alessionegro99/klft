@@ -11,6 +11,42 @@
 
 namespace klft {
 
+template <size_t rank>
+KOKKOS_FORCEINLINE_FUNCTION Kokkos::Array<index_t, rank>
+wilson_linear_to_site(size_t lin, const IndexArray<rank> &dimensions) {
+  Kokkos::Array<index_t, rank> site;
+  for (int d = static_cast<int>(rank) - 1; d >= 0; --d) {
+    const size_t extent = static_cast<size_t>(dimensions[d]);
+    site[d] = static_cast<index_t>(lin % extent);
+    lin /= extent;
+  }
+  return site;
+}
+
+template <size_t rank>
+KOKKOS_FORCEINLINE_FUNCTION size_t
+wilson_site_to_linear(const Kokkos::Array<index_t, rank> &site,
+                      const IndexArray<rank> &dimensions) {
+  size_t lin = 0;
+#pragma unroll
+  for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
+    lin = lin * static_cast<size_t>(dimensions[d]) +
+          static_cast<size_t>(site[d]);
+  }
+  return lin;
+}
+
+template <size_t rank>
+KOKKOS_INLINE_FUNCTION size_t
+wilson_site_count(const IndexArray<rank> &dimensions) {
+  size_t nSites = 1;
+#pragma unroll
+  for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
+    nSites *= static_cast<size_t>(dimensions[d]);
+  }
+  return nSites;
+}
+
 template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_metropolis {
   constexpr static const size_t Nd = rank;
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
@@ -285,6 +321,221 @@ template <size_t rank, size_t Nc> struct WLoop_munu_raw {
   }
 };
 
+template <size_t rank, size_t Nc> struct TemporalWilsonSpatialLines {
+  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+  using TransporterView =
+      Kokkos::View<SUN<Nc> ***,
+                   Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  const GaugeFieldType g_in;
+  TransporterView spatial_lines;
+  const IndexArray<rank> dimensions;
+  const index_t Rmax;
+  const size_t nSites;
+
+  TemporalWilsonSpatialLines(const GaugeFieldType &g_in,
+                             TransporterView &spatial_lines,
+                             const IndexArray<rank> &dimensions,
+                             const index_t Rmax, const size_t nSites)
+      : g_in(g_in), spatial_lines(spatial_lines), dimensions(dimensions),
+        Rmax(Rmax), nSites(nSites) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t work) const {
+    const index_t idir = static_cast<index_t>(work / nSites);
+    const size_t lin = work % nSites;
+    auto site = wilson_linear_to_site<rank>(lin, dimensions);
+    auto shifted = site;
+    SUN<Nc> line = identitySUN<Nc>();
+
+    spatial_lines(idir, 0, lin) = line;
+    for (index_t r = 1; r <= Rmax; ++r) {
+      line *= g_in(shifted, idir);
+      spatial_lines(idir, r, lin) = line;
+      shifted = shift_index_plus<rank>(shifted, idir, 1, dimensions);
+    }
+  }
+};
+
+template <size_t rank, size_t Nc> struct TemporalWilsonInitTransporter {
+  using TransporterView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  TransporterView Tcurr;
+
+  TemporalWilsonInitTransporter(TransporterView &Tcurr) : Tcurr(Tcurr) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
+    Tcurr(lin) = identitySUN<Nc>();
+  }
+};
+
+template <size_t rank, size_t Nc> struct TemporalWilsonUpdateTransporter {
+  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+  using TransporterView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  const GaugeFieldType g_in;
+  TransporterView Tcurr;
+  const IndexArray<rank> dimensions;
+  const index_t t_minus_one;
+
+  TemporalWilsonUpdateTransporter(const GaugeFieldType &g_in,
+                                  TransporterView &Tcurr,
+                                  const IndexArray<rank> &dimensions,
+                                  const index_t t_minus_one)
+      : g_in(g_in), Tcurr(Tcurr), dimensions(dimensions),
+        t_minus_one(t_minus_one) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
+    const auto site = wilson_linear_to_site<rank>(lin, dimensions);
+    const auto shifted =
+        shift_index_plus<rank>(site, time_dir, t_minus_one, dimensions);
+    Tcurr(lin) *= g_in(shifted, time_dir);
+  }
+};
+
+template <size_t rank, size_t Nc> struct TemporalWilsonMeasureFixedT {
+  using SpatialLinesView =
+      Kokkos::View<SUN<Nc> ***,
+                   Kokkos::MemoryTraits<Kokkos::Restrict>>;
+  using TransporterView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+  using AccumView =
+      Kokkos::View<real_t **, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  SpatialLinesView spatial_lines;
+  TransporterView Tcurr;
+  AccumView W_accum;
+  const IndexArray<rank> dimensions;
+  const index_t t;
+
+  TemporalWilsonMeasureFixedT(SpatialLinesView &spatial_lines,
+                              TransporterView &Tcurr, AccumView &W_accum,
+                              const IndexArray<rank> &dimensions,
+                              const index_t t)
+      : spatial_lines(spatial_lines), Tcurr(Tcurr), W_accum(W_accum),
+        dimensions(dimensions), t(t) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t r,
+                                              const index_t idir,
+                                              const index_t site_lin) const {
+    constexpr index_t time_dir = static_cast<index_t>(rank - 1);
+    const auto site =
+        wilson_linear_to_site<rank>(static_cast<size_t>(site_lin), dimensions);
+    const auto site_r = shift_index_plus<rank>(site, idir, r, dimensions);
+    const auto site_t =
+        shift_index_plus<rank>(site, time_dir, t, dimensions);
+    const size_t lin_r = wilson_site_to_linear<rank>(site_r, dimensions);
+    const size_t lin_t = wilson_site_to_linear<rank>(site_t, dimensions);
+
+    const SUN<Nc> loop = spatial_lines(idir, r, site_lin) * Tcurr(lin_r) *
+                         conj(spatial_lines(idir, r, lin_t)) *
+                         conj(Tcurr(site_lin));
+    const real_t contribution = trace(loop).real();
+    Kokkos::atomic_add(&W_accum(r, t), contribution);
+  }
+};
+
+template <size_t rank> struct TemporalWilsonNormalize {
+  using AccumView =
+      Kokkos::View<real_t **, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  AccumView W_accum;
+  const real_t norm;
+
+  TemporalWilsonNormalize(AccumView &W_accum, const real_t norm)
+      : W_accum(W_accum), norm(norm) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t r,
+                                              const index_t t) const {
+    W_accum(r, t) /= norm;
+  }
+};
+
+template <size_t rank, size_t Nc>
+void WilsonLoop_temporal_raw_fused(
+    const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
+    const std::vector<Kokkos::Array<index_t, 2>> &L_T_pairs,
+    std::vector<Kokkos::Array<real_t, 3>> &Wtemporal_vals,
+    const bool normalize = true) {
+  if (L_T_pairs.empty()) {
+    return;
+  }
+
+  constexpr index_t spatial_dirs = static_cast<index_t>(rank - 1);
+  const auto dimensions = g_in.dimensions;
+  const size_t nSites = wilson_site_count<rank>(dimensions);
+
+  index_t Rmax = 0;
+  index_t Tmax = 0;
+  for (const auto &pair : L_T_pairs) {
+    Rmax = pair[0] > Rmax ? pair[0] : Rmax;
+    Tmax = pair[1] > Tmax ? pair[1] : Tmax;
+  }
+
+  using SpatialLinesView =
+      Kokkos::View<SUN<Nc> ***,
+                   Kokkos::MemoryTraits<Kokkos::Restrict>>;
+  using TransporterView =
+      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+  using AccumView =
+      Kokkos::View<real_t **, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+
+  SpatialLinesView spatial_lines("temporal_wilson_spatial_lines",
+                                 spatial_dirs, Rmax + 1, nSites);
+  TransporterView Tcurr("temporal_wilson_Tcurr", nSites);
+  AccumView W_accum("temporal_wilson_W_accum", Rmax + 1, Tmax + 1);
+
+  Kokkos::parallel_for(
+      "TemporalWilsonSpatialLines",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(
+          0, static_cast<size_t>(spatial_dirs) * nSites),
+      TemporalWilsonSpatialLines<rank, Nc>(g_in, spatial_lines, dimensions,
+                                           Rmax, nSites));
+
+  Kokkos::parallel_for(
+      "TemporalWilsonInitTransporter",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nSites),
+      TemporalWilsonInitTransporter<rank, Nc>(Tcurr));
+
+  Kokkos::deep_copy(W_accum, real_t(0.0));
+
+  const index_t nSitesIndex = static_cast<index_t>(nSites);
+  for (index_t t = 1; t <= Tmax; ++t) {
+    Kokkos::parallel_for(
+        "TemporalWilsonUpdateTransporter",
+        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nSites),
+        TemporalWilsonUpdateTransporter<rank, Nc>(g_in, Tcurr, dimensions,
+                                                  t - 1));
+
+    Kokkos::parallel_for(
+        "TemporalWilsonMeasureFixedT",
+        Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+            {1, 0, 0}, {Rmax + 1, spatial_dirs, nSitesIndex}),
+        TemporalWilsonMeasureFixedT<rank, Nc>(spatial_lines, Tcurr, W_accum,
+                                              dimensions, t));
+  }
+
+  const real_t norm =
+      normalize ? static_cast<real_t>(spatial_dirs) *
+                      static_cast<real_t>(nSites) * static_cast<real_t>(Nc)
+                : static_cast<real_t>(spatial_dirs);
+  Kokkos::parallel_for(
+      "TemporalWilsonNormalize",
+      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({1, 1}, {Rmax + 1, Tmax + 1}),
+      TemporalWilsonNormalize<rank>(W_accum, norm));
+
+  auto W_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
+                                                   W_accum);
+  for (const auto &pair : L_T_pairs) {
+    Wtemporal_vals.push_back(
+        Kokkos::Array<real_t, 3>{static_cast<real_t>(pair[0]),
+                                 static_cast<real_t>(pair[1]),
+                                 W_host(pair[0], pair[1])});
+  }
+}
+
 template <size_t rank, size_t Nc, class RNG>
 void WilsonLoop_mu_nu(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in, const index_t mu,
@@ -406,6 +657,11 @@ void WilsonLoop_temporal(
     const real_t epsilon1, const real_t epsilon2, const RNG &rng,
     const bool normalize = true) {
   constexpr static const size_t Nd = rank;
+  if (multihit <= 1) {
+    WilsonLoop_temporal_raw_fused<rank, Nc>(g_in, L_T_pairs, Wtemporal_vals,
+                                            normalize);
+    return;
+  }
 
   std::vector<Kokkos::Array<real_t, 5>> Wmunu_vals;
   WilsonLoop_mu_nu<rank, Nc>(g_in, 0, Nd - 1, L_T_pairs, Wmunu_vals, multihit,
@@ -458,6 +714,11 @@ void WilsonLoop_temporal(
     const index_t multihit, const UpdateParams &updateParams, const RNG &rng,
     const bool normalize = true) {
   constexpr static const size_t Nd = rank;
+  if (multihit <= 1) {
+    WilsonLoop_temporal_raw_fused<rank, Nc>(g_in, L_T_pairs, Wtemporal_vals,
+                                            normalize);
+    return;
+  }
 
   std::vector<Kokkos::Array<real_t, 5>> Wmunu_vals;
   WilsonLoop_mu_nu<rank, Nc>(g_in, 0, Nd - 1, L_T_pairs, Wmunu_vals, multihit,
