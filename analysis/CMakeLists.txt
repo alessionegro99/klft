@@ -1,6 +1,7 @@
 set(KLFT_ANALYSIS_SCRIPTS
   plaquette_stats.py
   polyakov_stats.py
+  stats_common.py
   wtemp_stats.py)
 
 set(KLFT_ANALYSIS_OUTPUT_DIR ${PROJECT_BINARY_DIR}/analysis)

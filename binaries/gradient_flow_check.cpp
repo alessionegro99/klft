@@ -327,8 +327,7 @@ bool check_temporal_wilson_loop_fusion(RNG &rng) {
 template <size_t rank, size_t Nc> bool run_checks() {
   RNGType rng(12345);
   bool ok = true;
-  printf("Gradient-flow check for %zuD %s\n", rank,
-         gradient_flow_group_name<Nc>());
+  printf("Gradient-flow check for %zuD\n", rank);
   ok &= check_cold_configuration<rank, Nc>();
   ok &= check_zero_flow_consistency<rank, Nc>(rng);
   ok &= check_clover_energy_and_group<rank, Nc>(rng);

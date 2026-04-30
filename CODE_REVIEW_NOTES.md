@@ -117,8 +117,8 @@ A100/CUDA preset when possible.
   imaginary correlator reductions into one complex reducer.
 - [ ] `include/observables/polyakov_correlator.hpp`: Consider computing multiple
   `R` values in one pass if `max_r` is large.
-- [ ] `include/observables/retrace.hpp`: No obvious bug. Uses linear index
-  division/modulo per link; `MDRange`/direct coordinate loops would be faster.
+- [x] `include/observables/retrace.hpp`: Replace linear index division/modulo
+  per link with an `MDRangePolicy` site reduction.
 
 ## Params
 
@@ -143,15 +143,14 @@ A100/CUDA preset when possible.
 
 ## Binaries, CMake, And Analysis
 
-- [ ] `binaries/gradient_flow_check.cpp`: Useful checks, but not wired into CTest. If
-  "no group printing" is meant literally everywhere, this still prints the group
-  name.
+- [x] `binaries/gradient_flow_check.cpp`: Wire the check into CTest and remove
+  the group name from its banner.
 - [x] `CMakeLists.txt`/`CMakePresets.json`: Align preset CMake minimum with
   `CMakeLists.txt` and use `PROJECT_SOURCE_DIR`/`PROJECT_BINARY_DIR` paths.
 - [x] `analysis/wtemp_stats.py`: Understand gradient-flow temporal Wilson-loop
   files with `conf_id t_over_a2 L T W_temp` columns.
-- [ ] `analysis/*.py`: Self-contained and fine for current files, but they
-  duplicate blocking logic.
+- [x] `analysis/*.py`: Factor duplicated blocking logic into
+  `analysis/stats_common.py`.
 
 ## Cross-Cutting Reminders
 

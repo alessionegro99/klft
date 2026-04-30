@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.21.0)
 project(klft VERSION 0.0.1 LANGUAGES CXX)
+enable_testing()
 
 # Honor already set CMAKE_CXX_STANDARD.
 # Otherwise default to C++17

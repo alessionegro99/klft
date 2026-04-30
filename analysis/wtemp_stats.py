@@ -2,8 +2,9 @@
 """Mean and blocked error for KLFT temporal Wilson-loop output."""
 
 import argparse
-import math
 import sys
+
+from stats_common import blocked_error, mean
 
 
 def parse_args():
@@ -83,27 +84,6 @@ def read_wtemp_values(filename, therm):
     if saw_standard and saw_gradient_flow:
         raise ValueError(f"{filename}: mixed normal and gradient-flow W_temp formats")
     return values_by_loop
-
-
-def mean(values):
-    return sum(values) / len(values)
-
-
-def blocked_error(values, block_size):
-    nblocks = len(values) // block_size
-    if nblocks < 2:
-        return float("nan"), nblocks
-
-    block_means = []
-    for block_index in range(nblocks):
-        start = block_index * block_size
-        block = values[start : start + block_size]
-        block_means.append(mean(block))
-
-    block_mean = mean(block_means)
-    variance = sum((value - block_mean) ** 2 for value in block_means)
-    variance /= nblocks - 1
-    return math.sqrt(variance / nblocks), nblocks
 
 
 def main():
