@@ -4,6 +4,7 @@
 #include "observables/gauge_observables.hpp"
 #include "params/gradient_flow_params.hpp"
 #include "params/heatbath_params.hpp"
+#include "params/kokkos_tuning_params.hpp"
 #include "params/metropolis_params.hpp"
 
 #include <algorithm>
@@ -123,6 +124,36 @@ inline bool validateObservableFilenames(const GaugeObservableParams &params) {
            "nested_wilson_action_filename is empty\n");
     return false;
   }
+  return true;
+}
+
+inline bool parseInputFile(const std::string &filename,
+                           KokkosTuningParams &kokkosTuningParams) {
+  YAML::Node config;
+  if (!loadInputConfig(filename, config)) {
+    return false;
+  }
+
+  kokkosTuningParams = KokkosTuningParams{};
+  if (!config["KokkosTuningParams"]) {
+    return true;
+  }
+
+  const auto &tp = config["KokkosTuningParams"];
+  kokkosTuningParams.enabled = tp["enabled"].as<bool>(false);
+  kokkosTuningParams.cache_file =
+      tp["cache_file"].as<std::string>("ktune_cache.dat");
+
+  if (kokkosTuningParams.cache_file.empty()) {
+    printf("Error: KokkosTuningParams.cache_file must not be empty\n");
+    return false;
+  }
+  if (kokkosTuningParams.enabled && !compiled_with_ktune) {
+    printf("Error: KokkosTuningParams.enabled is true, but this binary was "
+           "built without KTune. Reconfigure with -DKLFT_ENABLE_KTUNE=ON.\n");
+    return false;
+  }
+
   return true;
 }
 

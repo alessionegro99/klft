@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "observables/polyakov_loop.hpp"
 #include "params/heatbath_params.hpp"
@@ -28,7 +29,7 @@ complex_t PolyakovFTAmplitude(
   const size_t nSpatial = spatial_volume<rank>(dimensions);
   complex_t total(0.0, 0.0);
 
-  Kokkos::parallel_reduce(
+  kokkos_tuning::parallel_reduce(
       "PolyakovFTAmplitude", Kokkos::RangePolicy<Exec>(0, nSpatial),
       KOKKOS_LAMBDA(const size_t i, complex_t &lsum) {
         const auto site = linear_to_polyakov_origin<rank>(i, dimensions);

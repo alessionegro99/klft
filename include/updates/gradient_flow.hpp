@@ -2,6 +2,7 @@
 
 #include "core/compiled_theory.hpp"
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/clover_energy.hpp"
@@ -368,11 +369,10 @@ real_t max_algebra_norm(
     const typename DeviceGaugeFieldType<rank, Nc>::type &Z) {
   real_t max_norm = 0.0;
   const size_t nlinks = gradient_flow_site_count<rank>(Z.dimensions) * rank;
-  Kokkos::parallel_reduce("MaxAlgebraNorm",
-                          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(
-                              0, nlinks),
-                          MaxAlgebraNorm<rank, Nc>(Z),
-                          Kokkos::Max<real_t>(max_norm));
+  kokkos_tuning::parallel_reduce(
+      "MaxAlgebraNorm",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nlinks),
+      MaxAlgebraNorm<rank, Nc>(Z), Kokkos::Max<real_t>(max_norm));
   Kokkos::fence();
   return max_norm;
 }
@@ -471,22 +471,20 @@ GradientFlowGroupErrors measure_group_errors(
     const typename DeviceGaugeFieldType<rank, Nc>::type &V) {
   const size_t nlinks = gradient_flow_site_count<rank>(V.dimensions) * rank;
   real_t max_error = 0.0;
-  Kokkos::parallel_reduce("MaxGroupErrors",
-                          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(
-                              0, nlinks),
-                          MaxGroupErrors<rank, Nc>(V),
-                          Kokkos::Max<real_t>(max_error));
+  kokkos_tuning::parallel_reduce(
+      "MaxGroupErrors",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nlinks),
+      MaxGroupErrors<rank, Nc>(V), Kokkos::Max<real_t>(max_error));
   Kokkos::fence();
 
   if constexpr (Nc == 1) {
     return GradientFlowGroupErrors{max_error, 0.0};
   } else {
     real_t max_det = 0.0;
-    Kokkos::parallel_reduce("MaxDeterminantError",
-                            Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(
-                                0, nlinks),
-                            MaxDeterminantError<rank, Nc>(V),
-                            Kokkos::Max<real_t>(max_det));
+    kokkos_tuning::parallel_reduce(
+        "MaxDeterminantError",
+        Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nlinks),
+        MaxDeterminantError<rank, Nc>(V), Kokkos::Max<real_t>(max_det));
     Kokkos::fence();
     return GradientFlowGroupErrors{max_error, max_det};
   }

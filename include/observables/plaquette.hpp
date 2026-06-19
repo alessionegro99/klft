@@ -1,5 +1,6 @@
 #pragma once
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 
@@ -83,7 +84,7 @@ real_t GaugePlaquette(const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
     nSites *= static_cast<size_t>(dimensions[i]);
   }
 
-  Kokkos::parallel_reduce(
+  kokkos_tuning::parallel_reduce(
       "GaugePlaquette", Policy<rank>(start, end),
       GaugePlaq<rank, Nc>(g_in, dimensions), Kokkos::Sum<complex_t>(plaq));
 

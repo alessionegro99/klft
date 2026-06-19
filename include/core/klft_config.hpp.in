@@ -7,6 +7,9 @@ namespace klft {
 inline constexpr std::size_t compiled_rank = @KLFT_NDIM@;
 inline constexpr std::size_t compiled_nc = @KLFT_NC@;
 
+#define KLFT_ENABLE_KTUNE @KLFT_ENABLE_KTUNE_VALUE@
+inline constexpr bool compiled_with_ktune = KLFT_ENABLE_KTUNE != 0;
+
 inline constexpr const char *compiled_group_name() {
   if constexpr (compiled_nc == 1) {
     return "U(1)";

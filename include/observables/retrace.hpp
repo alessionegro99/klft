@@ -1,5 +1,6 @@
 #pragma once
 #include "core/common.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include <Kokkos_Core.hpp>
@@ -75,8 +76,8 @@ Retrace_links_avg(const typename DeviceGaugeFieldType<rank, Nc>::type &g) {
   const size_t nLinks = nSites * static_cast<size_t>(rank);
   real_t total = 0.0;
 
-  Kokkos::parallel_reduce("Retrace_links_avg", Policy<rank>(start, end),
-                          RetraceLinks<rank, Nc>(g), total);
+  kokkos_tuning::parallel_reduce("Retrace_links_avg", Policy<rank>(start, end),
+                                 RetraceLinks<rank, Nc>(g), total);
 
   return total / static_cast<real_t>(nLinks);
 }

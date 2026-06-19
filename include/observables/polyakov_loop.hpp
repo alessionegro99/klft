@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/multihit_links.hpp"
@@ -37,11 +38,16 @@ linear_to_polyakov_origin(size_t lin, const IndexArray<rank> &dimensions) {
   return site;
 }
 
-template <size_t rank, size_t Nc> struct LocalPolyakovLoopRaw {
+template <size_t rank, size_t Nc>
+struct LocalPolyakovLoopRaw
+    : kokkos_tuning::BackupFunctor<
+          Kokkos::View<complex_t *,
+                       Kokkos::MemoryTraits<Kokkos::Restrict>>> {
   constexpr static const size_t time_dir = rank - 1;
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
   using LocalFieldType =
       Kokkos::View<complex_t *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+  using BackupBase = kokkos_tuning::BackupFunctor<LocalFieldType>;
 
   const GaugeFieldType g_in;
   LocalFieldType poly_per_site;
@@ -49,7 +55,8 @@ template <size_t rank, size_t Nc> struct LocalPolyakovLoopRaw {
 
   LocalPolyakovLoopRaw(const GaugeFieldType &g_in, LocalFieldType &poly_per_site,
                        const IndexArray<rank> &dimensions)
-      : g_in(g_in), poly_per_site(poly_per_site), dimensions(dimensions) {}
+      : BackupBase(poly_per_site), g_in(g_in), poly_per_site(poly_per_site),
+        dimensions(dimensions) {}
 
   KOKKOS_FORCEINLINE_FUNCTION complex_t
   polyakov_at_site(const Kokkos::Array<index_t, rank> &origin) const {
@@ -488,10 +495,9 @@ void LocalPolyakovLoop(
   const auto dimensions = g_in.dimensions;
   const size_t nSpatial = spatial_volume<rank>(dimensions);
 
-  Kokkos::parallel_for("LocalPolyakovLoopRaw",
-                       Kokkos::RangePolicy<Exec>(0, nSpatial),
-                       LocalPolyakovLoopRaw<rank, Nc>(g_in, local_polyakov,
-                                                      dimensions));
+  kokkos_tuning::parallel_for(
+      "LocalPolyakovLoopRaw", Kokkos::RangePolicy<Exec>(0, nSpatial),
+      LocalPolyakovLoopRaw<rank, Nc>(g_in, local_polyakov, dimensions));
   Kokkos::fence();
 }
 

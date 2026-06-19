@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "observables/polyakov_loop.hpp"
 #include "params/heatbath_params.hpp"
@@ -8,6 +9,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace klft {
@@ -45,8 +47,10 @@ Kokkos::Array<real_t, 3> PolyakovCorrelatorAtR(
 
   complex_t total(0.0, 0.0);
 
-  Kokkos::parallel_reduce(
-      "PolyakovCorrelator", Kokkos::RangePolicy<Exec>(0, nSpatial),
+  const std::string kernel_name =
+      "PolyakovCorrelator_R" + std::to_string(R);
+  kokkos_tuning::parallel_reduce(
+      kernel_name, Kokkos::RangePolicy<Exec>(0, nSpatial),
       KOKKOS_LAMBDA(const size_t i, complex_t &lsum) {
         const auto site = linear_to_polyakov_origin<rank>(i, dimensions);
         const complex_t p0 = local_polyakov(i);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 
@@ -105,10 +106,10 @@ real_t measure_clover_energy_density(
     const typename DeviceGaugeFieldType<rank, Nc>::type &V) {
   real_t total = 0.0;
   const size_t nsites = clover_site_count<rank>(V.dimensions);
-  Kokkos::parallel_reduce("CloverEnergyDensity",
-                          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(
-                              0, nsites),
-                          CloverEnergyDensity<rank, Nc>(V), total);
+  kokkos_tuning::parallel_reduce(
+      "CloverEnergyDensity",
+      Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nsites),
+      CloverEnergyDensity<rank, Nc>(V), total);
   Kokkos::fence();
   return total / static_cast<real_t>(nsites);
 }

@@ -1,4 +1,5 @@
 #include "core/compiled_theory.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "io/input_parser.hpp"
 #include "updates/metropolis.hpp"
 
@@ -11,8 +12,13 @@ namespace klft {
 // Run Metropolis for the theory compiled into the binary.
 int Metropolis(const std::string &input_file) {
   MetropolisParams metropolisParams;
+  KokkosTuningParams kokkosTuningParams;
   GaugeObservableParams gaugeObsParams;
   GradientFlowParams gradientFlowParams;
+  if (!parseInputFile(input_file, kokkosTuningParams)) {
+    printf("Error parsing input file\n");
+    return -1;
+  }
   if (!parseInputFile(input_file, metropolisParams)) {
     printf("Error parsing input file\n");
     return -1;
@@ -29,6 +35,7 @@ int Metropolis(const std::string &input_file) {
     printf("Error validating gradient-flow input\n");
     return -1;
   }
+  kokkos_tuning::initialize(kokkosTuningParams);
   RNGType rng(metropolisParams.seed);
   auto gauge_field = make_identity_gauge_field<compiled_rank, compiled_nc>(
       metropolisParams.L0, metropolisParams.L1, metropolisParams.L2,

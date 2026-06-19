@@ -1,5 +1,6 @@
 #pragma once
 #include "core/indexing.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/plaquette.hpp"
@@ -178,7 +179,7 @@ real_t BlockedGaugePlaquetteOneLevel(
   }
 
   complex_t plaq(0.0, 0.0);
-  Kokkos::parallel_reduce(
+  kokkos_tuning::parallel_reduce(
       "BlockedGaugePlaquetteOneLevel", Policy<rank>(coarse_start, coarse_end),
       BlockedGaugePlaqOneLevel<rank, Nc>(g_in, fine_dimensions, child_offset),
       Kokkos::Sum<complex_t>(plaq));

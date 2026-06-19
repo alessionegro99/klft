@@ -94,6 +94,13 @@ inline void write_gradient_flow_sample(std::ofstream &file) {
        << "  t0_filename: \"gradient_flow_t0.dat\"\n";
 }
 
+inline void write_kokkos_tuning_sample(std::ofstream &file) {
+  file << "KokkosTuningParams:\n"
+       << "  enabled: false\n"
+       << "  cache_file: \"ktune_cache.dat\"\n"
+       << "\n";
+}
+
 inline int write_sample_metropolis_input_file(const std::string &filename) {
   namespace fs = std::filesystem;
   if (fs::exists(filename)) {
@@ -121,6 +128,7 @@ inline int write_sample_metropolis_input_file(const std::string &filename) {
        << "  epsilon1: 0.0\n"
        << "  epsilon2: 0.0\n"
        << "\n";
+  write_kokkos_tuning_sample(file);
   write_common_observable_sample(file);
   write_gradient_flow_sample(file);
 
@@ -154,6 +162,7 @@ inline int write_sample_heatbath_input_file(const std::string &filename) {
        << "  epsilon1: 0.0\n"
        << "  epsilon2: 0.0\n"
        << "\n";
+  write_kokkos_tuning_sample(file);
   write_common_observable_sample(file);
   write_gradient_flow_sample(file);
 

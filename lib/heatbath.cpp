@@ -1,4 +1,5 @@
 #include "core/compiled_theory.hpp"
+#include "core/kokkos_tuning.hpp"
 #include "io/input_parser.hpp"
 #include "updates/heatbath.hpp"
 
@@ -11,8 +12,13 @@ namespace klft {
 // Run heatbath plus overrelaxation for the theory compiled into the binary.
 int Heatbath(const std::string &input_file) {
   HeatbathParams heatbathParams;
+  KokkosTuningParams kokkosTuningParams;
   GaugeObservableParams gaugeObsParams;
   GradientFlowParams gradientFlowParams;
+  if (!parseInputFile(input_file, kokkosTuningParams)) {
+    printf("Error parsing input file\n");
+    return -1;
+  }
   if (!parseInputFile(input_file, heatbathParams)) {
     printf("Error parsing input file\n");
     return -1;
@@ -35,6 +41,7 @@ int Heatbath(const std::string &input_file) {
            "epsilon2 requires a different local update.\n");
     return -1;
   }
+  kokkos_tuning::initialize(kokkosTuningParams);
   RNGType rng(heatbathParams.seed);
 
   auto gauge_field = make_identity_gauge_field<compiled_rank, compiled_nc>(
