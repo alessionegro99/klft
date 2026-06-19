@@ -44,6 +44,7 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  measure_wilson_loop_mu_nu: true\n"
        << "  measure_polyakov_loop: true\n"
        << "  measure_polyakov_correlator: true\n"
+       << "  measure_polyakov_susceptibility: true\n"
        << "  measure_retrace_U: false\n"
        << "  wilson_loop_multihit: 1\n"
        << "  polyakov_loop_multihit: 1\n"
@@ -69,6 +70,7 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  W_mu_nu_filename: \"w_mu_nu.out\"\n"
        << "  polyakov_loop_filename: \"polyakov_loop.out\"\n"
        << "  polyakov_correlator_filename: \"polyakov_correlator.out\"\n"
+       << "  polyakov_susceptibility_filename: \"polyakov_susceptibility.out\"\n"
        << "  RetraceU_filename: \"retrace_u.out\"\n"
        << "  nested_wilson_action_filename: \"nested_wilson_action.out\"\n"
        << "  write_to_file: true\n";

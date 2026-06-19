@@ -3,6 +3,7 @@
 #include "observables/plaquette.hpp"
 #include "observables/polyakov_correlator.hpp"
 #include "observables/polyakov_loop.hpp"
+#include "observables/polyakov_susceptibility.hpp"
 #include "observables/retrace.hpp"
 #include "observables/wilson_loop.hpp"
 #include <filesystem>
@@ -19,6 +20,7 @@ struct GaugeObservableParams {
   bool measure_wilson_loop_mu_nu;
   bool measure_polyakov_loop;
   bool measure_polyakov_correlator;
+  bool measure_polyakov_susceptibility;
   bool measure_retrace_U;
   index_t wilson_loop_multihit;
   index_t polyakov_loop_multihit;
@@ -42,6 +44,7 @@ struct GaugeObservableParams {
   std::vector<Kokkos::Array<real_t, 2>> polyakov_measurements;
   std::vector<std::vector<Kokkos::Array<real_t, 3>>>
       polyakov_correlator_measurements;
+  std::vector<Kokkos::Array<real_t, 2>> polyakov_susceptibility_measurements;
   std::vector<real_t> retraceU_measurements;
 
   std::vector<real_t> nested_plaq_V_measurements;
@@ -54,6 +57,7 @@ struct GaugeObservableParams {
   std::string W_mu_nu_filename;
   std::string polyakov_loop_filename;
   std::string polyakov_correlator_filename;
+  std::string polyakov_susceptibility_filename;
   std::string RetraceU_filename;
   std::string nested_wilson_action_filename;
 
@@ -63,7 +67,8 @@ struct GaugeObservableParams {
       : measurement_interval(0), measure_plaquette(false),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
         measure_polyakov_loop(false), measure_polyakov_correlator(false),
-        measure_retrace_U(false), wilson_loop_multihit(1),
+        measure_polyakov_susceptibility(false), measure_retrace_U(false),
+        wilson_loop_multihit(1),
         polyakov_loop_multihit(1), polyakov_correlator_max_r(0),
         measure_nested_wilson_action(false), include_acceptance_rate(false),
         write_to_file(false) {}
@@ -124,6 +129,14 @@ void measureGaugeObservables(
                                  params.polyakov_loop_multihit,
                                  corr_measurements, updateParams, rng);
     params.polyakov_correlator_measurements.push_back(corr_measurements);
+  }
+
+  if (params.measure_polyakov_susceptibility) {
+    // Raw-loop momentum-space correlators G_0 and G_pmin; the Binder cumulant
+    // and second-moment correlation length are built from these at analysis
+    // time. updateParams is intentionally unused (raw loops, no multihit).
+    const auto S = PolyakovSusceptibility<rank, Nc>(g_in, rng);
+    params.polyakov_susceptibility_measurements.push_back(S);
   }
 
   if (params.measure_retrace_U) {
@@ -354,6 +367,41 @@ inline bool flushPolyakovCorrelator(std::ofstream &file,
   return static_cast<bool>(file);
 }
 
+// Append the staged Polyakov-susceptibility rows to disk.
+// Columns: step G_0 G_pmin, with G_0 = |P_bar|^2 the zero-momentum correlator
+// and G_pmin the minimal-momentum correlator averaged over spatial directions.
+inline bool flushPolyakovSusceptibility(std::ofstream &file,
+                                        const GaugeObservableParams &params,
+                                        const bool HEADER = true) {
+  if (!file.is_open()) {
+    printf("Error: file is not open\n");
+    return false;
+  }
+  if (!params.measure_polyakov_susceptibility) {
+    printf("Error: no Polyakov-susceptibility measurements available\n");
+    return false;
+  }
+
+  if (params.measurement_steps.size() !=
+      params.polyakov_susceptibility_measurements.size()) {
+    printf("Error: inconsistent Polyakov-susceptibility metadata sizes\n");
+    return false;
+  }
+
+  if (HEADER) {
+    file << "# step G_0 G_pmin\n";
+  }
+
+  file << std::setprecision(12);
+
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    file << params.measurement_steps[i] << " "
+         << params.polyakov_susceptibility_measurements[i][0] << " "
+         << params.polyakov_susceptibility_measurements[i][1] << "\n";
+  }
+  return static_cast<bool>(file);
+}
+
 // Append the staged Retrace(U) rows to disk.
 inline bool flushRetraceU(std::ofstream &file,
                           const GaugeObservableParams &params,
@@ -433,6 +481,7 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.W_mu_nu_measurements.clear();
   params.polyakov_measurements.clear();
   params.polyakov_correlator_measurements.clear();
+  params.polyakov_susceptibility_measurements.clear();
   params.retraceU_measurements.clear();
 
   params.nested_plaq_V_measurements.clear();
@@ -486,6 +535,11 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
     can_open_all &=
         canOpenObservableOutputFile(params.polyakov_correlator_filename);
   }
+  if (params.measure_polyakov_susceptibility &&
+      params.polyakov_susceptibility_filename != "") {
+    can_open_all &=
+        canOpenObservableOutputFile(params.polyakov_susceptibility_filename);
+  }
   if (params.measure_retrace_U && params.RetraceU_filename != "") {
     can_open_all &= canOpenObservableOutputFile(params.RetraceU_filename);
   }
@@ -532,6 +586,15 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
     ok &= flushPolyakovCorrelator(
         file, params, fileNeedsHeader(params.polyakov_correlator_filename));
     ok &= closeObservableOutputFile(file, params.polyakov_correlator_filename);
+  }
+
+  if (params.measure_polyakov_susceptibility &&
+      params.polyakov_susceptibility_filename != "") {
+    std::ofstream file(params.polyakov_susceptibility_filename, std::ios::app);
+    ok &= flushPolyakovSusceptibility(
+        file, params, fileNeedsHeader(params.polyakov_susceptibility_filename));
+    ok &=
+        closeObservableOutputFile(file, params.polyakov_susceptibility_filename);
   }
 
   if (params.measure_retrace_U && params.RetraceU_filename != "") {

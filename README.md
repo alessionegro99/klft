@@ -115,6 +115,7 @@ GaugeObservableParams:
   measure_wilson_loop_mu_nu: true
   measure_polyakov_loop: true
   measure_polyakov_correlator: true
+  measure_polyakov_susceptibility: true
   measure_retrace_U: false
   wilson_loop_multihit: 1
   polyakov_loop_multihit: 1
@@ -138,6 +139,7 @@ GaugeObservableParams:
   W_mu_nu_filename: "w_mu_nu.out"
   polyakov_loop_filename: "polyakov_loop.out"
   polyakov_correlator_filename: "polyakov_correlator.out"
+  polyakov_susceptibility_filename: "polyakov_susceptibility.out"
   RetraceU_filename: "retrace_u.out"
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true
@@ -181,6 +183,15 @@ overrelaxation updates on every temporal link of the loop.
 Polyakov-loop correlators are written as `# step R real imaginary`; `R = 0`
 and `R = 1` always use raw Polyakov loops, while only `R >= 2` uses the
 configured Polyakov multihit.
+The Polyakov-susceptibility file is written as `# step G_0 G_pmin`, the
+momentum-space Polyakov-loop correlators `G(p) = |(1/V_s) sum_x exp(i p.x) P(x)|^2`
+at zero momentum (`G_0`) and at minimal momentum `p_min = 2*pi/L` averaged over
+the spatial directions (`G_pmin`). These are always computed from raw Polyakov
+loops, independent of `polyakov_loop_multihit` (a multihit estimator would bias
+the diagonal self-term of `|A(p)|^2`). The finite-size-scaling analysis builds
+the Polyakov-loop Binder cumulant `U4 = <G_0^2>/<G_0>^2` and the second-moment
+correlation length `xi = sqrt(<G_0>/<G_pmin> - 1) / (2*sin(pi/L))` from the
+Monte Carlo ensemble averages of these two columns.
 
 ### Example heatbath input.yaml
 
@@ -205,6 +216,7 @@ GaugeObservableParams:
   measure_wilson_loop_mu_nu: true
   measure_polyakov_loop: true
   measure_polyakov_correlator: true
+  measure_polyakov_susceptibility: true
   measure_retrace_U: false
   wilson_loop_multihit: 1  # H+OR Wilson-loop multihit; 1 disables averaged-link sampling
   polyakov_loop_multihit: 1  # H+OR Polyakov-loop multihit; 1 disables averaged-link sampling
@@ -228,6 +240,7 @@ GaugeObservableParams:
   W_mu_nu_filename: "w_mu_nu.out"
   polyakov_loop_filename: "polyakov_loop.out"
   polyakov_correlator_filename: "polyakov_correlator.out"
+  polyakov_susceptibility_filename: "polyakov_susceptibility.out"
   RetraceU_filename: "retrace_u.out"
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true

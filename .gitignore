@@ -2,3 +2,6 @@
 build
 *.code-workspace
 .codex
+klft_auer/
+# symlink to an external checkout; trailing-slash pattern would not match it
+yang-mills-Bonn

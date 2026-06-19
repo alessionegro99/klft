@@ -106,6 +106,12 @@ inline bool validateObservableFilenames(const GaugeObservableParams &params) {
            "polyakov_correlator_filename is empty\n");
     return false;
   }
+  if (params.measure_polyakov_susceptibility &&
+      params.polyakov_susceptibility_filename.empty()) {
+    printf("Error: measure_polyakov_susceptibility is enabled but "
+           "polyakov_susceptibility_filename is empty\n");
+    return false;
+  }
   if (params.measure_retrace_U && params.RetraceU_filename.empty()) {
     printf("Error: measure_retrace_U is enabled but RetraceU_filename is "
            "empty\n");
@@ -313,6 +319,8 @@ inline bool parseInputFile(const std::string &filename,
       gp["measure_polyakov_loop"].as<bool>(false);
   gaugeObservableParams.measure_polyakov_correlator =
       gp["measure_polyakov_correlator"].as<bool>(false);
+  gaugeObservableParams.measure_polyakov_susceptibility =
+      gp["measure_polyakov_susceptibility"].as<bool>(false);
   gaugeObservableParams.measure_retrace_U =
       gp["measure_retrace_U"].as<bool>(false);
   gaugeObservableParams.wilson_loop_multihit =
@@ -363,6 +371,8 @@ inline bool parseInputFile(const std::string &filename,
       gp["polyakov_loop_filename"].as<std::string>("");
   gaugeObservableParams.polyakov_correlator_filename =
       gp["polyakov_correlator_filename"].as<std::string>("");
+  gaugeObservableParams.polyakov_susceptibility_filename =
+      gp["polyakov_susceptibility_filename"].as<std::string>("");
   gaugeObservableParams.RetraceU_filename =
       gp["RetraceU_filename"].as<std::string>("");
   gaugeObservableParams.nested_wilson_action_filename =
@@ -374,6 +384,7 @@ inline bool parseInputFile(const std::string &filename,
       gaugeObservableParams.measure_wilson_loop_mu_nu ||
       gaugeObservableParams.measure_polyakov_loop ||
       gaugeObservableParams.measure_polyakov_correlator ||
+      gaugeObservableParams.measure_polyakov_susceptibility ||
       gaugeObservableParams.measure_retrace_U ||
       gaugeObservableParams.measure_nested_wilson_action;
 
