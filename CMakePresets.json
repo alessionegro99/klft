@@ -73,6 +73,22 @@
                 "Kokkos_ARCH_AMPERE80": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
+        },
+        {
+            "name": "a100_3D_su2_ktune",
+            "displayName": "Production A100 3D SU(2) with KTune",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/../../build/klft-a100-3D-su2-ktune",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "KLFT_NDIM": "3",
+                "KLFT_NC": "2",
+                "KLFT_ENABLE_KTUNE": "ON",
+                "Kokkos_ENABLE_CUDA": "ON",
+                "Kokkos_ENABLE_OPENMP": "ON",
+                "Kokkos_ARCH_AMPERE80": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -95,6 +111,10 @@
         {
             "name": "a100_3D_su2",
             "configurePreset": "a100_3D_su2"
+        },
+        {
+            "name": "a100_3D_su2_ktune",
+            "configurePreset": "a100_3D_su2_ktune"
         }
     ]
 }
