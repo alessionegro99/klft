@@ -87,9 +87,15 @@ Running `binaries/metropolis` with no arguments writes a sample `input.yaml`
 and exits.
 
 Observable files are written incrementally and use space-separated columns.
-The plaquette file written by `metropolis` stores `step plaquette acceptance_rate time`.
+The plaquette file written by `metropolis` starts with `step`, ends with
+`acceptance_rate time`, and contains the selected plaquette columns described
+below.
 Wilson-loop multihit measurements in this executable use Metropolis local-link
 updates for the averaged links.
+
+`start` accepts `"cold"` (all links equal the identity) or `"hot"` (random
+group matrices generated from `seed`). Omitting it preserves the cold-start
+default.
 
 ### Example input.yaml
 
@@ -103,6 +109,7 @@ MetropolisParams:
   nHits: 10
   nSweep: 1000
   seed: 32091
+  start: "cold"
   beta: 2.0
   delta: 0.1
   epsilon1: 0.0
@@ -111,6 +118,8 @@ MetropolisParams:
 GaugeObservableParams:
   measurement_interval: 10
   measure_plaquette: true
+  measure_plaquette_spatial: false
+  measure_plaquette_temporal: false
   measure_wilson_loop_temporal: true
   measure_wilson_loop_mu_nu: true
   measure_polyakov_loop: true
@@ -175,7 +184,12 @@ binaries/heatbath
 Running `binaries/heatbath` with no arguments writes a sample `input.yaml` and exits.
 
 Observable files are written incrementally and use space-separated columns.
-The plaquette file written by `heatbath` stores `step plaquette time`.
+The plaquette file written by `heatbath` starts with `step`, ends with `time`,
+and contains the selected plaquette columns. `measure_plaquette` writes the
+existing average over all planes; `measure_plaquette_spatial` and
+`measure_plaquette_temporal` independently add averages over spatial-spatial
+and spatial-temporal planes. Each component is normalized by its own number of
+planes, as in `yang-mills-Bonn`. KLFT uses direction `KLFT_NDIM - 1` as time.
 Wilson-loop multihit measurements in this executable use heatbath plus
 `nOverrelax` local overrelaxation updates for the averaged links.
 Polyakov-loop multihit in this executable uses the same local heatbath plus
@@ -183,20 +197,16 @@ overrelaxation updates on every temporal link of the loop.
 Polyakov-loop correlators are written as `# step R real imaginary`; `R = 0`
 and `R = 1` always use raw Polyakov loops, while only `R >= 2` uses the
 configured Polyakov multihit.
-The Polyakov-susceptibility file is written as `# step G_0 G_cos G_sin`, from
-the spatial Fourier amplitude `A(p) = (1/V_s) sum_x exp(i p.x) P(x)` of the
-raw Polyakov-loop field: `G_0 = |A(0)|^2`, and `G_cos`, `G_sin` are the
-cosine- and sine-transform structure factors at minimal momentum
-`p_min = 2*pi/L`, each averaged over the spatial directions, with
-`|A(p_min)|^2 = G_cos + G_sin` per configuration (no cross term). These use raw
-Polyakov loops, independent of `polyakov_loop_multihit` (a multihit estimator
-would bias the diagonal self-term of `|A(p)|^2`). The finite-size-scaling
-analysis builds the Binder cumulant `U4 = <G_0^2>/<G_0>^2` and the second-moment
-correlation length `xi = sqrt(<G_0>/<G_den> - 1) / (2*sin(pi/L))`, choosing the
-minimal-momentum convention without re-running: `G_den = G_cos` (cosine
-structure factor) or `G_den = G_cos + G_sin` (full power). In equilibrium
-`<G_cos> = <G_sin>` by translation invariance, so `<G_sin>/<G_cos>` is a free
-thermalization check.
+The Polyakov-susceptibility file is written as `# step G_0 G_pmin`, from the
+spatial Fourier amplitude
+`A(p) = 1/[(KLFT_NDIM-1)V_s] sum_x exp(i p.x) P(x)` used by the Bonn-lverzich
+comparison: `G_0 = |A(0)|^2`, while `G_pmin` is
+`|A(p_min)|^2`, averaged over the spatial directions, with
+`p_min = 2*pi/L`. These use raw Polyakov loops, independent of
+`polyakov_loop_multihit` (a multihit estimator would bias the diagonal
+self-term of `|A(p)|^2`). The finite-size-scaling analysis builds the Binder
+cumulant `U4 = <G_0^2>/<G_0>^2` and the second-moment correlation length
+`xi = sqrt(<G_0>/<G_pmin> - 1) / (2*sin(pi/L))`.
 
 ### Example heatbath input.yaml
 
@@ -210,6 +220,7 @@ HeatbathParams:
   nSweep: 1000
   nOverrelax: 5
   seed: 32091
+  start: "cold"
   beta: 2.0
   epsilon1: 0.0    # supported by heatbath/overrelaxation
   epsilon2: 0.0    # currently not supported by heatbath/overrelaxation
@@ -217,6 +228,8 @@ HeatbathParams:
 GaugeObservableParams:
   measurement_interval: 10
   measure_plaquette: true
+  measure_plaquette_spatial: false
+  measure_plaquette_temporal: false
   measure_wilson_loop_temporal: true
   measure_wilson_loop_mu_nu: true
   measure_polyakov_loop: true

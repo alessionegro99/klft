@@ -129,6 +129,17 @@ bool check_cold_configuration() {
   auto cold = make_gauge_field_with<rank, Nc>(dims, identitySUN<Nc>());
   auto force = make_gauge_field_with<rank, Nc>(dims, zeroSUN<Nc>());
 
+  const auto plaquettes = GaugePlaquettes<rank, Nc>(cold);
+  if constexpr (rank > 2) {
+    ok &= check_condition(Kokkos::abs(plaquettes.spatial - 1.0) < 1.0e-12,
+                          "cold spatial plaquette equals one");
+  }
+  ok &= check_condition(Kokkos::abs(plaquettes.temporal - 1.0) < 1.0e-12,
+                        "cold temporal plaquette equals one");
+  ok &= check_condition(
+      Kokkos::abs(AverageGaugePlaquette<rank>(plaquettes) - 1.0) < 1.0e-12,
+      "cold combined plaquette equals one");
+
   compute_flow_force<rank, Nc>(cold, force, 1.0);
   const real_t force_norm = max_algebra_norm<rank, Nc>(force);
   ok &= check_condition(force_norm < 1.0e-12,
@@ -151,6 +162,76 @@ bool check_cold_configuration() {
                         "cold flow preserves unitarity/modulus");
   ok &= check_condition(errors.group_error_2 < gradient_flow_group_tolerance<Nc>(),
                         "cold flow preserves determinant");
+  return ok;
+}
+
+template <size_t rank, size_t Nc, class RNG>
+bool check_hot_start(RNG &rng) {
+  auto hot = make_hot_gauge_field<rank, Nc>(4, 4, 4, 4, rng);
+  const auto errors = measure_group_errors<rank, Nc>(hot);
+  const real_t plaquette = GaugePlaquette<rank, Nc>(hot);
+
+  bool ok = check_condition(
+      errors.group_error_1 < gradient_flow_group_tolerance<Nc>(),
+      "hot start satisfies unitarity/modulus constraint");
+  ok &= check_condition(
+      errors.group_error_2 < gradient_flow_group_tolerance<Nc>(),
+      "hot start satisfies determinant constraint");
+  ok &= check_condition(Kokkos::abs(plaquette - 1.0) > 1.0e-6,
+                        "hot start is distinct from the cold configuration");
+  return ok;
+}
+
+template <size_t rank, size_t Nc, class RNG>
+bool check_plaquette_split(RNG &rng) {
+  const auto dims = check_dimensions<rank>();
+  auto gauge = make_random_gauge_field_with<rank, Nc>(dims, rng, 0.35);
+  const auto plaquettes = GaugePlaquettes<rank, Nc>(gauge);
+
+  MetropolisParams params;
+  const std::vector<Kokkos::Array<index_t, 2>> unit_square = {
+      Kokkos::Array<index_t, 2>{1, 1}};
+  real_t spatial_reference = 0.0;
+  real_t temporal_reference = 0.0;
+  size_t n_spatial = 0;
+  size_t n_temporal = 0;
+  for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+    for (index_t nu = mu + 1; nu < static_cast<index_t>(rank); ++nu) {
+      std::vector<Kokkos::Array<real_t, 5>> plane;
+      WilsonLoop_mu_nu<rank, Nc>(gauge, mu, nu, unit_square, plane, 1, params,
+                                 rng);
+      if (nu == static_cast<index_t>(rank - 1)) {
+        temporal_reference += plane.at(0)[4];
+        ++n_temporal;
+      } else {
+        spatial_reference += plane.at(0)[4];
+        ++n_spatial;
+      }
+    }
+  }
+  temporal_reference /= static_cast<real_t>(n_temporal);
+  if (n_spatial > 0) {
+    spatial_reference /= static_cast<real_t>(n_spatial);
+  }
+
+  bool ok = true;
+  if constexpr (rank > 2) {
+    ok &= check_condition(
+        Kokkos::abs(plaquettes.spatial - spatial_reference) < 1.0e-12,
+        "spatial plaquette matches unit Wilson-loop planes");
+  }
+  ok &= check_condition(
+      Kokkos::abs(plaquettes.temporal - temporal_reference) < 1.0e-12,
+      "temporal plaquette matches unit Wilson-loop planes");
+
+  const real_t total_reference =
+      (static_cast<real_t>(n_spatial) * spatial_reference +
+       static_cast<real_t>(n_temporal) * temporal_reference) /
+      static_cast<real_t>(n_spatial + n_temporal);
+  ok &= check_condition(
+      Kokkos::abs(AverageGaugePlaquette<rank>(plaquettes) - total_reference) <
+          1.0e-12,
+      "combined plaquette uses plane-count weighting");
   return ok;
 }
 
@@ -329,6 +410,8 @@ template <size_t rank, size_t Nc> bool run_checks() {
   bool ok = true;
   printf("Gradient-flow check for %zuD\n", rank);
   ok &= check_cold_configuration<rank, Nc>();
+  ok &= check_hot_start<rank, Nc>(rng);
+  ok &= check_plaquette_split<rank, Nc>(rng);
   ok &= check_zero_flow_consistency<rank, Nc>(rng);
   ok &= check_clover_energy_and_group<rank, Nc>(rng);
   ok &= check_step_size_dependence<rank, Nc>(rng);

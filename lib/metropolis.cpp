@@ -30,9 +30,14 @@ int Metropolis(const std::string &input_file) {
     return -1;
   }
   RNGType rng(metropolisParams.seed);
-  auto gauge_field = make_identity_gauge_field<compiled_rank, compiled_nc>(
-      metropolisParams.L0, metropolisParams.L1, metropolisParams.L2,
-      metropolisParams.L3);
+  auto gauge_field =
+      metropolisParams.start == "hot"
+          ? make_hot_gauge_field<compiled_rank, compiled_nc>(
+                metropolisParams.L0, metropolisParams.L1,
+                metropolisParams.L2, metropolisParams.L3, rng)
+          : make_identity_gauge_field<compiled_rank, compiled_nc>(
+                metropolisParams.L0, metropolisParams.L1,
+                metropolisParams.L2, metropolisParams.L3);
   run_metropolis<compiled_rank, compiled_nc>(gauge_field, metropolisParams,
                                              gaugeObsParams,
                                              gradientFlowParams, rng);

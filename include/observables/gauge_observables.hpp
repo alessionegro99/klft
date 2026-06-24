@@ -16,6 +16,8 @@ namespace klft {
 struct GaugeObservableParams {
   size_t measurement_interval;
   bool measure_plaquette;
+  bool measure_plaquette_spatial;
+  bool measure_plaquette_temporal;
   bool measure_wilson_loop_temporal;
   bool measure_wilson_loop_mu_nu;
   bool measure_polyakov_loop;
@@ -39,6 +41,8 @@ struct GaugeObservableParams {
   std::vector<real_t> measurement_times;
 
   std::vector<real_t> plaquette_measurements;
+  std::vector<real_t> plaquette_spatial_measurements;
+  std::vector<real_t> plaquette_temporal_measurements;
   std::vector<std::vector<Kokkos::Array<real_t, 3>>> W_temp_measurements;
   std::vector<std::vector<Kokkos::Array<real_t, 5>>> W_mu_nu_measurements;
   std::vector<Kokkos::Array<real_t, 2>> polyakov_measurements;
@@ -65,6 +69,7 @@ struct GaugeObservableParams {
 
   GaugeObservableParams()
       : measurement_interval(0), measure_plaquette(false),
+        measure_plaquette_spatial(false), measure_plaquette_temporal(false),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
         measure_polyakov_loop(false), measure_polyakov_correlator(false),
         measure_polyakov_susceptibility(false), measure_retrace_U(false),
@@ -73,6 +78,12 @@ struct GaugeObservableParams {
         measure_nested_wilson_action(false), include_acceptance_rate(false),
         write_to_file(false) {}
 };
+
+inline bool
+anyPlaquetteMeasurementEnabled(const GaugeObservableParams &params) {
+  return params.measure_plaquette || params.measure_plaquette_spatial ||
+         params.measure_plaquette_temporal;
+}
 
 inline bool appendLatestGaugeObservables(const GaugeObservableParams &params);
 inline void clearAllGaugeObservables(GaugeObservableParams &params);
@@ -89,9 +100,18 @@ void measureGaugeObservables(
     return;
   }
 
-  if (params.measure_plaquette) {
-    const real_t P = GaugePlaquette<rank, Nc>(g_in);
-    params.plaquette_measurements.push_back(P);
+  if (anyPlaquetteMeasurementEnabled(params)) {
+    const auto plaquettes = GaugePlaquettes<rank, Nc>(g_in);
+    if (params.measure_plaquette) {
+      params.plaquette_measurements.push_back(
+          AverageGaugePlaquette<rank>(plaquettes));
+    }
+    if (params.measure_plaquette_spatial) {
+      params.plaquette_spatial_measurements.push_back(plaquettes.spatial);
+    }
+    if (params.measure_plaquette_temporal) {
+      params.plaquette_temporal_measurements.push_back(plaquettes.temporal);
+    }
   }
 
   if (params.measure_wilson_loop_temporal) {
@@ -199,35 +219,57 @@ inline bool flushPlaquette(std::ofstream &file,
     printf("Error: file is not open\n");
     return false;
   }
-  if (!params.measure_plaquette) {
+  if (!anyPlaquetteMeasurementEnabled(params)) {
     printf("Error: no plaquette measurements available\n");
     return false;
   }
 
-  if (params.measurement_steps.size() != params.plaquette_measurements.size() ||
-      params.measurement_steps.size() != params.measurement_times.size()) {
+  const size_t n = params.measurement_steps.size();
+  if (n != params.measurement_times.size() ||
+      (params.measure_plaquette && n != params.plaquette_measurements.size()) ||
+      (params.measure_plaquette_spatial &&
+       n != params.plaquette_spatial_measurements.size()) ||
+      (params.measure_plaquette_temporal &&
+       n != params.plaquette_temporal_measurements.size())) {
     printf("Error: inconsistent plaquette metadata sizes\n");
     return false;
   }
   if (params.include_acceptance_rate &&
-      params.measurement_steps.size() != params.measurement_acceptance_rates.size()) {
+      n != params.measurement_acceptance_rates.size()) {
     printf("Error: inconsistent plaquette acceptance metadata sizes\n");
     return false;
   }
 
   if (HEADER) {
-    if (params.include_acceptance_rate) {
-      file << "# step plaquette acceptance_rate time\n";
-    } else {
-      file << "# step plaquette time\n";
+    file << "# step";
+    if (params.measure_plaquette) {
+      file << " plaquette";
     }
+    if (params.measure_plaquette_spatial) {
+      file << " plaquette_spatial";
+    }
+    if (params.measure_plaquette_temporal) {
+      file << " plaquette_temporal";
+    }
+    if (params.include_acceptance_rate) {
+      file << " acceptance_rate";
+    }
+    file << " time\n";
   }
 
   file << std::setprecision(12);
 
-  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
-    file << params.measurement_steps[i] << " "
-         << params.plaquette_measurements[i];
+  for (size_t i = 0; i < n; ++i) {
+    file << params.measurement_steps[i];
+    if (params.measure_plaquette) {
+      file << " " << params.plaquette_measurements[i];
+    }
+    if (params.measure_plaquette_spatial) {
+      file << " " << params.plaquette_spatial_measurements[i];
+    }
+    if (params.measure_plaquette_temporal) {
+      file << " " << params.plaquette_temporal_measurements[i];
+    }
     if (params.include_acceptance_rate) {
       file << " " << params.measurement_acceptance_rates[i];
     }
@@ -368,8 +410,10 @@ inline bool flushPolyakovCorrelator(std::ofstream &file,
 }
 
 // Append the staged Polyakov-susceptibility rows to disk.
-// Columns: step G_0 G_pmin, with G_0 = |P_bar|^2 the zero-momentum correlator
-// and G_pmin the minimal-momentum correlator averaged over spatial directions.
+// Columns: step G_0 G_pmin, with G_0 the zero-momentum correlator and G_pmin
+// the minimal-momentum correlator averaged over spatial directions. Both use
+// the Bonn-lverzich Fourier-amplitude normalization documented in
+// polyakov_susceptibility.hpp.
 inline bool flushPolyakovSusceptibility(std::ofstream &file,
                                         const GaugeObservableParams &params,
                                         const bool HEADER = true) {
@@ -477,6 +521,8 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.measurement_times.clear();
 
   params.plaquette_measurements.clear();
+  params.plaquette_spatial_measurements.clear();
+  params.plaquette_temporal_measurements.clear();
   params.W_temp_measurements.clear();
   params.W_mu_nu_measurements.clear();
   params.polyakov_measurements.clear();
@@ -518,7 +564,8 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
   }
 
   bool can_open_all = true;
-  if (params.measure_plaquette && params.plaquette_filename != "") {
+  if (anyPlaquetteMeasurementEnabled(params) &&
+      params.plaquette_filename != "") {
     can_open_all &= canOpenObservableOutputFile(params.plaquette_filename);
   }
   if (params.measure_wilson_loop_temporal && params.W_temp_filename != "") {
@@ -553,7 +600,8 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
   }
 
   bool ok = true;
-  if (params.measure_plaquette && params.plaquette_filename != "") {
+  if (anyPlaquetteMeasurementEnabled(params) &&
+      params.plaquette_filename != "") {
     std::ofstream file(params.plaquette_filename, std::ios::app);
     ok &= flushPlaquette(file, params, fileNeedsHeader(params.plaquette_filename));
     ok &= closeObservableOutputFile(file, params.plaquette_filename);

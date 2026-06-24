@@ -76,13 +76,23 @@ inline bool validateLatticeExtents(const index_t L0, const index_t L1,
   return true;
 }
 
+inline bool validateStart(const std::string &start,
+                          const char *section_name) {
+  if (start == "cold" || start == "hot") {
+    return true;
+  }
+  printf("Error: %s.start must be either 'cold' or 'hot'\n", section_name);
+  return false;
+}
+
 inline bool validateObservableFilenames(const GaugeObservableParams &params) {
   if (!params.write_to_file) {
     return true;
   }
-  if (params.measure_plaquette && params.plaquette_filename.empty()) {
-    printf("Error: measure_plaquette is enabled but plaquette_filename is "
-           "empty\n");
+  if (anyPlaquetteMeasurementEnabled(params) &&
+      params.plaquette_filename.empty()) {
+    printf("Error: a plaquette measurement is enabled but "
+           "plaquette_filename is empty\n");
     return false;
   }
   if (params.measure_wilson_loop_temporal && params.W_temp_filename.empty()) {
@@ -146,6 +156,7 @@ inline bool parseInputFile(const std::string &filename,
   metropolisParams.nHits = mp["nHits"].as<index_t>(10);
   metropolisParams.nSweep = mp["nSweep"].as<index_t>(1000);
   metropolisParams.seed = mp["seed"].as<index_t>(1234);
+  metropolisParams.start = mp["start"].as<std::string>("cold");
   metropolisParams.beta = mp["beta"].as<real_t>(1.0);
   metropolisParams.delta = mp["delta"].as<real_t>(0.1);
   metropolisParams.epsilon1 = mp["epsilon1"].as<real_t>(0.0);
@@ -154,6 +165,9 @@ inline bool parseInputFile(const std::string &filename,
   if (!validateLatticeExtents(metropolisParams.L0, metropolisParams.L1,
                               metropolisParams.L2, metropolisParams.L3,
                               "MetropolisParams")) {
+    return false;
+  }
+  if (!validateStart(metropolisParams.start, "MetropolisParams")) {
     return false;
   }
   if (metropolisParams.nHits < 1) {
@@ -192,6 +206,7 @@ inline bool parseInputFile(const std::string &filename,
   heatbathParams.nSweep = hp["nSweep"].as<index_t>(1000);
   heatbathParams.nOverrelax = hp["nOverrelax"].as<index_t>(5);
   heatbathParams.seed = hp["seed"].as<index_t>(1234);
+  heatbathParams.start = hp["start"].as<std::string>("cold");
   heatbathParams.beta = hp["beta"].as<real_t>(1.0);
   heatbathParams.epsilon1 = hp["epsilon1"].as<real_t>(0.0);
   heatbathParams.epsilon2 = hp["epsilon2"].as<real_t>(0.0);
@@ -199,6 +214,9 @@ inline bool parseInputFile(const std::string &filename,
   if (!validateLatticeExtents(heatbathParams.L0, heatbathParams.L1,
                               heatbathParams.L2, heatbathParams.L3,
                               "HeatbathParams")) {
+    return false;
+  }
+  if (!validateStart(heatbathParams.start, "HeatbathParams")) {
     return false;
   }
   if (heatbathParams.nSweep < 0) {
@@ -311,6 +329,10 @@ inline bool parseInputFile(const std::string &filename,
       gp["measurement_interval"].as<size_t>(0);
   gaugeObservableParams.measure_plaquette =
       gp["measure_plaquette"].as<bool>(false);
+  gaugeObservableParams.measure_plaquette_spatial =
+      gp["measure_plaquette_spatial"].as<bool>(false);
+  gaugeObservableParams.measure_plaquette_temporal =
+      gp["measure_plaquette_temporal"].as<bool>(false);
   gaugeObservableParams.measure_wilson_loop_temporal =
       gp["measure_wilson_loop_temporal"].as<bool>(false);
   gaugeObservableParams.measure_wilson_loop_mu_nu =
@@ -379,7 +401,7 @@ inline bool parseInputFile(const std::string &filename,
       gp["nested_wilson_action_filename"].as<std::string>("");
 
   const bool any_measurement_enabled =
-      gaugeObservableParams.measure_plaquette ||
+      anyPlaquetteMeasurementEnabled(gaugeObservableParams) ||
       gaugeObservableParams.measure_wilson_loop_temporal ||
       gaugeObservableParams.measure_wilson_loop_mu_nu ||
       gaugeObservableParams.measure_polyakov_loop ||
@@ -403,6 +425,11 @@ inline bool parseInputFile(const std::string &filename,
   }
   if (gaugeObservableParams.polyakov_correlator_max_r < 0) {
     printf("Error: polyakov_correlator_max_r must be >= 0\n");
+    return false;
+  }
+  if (gaugeObservableParams.measure_plaquette_spatial && compiled_rank < 3) {
+    printf("Error: measure_plaquette_spatial requires at least two spatial "
+           "directions\n");
     return false;
   }
   if (gaugeObservableParams.measure_wilson_loop_temporal &&

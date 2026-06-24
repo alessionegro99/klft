@@ -12,7 +12,7 @@ namespace klft {
 
 // Fourier amplitude of the per-site Polyakov-loop field at spatial momentum p:
 //
-//   A(p) = (1 / V_s) * sum_x exp(i p.x) P(x),
+//   A(p) = [1 / ((rank - 1) V_s)] * sum_x exp(i p.x) P(x),
 //
 // following Bonati's polyakov_FT in yang-mills-Bonn (lib/gauge_conf_meas.c).
 // The sum runs over the spatial sites x (the rank-1 spatial components of the
@@ -61,7 +61,8 @@ complex_t PolyakovFTAmplitude(
 // per-configuration primaries that feed the finite-size-scaling analysis of the
 // deconfinement transition:
 //
-//   G_0    = G(p = 0) = |P_bar|^2,  P_bar = (1/V_s) sum_x P(x);
+//   G_0    = G(p = 0) = |P_bar|^2 / (rank - 1)^2,
+//            P_bar = (1/V_s) sum_x P(x);
 //   G_pmin = mean over the rank-1 spatial directions i of G(p_min e_i),
 //            with p_min = 2 pi / L_i.
 //

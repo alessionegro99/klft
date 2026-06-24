@@ -1,6 +1,8 @@
 #pragma once
 #include "core/common.hpp"
 
+#include <string>
+
 namespace klft {
 
 struct MetropolisParams {
@@ -11,6 +13,7 @@ struct MetropolisParams {
   index_t nHits;
   index_t nSweep;
   index_t seed;
+  std::string start;
   real_t beta;
   real_t delta;
   real_t epsilon1;
@@ -24,6 +27,7 @@ struct MetropolisParams {
     nHits = 10;
     nSweep = 1000;
     seed = 1234;
+    start = "cold";
 
     beta = 1.0;
     delta = 0.1;

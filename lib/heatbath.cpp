@@ -37,9 +37,14 @@ int Heatbath(const std::string &input_file) {
   }
   RNGType rng(heatbathParams.seed);
 
-  auto gauge_field = make_identity_gauge_field<compiled_rank, compiled_nc>(
-      heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
-      heatbathParams.L3);
+  auto gauge_field =
+      heatbathParams.start == "hot"
+          ? make_hot_gauge_field<compiled_rank, compiled_nc>(
+                heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
+                heatbathParams.L3, rng)
+          : make_identity_gauge_field<compiled_rank, compiled_nc>(
+                heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
+                heatbathParams.L3);
   run_heatbath<compiled_rank, compiled_nc>(gauge_field, heatbathParams,
                                            gaugeObsParams, gradientFlowParams,
                                            rng);
