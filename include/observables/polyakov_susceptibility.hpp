@@ -45,42 +45,46 @@ complex_t PolyakovFTAmplitude(
   if (nSpatial > 0) {
     total *= 1.0 / static_cast<real_t>(nSpatial);
   }
+  // Match the yang-mills-Bonn-lverzich normalization, which divides the Fourier
+  // amplitude by the number of spatial directions (STDIM-1 = rank-1) in
+  // polyakov_FT (lib/gauge_conf_meas.c: `* d_inv_space_vol / (STDIM-1)`).
+  // This factor cancels in xi and the Binder cumulant (pure ratios) but is
+  // needed for G_0, G_pmin and the susceptibility chi to match lverzich
+  // value-by-value. (Upstream yang-mills-Bonn leaves it out: `// /(STDIM-1) ?`.)
+  if (rank > 1) {
+    total *= 1.0 / static_cast<real_t>(rank - 1);
+  }
   return total;
 }
 
-// Per-configuration primaries for the finite-size-scaling analysis of the
-// deconfinement transition, from the spatial Fourier modes of the raw
-// Polyakov-loop field:
+// Zero- and minimal-momentum Polyakov-loop correlators G(p) = |A(p)|^2, the two
+// per-configuration primaries that feed the finite-size-scaling analysis of the
+// deconfinement transition:
 //
-//   G_0   = |A(0)|^2 = |P_bar|^2,            P_bar = (1/V_s) sum_x P(x);
-//   G_cos = mean over the rank-1 spatial directions i of (Re A(p_min e_i))^2;
-//   G_sin = mean over the rank-1 spatial directions i of (Im A(p_min e_i))^2;
+//   G_0    = G(p = 0) = |P_bar|^2,  P_bar = (1/V_s) sum_x P(x);
+//   G_pmin = mean over the rank-1 spatial directions i of G(p_min e_i),
+//            with p_min = 2 pi / L_i.
 //
-// with p_min = 2 pi / L_i. For p != 0 the amplitude is complex,
-//   A(p) = (1/V_s) [ sum_x cos(p.x) P(x) + i sum_x sin(p.x) P(x) ],
-// so G_cos and G_sin are the cosine- and sine-transform structure factors and
-// |A(p)|^2 = G_cos + G_sin per configuration (no cross term). Emitting them
-// separately is reversible, so the analysis can pick the minimal-momentum
-// convention without re-running:
-//   - cosine structure factor  G_den = G_cos          (the reference convention);
-//   - full power               G_den = G_cos + G_sin  (literal FT of G(x)).
-// At p = 0 the sine part vanishes, so G_0 is already the cosine-only value.
-//
-// From the Monte Carlo ensemble averages the analysis stage forms:
-//   - Binder cumulant of the Polyakov loop  U4 = <G_0^2> / <G_0>^2;
+// From their Monte Carlo ensemble averages the analysis stage forms:
+//   - Binder cumulant of the Polyakov loop  U4 = <G_0^2> / <G_0>^2
+//     (= <m^4>/<m^2>^2 with m^2 = G_0);
 //   - second-moment correlation length
-//     xi = sqrt(<G_0>/<G_den> - 1) / (2 sin(pi/L))   (equal spatial extents).
-// By translation invariance <G_cos> = <G_sin> in equilibrium, so the ratio
-// <G_sin>/<G_cos> is a free thermalization / momentum-grid check (-> 1).
+//     xi = sqrt(<G_0>/<G_pmin> - 1) / (2 sin(pi/L))   (equal spatial extents).
 // See the commented reference block in perform_measures_localobs_with_tracedef
 // of yang-mills-Bonn (lib/gauge_conf_meas.c).
 //
 // Raw (un-multihit) Polyakov loops are used on purpose: |A(p)|^2 contains the
 // diagonal x = y self-term, and a multihit estimator would bias it (loops at
-// distinct spatial sites share no links, so only the diagonal is affected).
-// This mirrors Bonati's raw polyvec feeding the momentum-space correlator.
+// distinct spatial sites share no links, so only the diagonal is affected),
+// shifting both G_0 and G_pmin. This mirrors Bonati's raw polyvec feeding the
+// momentum-space correlator, whereas the real-space correlator multihits only
+// the well-separated R >= 2 contributions.
+//
+// The xi prefactor 2 sin(pi/L) assumes equal spatial extents (cubic spatial
+// volume), as used in the FSS study; G_pmin is then a clean average over the
+// equivalent spatial directions.
 template <size_t rank, size_t Nc, class RNG>
-Kokkos::Array<real_t, 3> PolyakovSusceptibility(
+Kokkos::Array<real_t, 2> PolyakovSusceptibility(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in, const RNG &rng) {
   using LocalFieldType =
       Kokkos::View<complex_t *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
@@ -99,8 +103,7 @@ Kokkos::Array<real_t, 3> PolyakovSusceptibility(
   const real_t G0 = A0.real() * A0.real() + A0.imag() * A0.imag();
 
   const real_t twopi = 2.0 * Kokkos::numbers::pi_v<real_t>;
-  real_t Gcos = 0.0;
-  real_t Gsin = 0.0;
+  real_t Gpmin = 0.0;
   for (index_t i = 0; i < static_cast<index_t>(rank - 1); ++i) {
     Kokkos::Array<real_t, rank - 1> momentum;
     for (index_t d = 0; d < static_cast<index_t>(rank - 1); ++d) {
@@ -109,15 +112,13 @@ Kokkos::Array<real_t, 3> PolyakovSusceptibility(
     momentum[i] = twopi / static_cast<real_t>(dimensions[i]);
     const complex_t Ai =
         PolyakovFTAmplitude<rank>(local_polyakov, momentum, dimensions);
-    Gcos += Ai.real() * Ai.real();
-    Gsin += Ai.imag() * Ai.imag();
+    Gpmin += Ai.real() * Ai.real() + Ai.imag() * Ai.imag();
   }
   if (rank > 1) {
-    Gcos /= static_cast<real_t>(rank - 1);
-    Gsin /= static_cast<real_t>(rank - 1);
+    Gpmin /= static_cast<real_t>(rank - 1);
   }
 
-  return Kokkos::Array<real_t, 3>{G0, Gcos, Gsin};
+  return Kokkos::Array<real_t, 2>{G0, Gpmin};
 }
 
 } // namespace klft

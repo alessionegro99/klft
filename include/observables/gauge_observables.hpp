@@ -44,7 +44,7 @@ struct GaugeObservableParams {
   std::vector<Kokkos::Array<real_t, 2>> polyakov_measurements;
   std::vector<std::vector<Kokkos::Array<real_t, 3>>>
       polyakov_correlator_measurements;
-  std::vector<Kokkos::Array<real_t, 3>> polyakov_susceptibility_measurements;
+  std::vector<Kokkos::Array<real_t, 2>> polyakov_susceptibility_measurements;
   std::vector<real_t> retraceU_measurements;
 
   std::vector<real_t> nested_plaq_V_measurements;
@@ -132,9 +132,9 @@ void measureGaugeObservables(
   }
 
   if (params.measure_polyakov_susceptibility) {
-    // Raw-loop momentum-space correlators G_0, G_cos, G_sin; the Binder
-    // cumulant and second-moment correlation length are built from these at
-    // analysis time. updateParams is intentionally unused (raw loops).
+    // Raw-loop momentum-space correlators G_0 and G_pmin; the Binder cumulant
+    // and second-moment correlation length are built from these at analysis
+    // time. updateParams is intentionally unused (raw loops, no multihit).
     const auto S = PolyakovSusceptibility<rank, Nc>(g_in, rng);
     params.polyakov_susceptibility_measurements.push_back(S);
   }
@@ -368,10 +368,8 @@ inline bool flushPolyakovCorrelator(std::ofstream &file,
 }
 
 // Append the staged Polyakov-susceptibility rows to disk.
-// Columns: step G_0 G_cos G_sin. G_0 = |P_bar|^2 is the zero-momentum
-// correlator; G_cos and G_sin are the cosine- and sine-transform structure
-// factors at minimal momentum (direction-averaged). The minimal-momentum
-// correlator is G_cos (reference convention) or G_cos + G_sin (full power).
+// Columns: step G_0 G_pmin, with G_0 = |P_bar|^2 the zero-momentum correlator
+// and G_pmin the minimal-momentum correlator averaged over spatial directions.
 inline bool flushPolyakovSusceptibility(std::ofstream &file,
                                         const GaugeObservableParams &params,
                                         const bool HEADER = true) {
@@ -391,7 +389,7 @@ inline bool flushPolyakovSusceptibility(std::ofstream &file,
   }
 
   if (HEADER) {
-    file << "# step G_0 G_cos G_sin\n";
+    file << "# step G_0 G_pmin\n";
   }
 
   file << std::setprecision(12);
@@ -399,8 +397,7 @@ inline bool flushPolyakovSusceptibility(std::ofstream &file,
   for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
     file << params.measurement_steps[i] << " "
          << params.polyakov_susceptibility_measurements[i][0] << " "
-         << params.polyakov_susceptibility_measurements[i][1] << " "
-         << params.polyakov_susceptibility_measurements[i][2] << "\n";
+         << params.polyakov_susceptibility_measurements[i][1] << "\n";
   }
   return static_cast<bool>(file);
 }
