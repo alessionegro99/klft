@@ -48,6 +48,7 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  measure_polyakov_correlator: true\n"
        << "  measure_polyakov_susceptibility: true\n"
        << "  measure_retrace_U: false\n"
+       << "  measure_retrace_U2: false\n"
        << "  wilson_loop_multihit: 1\n"
        << "  polyakov_loop_multihit: 1\n"
        << "  polyakov_correlator_max_r: 4\n"
@@ -74,6 +75,7 @@ inline void write_common_observable_sample(std::ofstream &file) {
        << "  polyakov_correlator_filename: \"polyakov_correlator.out\"\n"
        << "  polyakov_susceptibility_filename: \"polyakov_susceptibility.out\"\n"
        << "  RetraceU_filename: \"retrace_u.out\"\n"
+       << "  RetraceU2_filename: \"retrace_u2.out\"\n"
        << "  nested_wilson_action_filename: \"nested_wilson_action.out\"\n"
        << "  write_to_file: true\n";
 }
@@ -123,6 +125,10 @@ inline int write_sample_metropolis_input_file(const std::string &filename) {
        << "  delta: 0.1\n"
        << "  epsilon1: 0.0\n"
        << "  epsilon2: 0.0\n"
+       << "\n";
+  file << "PartitioningParams:\n"
+       << "  enabled: false\n"
+       << "  table_file: \"partitionings/fibonacci_N88.yaml\"\n"
        << "\n";
   write_common_observable_sample(file);
   write_gradient_flow_sample(file);

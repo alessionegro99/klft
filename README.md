@@ -97,6 +97,51 @@ updates for the averaged links.
 group matrices generated from `seed`). Omitting it preserves the cold-start
 default.
 
+### SU(2) partitionings
+
+An SU(2) build can restrict every link to a finite linear or Fibonacci
+partition. The implementation follows the point sets and nearest-neighbor
+Metropolis update of [Hartung et al., EPJC 82 (2022)
+237](https://arxiv.org/abs/2201.09625). Because neighbor degrees can vary, it
+uses the full Metropolis--Hastings proposal ratio of [Hastings, Biometrika 57
+(1970) 97](https://doi.org/10.1093/biomet/57.1.97).
+
+```yaml
+PartitioningParams:
+  enabled: true
+  table_file: "partitionings/fibonacci_N88.yaml"
+```
+
+`nHits` remains the number of nearest-neighbor proposals per link; the paper
+uses `nHits: 10`. `delta` is ignored in partition mode. Partition mode requires
+`epsilon1: 0`, `epsilon2: 0`, `wilson_loop_multihit: 1`, and
+`polyakov_loop_multihit: 1`. It is rejected by non-SU(2) builds and by the
+heatbath driver. Cold starts use the table point nearest the identity; hot
+starts sample table points according to their integration weights.
+
+Generate the deterministic tables with NumPy and SciPy through `uv`:
+
+```bash
+uv run python tools/generate_partitioning.py linear 3 partitionings/linear_m3.yaml
+uv run python tools/generate_partitioning.py fibonacci 88 partitionings/fibonacci_N88.yaml
+uv run python tools/test_generate_partitioning.py
+```
+
+Linear tables use the analytic weight `(sqrt(2)/M)^3` and a sign-aware unit
+transfer graph. Fibonacci tables use uniform weights and convex-hull edges,
+which are the spherical Delaunay neighbors. `--weights FILE` overrides the
+default weights with a one-column text or `.npy` file. Files use JSON syntax,
+which is valid YAML, and are validated again when loaded by KLFT.
+
+Set `measure_retrace_U2: true` and `RetraceU2_filename` to write the normalized
+observable `Re Tr(U^2) / Nc`. For a benchmark with plaquettes measured every
+sweep, report update and autocorrelation-adjusted sampling rates with:
+
+```bash
+uv run python analysis/partition_benchmark.py plaquette.out \
+  --volume 4096 --dimensions 4 --hits 10 --thermalization 1000
+```
+
 ### Example input.yaml
 
 ```yaml
@@ -115,6 +160,10 @@ MetropolisParams:
   epsilon1: 0.0
   epsilon2: 0.0
 
+PartitioningParams:
+  enabled: false
+  table_file: "partitionings/fibonacci_N88.yaml"
+
 GaugeObservableParams:
   measurement_interval: 10
   measure_plaquette: true
@@ -126,6 +175,7 @@ GaugeObservableParams:
   measure_polyakov_correlator: true
   measure_polyakov_susceptibility: true
   measure_retrace_U: false
+  measure_retrace_U2: false
   wilson_loop_multihit: 1
   polyakov_loop_multihit: 1
   polyakov_correlator_max_r: 4
@@ -150,6 +200,7 @@ GaugeObservableParams:
   polyakov_correlator_filename: "polyakov_correlator.out"
   polyakov_susceptibility_filename: "polyakov_susceptibility.out"
   RetraceU_filename: "retrace_u.out"
+  RetraceU2_filename: "retrace_u2.out"
   nested_wilson_action_filename: "nested_wilson_action.out"
   write_to_file: true
 

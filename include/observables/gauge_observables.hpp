@@ -24,6 +24,7 @@ struct GaugeObservableParams {
   bool measure_polyakov_correlator;
   bool measure_polyakov_susceptibility;
   bool measure_retrace_U;
+  bool measure_retrace_U2;
   index_t wilson_loop_multihit;
   index_t polyakov_loop_multihit;
   index_t polyakov_correlator_max_r;
@@ -50,6 +51,7 @@ struct GaugeObservableParams {
       polyakov_correlator_measurements;
   std::vector<Kokkos::Array<real_t, 2>> polyakov_susceptibility_measurements;
   std::vector<real_t> retraceU_measurements;
+  std::vector<real_t> retraceU2_measurements;
 
   std::vector<real_t> nested_plaq_V_measurements;
   std::vector<real_t> nested_plaq_child_measurements;
@@ -63,6 +65,7 @@ struct GaugeObservableParams {
   std::string polyakov_correlator_filename;
   std::string polyakov_susceptibility_filename;
   std::string RetraceU_filename;
+  std::string RetraceU2_filename;
   std::string nested_wilson_action_filename;
 
   bool write_to_file;
@@ -73,6 +76,7 @@ struct GaugeObservableParams {
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
         measure_polyakov_loop(false), measure_polyakov_correlator(false),
         measure_polyakov_susceptibility(false), measure_retrace_U(false),
+        measure_retrace_U2(false),
         wilson_loop_multihit(1),
         polyakov_loop_multihit(1), polyakov_correlator_max_r(0),
         measure_nested_wilson_action(false), include_acceptance_rate(false),
@@ -162,6 +166,11 @@ void measureGaugeObservables(
   if (params.measure_retrace_U) {
     const real_t R = Retrace_links_avg<rank, Nc>(g_in);
     params.retraceU_measurements.push_back(R);
+  }
+
+  if (params.measure_retrace_U2) {
+    params.retraceU2_measurements.push_back(
+        RetraceU2_links_avg<rank, Nc>(g_in));
   }
 
   if (params.measure_nested_wilson_action) {
@@ -476,6 +485,33 @@ inline bool flushRetraceU(std::ofstream &file,
   return static_cast<bool>(file);
 }
 
+// Append normalized Re Tr(U^2) / Nc rows to disk.
+inline bool flushRetraceU2(std::ofstream &file,
+                           const GaugeObservableParams &params,
+                           const bool HEADER = true) {
+  if (!file.is_open()) {
+    printf("Error: file is not open\n");
+    return false;
+  }
+  if (!params.measure_retrace_U2) {
+    printf("Error: no Retrace(U^2) measurements available\n");
+    return false;
+  }
+  if (params.measurement_steps.size() != params.retraceU2_measurements.size()) {
+    printf("Error: inconsistent Retrace(U^2) metadata sizes\n");
+    return false;
+  }
+  if (HEADER) {
+    file << "# step ReTrU2_over_Nc\n";
+  }
+  file << std::setprecision(12);
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    file << params.measurement_steps[i] << " "
+         << params.retraceU2_measurements[i] << "\n";
+  }
+  return static_cast<bool>(file);
+}
+
 // Append the staged nested-action rows to disk.
 inline bool flushNestedWilsonAction(std::ofstream &file,
                                     const GaugeObservableParams &params,
@@ -529,6 +565,7 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.polyakov_correlator_measurements.clear();
   params.polyakov_susceptibility_measurements.clear();
   params.retraceU_measurements.clear();
+  params.retraceU2_measurements.clear();
 
   params.nested_plaq_V_measurements.clear();
   params.nested_plaq_child_measurements.clear();
@@ -590,6 +627,9 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
   if (params.measure_retrace_U && params.RetraceU_filename != "") {
     can_open_all &= canOpenObservableOutputFile(params.RetraceU_filename);
   }
+  if (params.measure_retrace_U2 && params.RetraceU2_filename != "") {
+    can_open_all &= canOpenObservableOutputFile(params.RetraceU2_filename);
+  }
   if (params.measure_nested_wilson_action &&
       params.nested_wilson_action_filename != "") {
     can_open_all &=
@@ -649,6 +689,13 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
     std::ofstream file(params.RetraceU_filename, std::ios::app);
     ok &= flushRetraceU(file, params, fileNeedsHeader(params.RetraceU_filename));
     ok &= closeObservableOutputFile(file, params.RetraceU_filename);
+  }
+
+  if (params.measure_retrace_U2 && params.RetraceU2_filename != "") {
+    std::ofstream file(params.RetraceU2_filename, std::ios::app);
+    ok &= flushRetraceU2(file, params,
+                         fileNeedsHeader(params.RetraceU2_filename));
+    ok &= closeObservableOutputFile(file, params.RetraceU2_filename);
   }
 
   if (params.measure_nested_wilson_action &&

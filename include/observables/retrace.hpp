@@ -81,4 +81,66 @@ Retrace_links_avg(const typename DeviceGaugeFieldType<rank, Nc>::type &g) {
   return total / static_cast<real_t>(nLinks);
 }
 
+// Average Re Tr(U^2) / Nc over all links.
+template <size_t rank, size_t Nc> struct RetraceU2Links {
+  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+  GaugeFieldType g;
+
+  explicit RetraceU2Links(const GaugeFieldType &g) : g(g) {}
+
+  KOKKOS_FORCEINLINE_FUNCTION
+  real_t retrace_at_site(const IndexArray<rank> &site) const {
+    real_t local = 0.0;
+#pragma unroll
+    for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      const auto U = g(site, mu);
+      local += trace(U * U).real() / static_cast<real_t>(Nc);
+    }
+    return local;
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              real_t &sum) const {
+    static_assert(rank == 2, "2-index overload requires rank 2.");
+    sum += retrace_at_site(IndexArray<rank>{i0, i1});
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              real_t &sum) const {
+    static_assert(rank == 3, "3-index overload requires rank 3.");
+    sum += retrace_at_site(IndexArray<rank>{i0, i1, i2});
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION void operator()(const index_t i0,
+                                              const index_t i1,
+                                              const index_t i2,
+                                              const index_t i3,
+                                              real_t &sum) const {
+    static_assert(rank == 4, "4-index overload requires rank 4.");
+    sum += retrace_at_site(IndexArray<rank>{i0, i1, i2, i3});
+  }
+};
+
+template <size_t rank, size_t Nc>
+real_t
+RetraceU2_links_avg(const typename DeviceGaugeFieldType<rank, Nc>::type &g) {
+  const auto dims = g.dimensions;
+  IndexArray<rank> begin;
+  IndexArray<rank> end;
+  size_t n_sites = 1;
+  for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
+    begin[d] = 0;
+    end[d] = dims[d];
+    n_sites *= static_cast<size_t>(dims[d]);
+  }
+  real_t total = 0.0;
+  Kokkos::parallel_reduce("RetraceU2_links_avg", Policy<rank>(begin, end),
+                          RetraceU2Links<rank, Nc>(g), total);
+  return total /
+         static_cast<real_t>(n_sites * static_cast<size_t>(rank));
+}
+
 } // namespace klft

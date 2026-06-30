@@ -13,6 +13,7 @@ int Heatbath(const std::string &input_file) {
   HeatbathParams heatbathParams;
   GaugeObservableParams gaugeObsParams;
   GradientFlowParams gradientFlowParams;
+  PartitioningParams partitioningParams;
   if (!parseInputFile(input_file, heatbathParams)) {
     printf("Error parsing input file\n");
     return -1;
@@ -23,6 +24,15 @@ int Heatbath(const std::string &input_file) {
   }
   if (!parseInputFile(input_file, gradientFlowParams)) {
     printf("Error parsing input file\n");
+    return -1;
+  }
+  if (!parseInputFile(input_file, partitioningParams)) {
+    printf("Error parsing input file\n");
+    return -1;
+  }
+  if (partitioningParams.enabled) {
+    printf("Error: PartitioningParams is not supported by the heatbath "
+           "driver\n");
     return -1;
   }
   if (!validateGradientFlowParams(gradientFlowParams, gaugeObsParams)) {

@@ -5,6 +5,7 @@
 #include "params/gradient_flow_params.hpp"
 #include "params/heatbath_params.hpp"
 #include "params/metropolis_params.hpp"
+#include "params/partitioning_params.hpp"
 
 #include <algorithm>
 #include <cstdio>
@@ -127,6 +128,11 @@ inline bool validateObservableFilenames(const GaugeObservableParams &params) {
            "empty\n");
     return false;
   }
+  if (params.measure_retrace_U2 && params.RetraceU2_filename.empty()) {
+    printf("Error: measure_retrace_U2 is enabled but RetraceU2_filename is "
+           "empty\n");
+    return false;
+  }
   if (params.measure_nested_wilson_action &&
       params.nested_wilson_action_filename.empty()) {
     printf("Error: measure_nested_wilson_action is enabled but "
@@ -183,6 +189,51 @@ inline bool parseInputFile(const std::string &filename,
     return false;
   }
 
+  return true;
+}
+
+inline bool parseInputFile(const std::string &filename,
+                           PartitioningParams &partitioningParams) {
+  YAML::Node config;
+  if (!loadInputConfig(filename, config)) {
+    return false;
+  }
+  partitioningParams = PartitioningParams{};
+  if (!config["PartitioningParams"]) {
+    return true;
+  }
+  const auto &pp = config["PartitioningParams"];
+  partitioningParams.enabled = pp["enabled"].as<bool>(false);
+  partitioningParams.table_file = pp["table_file"].as<std::string>("");
+  if (partitioningParams.enabled && partitioningParams.table_file.empty()) {
+    printf("Error: enabled PartitioningParams requires table_file\n");
+    return false;
+  }
+  return true;
+}
+
+inline bool validatePartitioningParams(
+    const PartitioningParams &partitioningParams,
+    const MetropolisParams &metropolisParams,
+    const GaugeObservableParams &gaugeObservableParams) {
+  if (!partitioningParams.enabled) {
+    return true;
+  }
+  if (compiled_nc != 2) {
+    printf("Error: partitioned Metropolis requires an SU(2) build\n");
+    return false;
+  }
+  if (metropolisParams.epsilon1 != 0.0 ||
+      metropolisParams.epsilon2 != 0.0) {
+    printf("Error: partitioned Metropolis requires epsilon1=epsilon2=0\n");
+    return false;
+  }
+  if (gaugeObservableParams.wilson_loop_multihit != 1 ||
+      gaugeObservableParams.polyakov_loop_multihit != 1) {
+    printf("Error: partitioned Metropolis does not support observable "
+           "multihit above one\n");
+    return false;
+  }
   return true;
 }
 
@@ -345,6 +396,8 @@ inline bool parseInputFile(const std::string &filename,
       gp["measure_polyakov_susceptibility"].as<bool>(false);
   gaugeObservableParams.measure_retrace_U =
       gp["measure_retrace_U"].as<bool>(false);
+  gaugeObservableParams.measure_retrace_U2 =
+      gp["measure_retrace_U2"].as<bool>(false);
   gaugeObservableParams.wilson_loop_multihit =
       gp["wilson_loop_multihit"].as<index_t>(1);
   gaugeObservableParams.polyakov_loop_multihit =
@@ -397,6 +450,8 @@ inline bool parseInputFile(const std::string &filename,
       gp["polyakov_susceptibility_filename"].as<std::string>("");
   gaugeObservableParams.RetraceU_filename =
       gp["RetraceU_filename"].as<std::string>("");
+  gaugeObservableParams.RetraceU2_filename =
+      gp["RetraceU2_filename"].as<std::string>("");
   gaugeObservableParams.nested_wilson_action_filename =
       gp["nested_wilson_action_filename"].as<std::string>("");
 
@@ -408,6 +463,7 @@ inline bool parseInputFile(const std::string &filename,
       gaugeObservableParams.measure_polyakov_correlator ||
       gaugeObservableParams.measure_polyakov_susceptibility ||
       gaugeObservableParams.measure_retrace_U ||
+      gaugeObservableParams.measure_retrace_U2 ||
       gaugeObservableParams.measure_nested_wilson_action;
 
   if (any_measurement_enabled && gaugeObservableParams.measurement_interval == 0) {

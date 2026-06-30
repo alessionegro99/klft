@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21.0)
 project(klft VERSION 0.0.1 LANGUAGES CXX)
-enable_testing()
+include(CTest)
 
 # Honor already set CMAKE_CXX_STANDARD.
 # Otherwise default to C++17
@@ -51,3 +51,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/binaries ${PROJECT_BINARY_DIR}/binaries)
 
 # stage Python analysis helpers into the build tree
 add_subdirectory(${PROJECT_SOURCE_DIR}/analysis ${PROJECT_BINARY_DIR}/analysis)
+
+if(BUILD_TESTING)
+  add_subdirectory(${PROJECT_SOURCE_DIR}/tests ${PROJECT_BINARY_DIR}/tests)
+endif()
