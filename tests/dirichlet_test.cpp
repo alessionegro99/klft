@@ -78,6 +78,18 @@ void set_link(Gauge &gauge, const IndexArray<3> &site, const index_t mu,
   Kokkos::fence();
 }
 
+SU2 get_staple(const Gauge &gauge, const IndexArray<3> &site,
+               const index_t mu) {
+  Kokkos::View<SU2> result("dirichlet_test_staple");
+  Kokkos::parallel_for(
+      "compute_dirichlet_test_staple", Kokkos::RangePolicy<>(0, 1),
+      KOKKOS_LAMBDA(const index_t) { result() = gauge.staple(site, mu); });
+  Kokkos::fence();
+  SU2 host_result;
+  Kokkos::deep_copy(host_result, result);
+  return host_result;
+}
+
 bool fields_equal(const Gauge &left, const Gauge &right,
                   const real_t tolerance = 0.0) {
   if (left.dimensions != right.dimensions) {
@@ -424,7 +436,7 @@ void check_local_action_differences() {
     const SU2 old_link = get_link(gauge, test_case.site, test_case.direction);
     const SU2 new_link =
         get_link(proposals, test_case.site, test_case.direction);
-    const SU2 staple = gauge.staple(test_case.site, test_case.direction);
+    const SU2 staple = get_staple(gauge, test_case.site, test_case.direction);
     const real_t predicted =
         WilsonLocalActionDifference<2>(old_link, new_link, staple, beta);
     const real_t old_action = DirichletSlabWilsonAction<2>(gauge, beta);
