@@ -1,0 +1,19 @@
+{
+  "source": "Marco Nebbia, Effects of Dirichlet Boundary Conditions in Yang-Mills Theories, MSc thesis, University of Turin, academic year 2024/2025, Table 4.4",
+  "observable": "raw ensemble mean of Tr G",
+  "beta": 12.15266,
+  "spatial_size": [64, 64],
+  "values": {
+    "2": [0.537, 0.020],
+    "3": [0.323, 0.031],
+    "4": [0.218, 0.024],
+    "5": [0.108, 0.025],
+    "6": [0.076, 0.023],
+    "7": [0.036, 0.019],
+    "8": [0.046, 0.015],
+    "9": [0.012, 0.011],
+    "10": [0.010, 0.007],
+    "11": [0.006, 0.006],
+    "12": [-0.001, 0.004]
+  }
+}
