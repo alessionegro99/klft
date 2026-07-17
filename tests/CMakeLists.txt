@@ -6,3 +6,22 @@ if(KLFT_NC STREQUAL "2")
   add_test(NAME partitioning_fibonacci
     COMMAND partitioning_test ${PROJECT_SOURCE_DIR}/partitionings/fibonacci_N88.yaml)
 endif()
+
+if(KLFT_NDIM STREQUAL "3" AND KLFT_NC STREQUAL "2")
+  add_executable(dirichlet_test dirichlet_test.cpp)
+  target_link_libraries(dirichlet_test PRIVATE klft)
+  add_test(NAME temporal_dirichlet_deterministic
+    COMMAND dirichlet_test ${PROJECT_SOURCE_DIR}/partitionings/linear_m3.yaml)
+  set_tests_properties(temporal_dirichlet_deterministic PROPERTIES
+    LABELS "dirichlet;fast")
+
+  add_executable(dirichlet_statistical_test dirichlet_statistical_test.cpp)
+  target_link_libraries(dirichlet_statistical_test PRIVATE klft)
+  if(KLFT_ENABLE_STATISTICAL_TESTS)
+    add_test(NAME temporal_dirichlet_statistical
+      COMMAND dirichlet_statistical_test)
+    set_tests_properties(temporal_dirichlet_statistical PROPERTIES
+      LABELS "dirichlet;statistical;slow" TIMEOUT 180)
+  endif()
+
+endif()

@@ -2,6 +2,7 @@
 
 #include "core/compiled_theory.hpp"
 #include "core/indexing.hpp"
+#include "core/temporal_dirichlet.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/clover_energy.hpp"
@@ -205,18 +206,25 @@ template <size_t rank, size_t Nc> struct ApplyFlowStage {
   const real_t c0;
   const real_t c1;
   const real_t c2;
+  const bool temporal_dirichlet;
 
   ApplyFlowStage(const GaugeFieldType &src, const GaugeFieldType &dst,
                  const GaugeFieldType &Z0, const GaugeFieldType &Z1,
                  const GaugeFieldType &Z2, const real_t c0, const real_t c1,
-                 const real_t c2)
-      : src(src), dst(dst), Z0(Z0), Z1(Z1), Z2(Z2), c0(c0), c1(c1), c2(c2) {}
+                 const real_t c2, const bool temporal_dirichlet)
+      : src(src), dst(dst), Z0(Z0), Z1(Z1), Z2(Z2), c0(c0), c1(c1), c2(c2),
+        temporal_dirichlet(temporal_dirichlet) {}
 
   template <typename... Indices>
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
     const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (temporal_dirichlet &&
+          is_temporal_dirichlet_link<rank>(site, mu, src.dimensions)) {
+        dst(site, mu) = identitySUN<Nc>();
+        continue;
+      }
       SUN<Nc> a = zeroSUN<Nc>();
       if (c0 != 0.0) {
         a += Z0(site, mu) * c0;
@@ -235,12 +243,21 @@ template <size_t rank, size_t Nc> struct ApplyFlowStage {
 template <size_t rank, size_t Nc> struct ReunitarizeFlowField {
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
   GaugeFieldType V;
-  explicit ReunitarizeFlowField(const GaugeFieldType &V) : V(V) {}
+  const bool temporal_dirichlet;
+  explicit ReunitarizeFlowField(const GaugeFieldType &V,
+                                const bool temporal_dirichlet)
+      : V(V), temporal_dirichlet(temporal_dirichlet) {}
 
   template <typename... Indices>
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
+    const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (temporal_dirichlet &&
+          is_temporal_dirichlet_link<rank>(site, mu, V.dimensions)) {
+        V(site, mu) = identitySUN<Nc>();
+        continue;
+      }
       auto link = V(Idcs..., mu);
       restoreSUN(link);
       V(Idcs..., mu) = link;
@@ -250,9 +267,11 @@ template <size_t rank, size_t Nc> struct ReunitarizeFlowField {
 
 template <size_t rank, size_t Nc>
 void reunitarize_flow_field(
-    typename DeviceGaugeFieldType<rank, Nc>::type &V) {
+    typename DeviceGaugeFieldType<rank, Nc>::type &V,
+    const bool temporal_dirichlet = false) {
   Kokkos::parallel_for(Policy<rank>(IndexArray<rank>{}, V.dimensions),
-                       ReunitarizeFlowField<rank, Nc>(V));
+                       ReunitarizeFlowField<rank, Nc>(V,
+                                                      temporal_dirichlet));
   Kokkos::fence();
 }
 
@@ -263,41 +282,47 @@ void apply_flow_stage(
     const typename DeviceGaugeFieldType<rank, Nc>::type &Z0,
     const typename DeviceGaugeFieldType<rank, Nc>::type &Z1,
     const typename DeviceGaugeFieldType<rank, Nc>::type &Z2, const real_t c0,
-    const real_t c1, const real_t c2) {
+    const real_t c1, const real_t c2,
+    const bool temporal_dirichlet = false) {
   Kokkos::parallel_for(
       Policy<rank>(IndexArray<rank>{}, src.dimensions),
-      ApplyFlowStage<rank, Nc>(src, dst, Z0, Z1, Z2, c0, c1, c2));
+      ApplyFlowStage<rank, Nc>(src, dst, Z0, Z1, Z2, c0, c1, c2,
+                               temporal_dirichlet));
   Kokkos::fence();
 }
 
 template <size_t rank, size_t Nc>
 void flow_step_rk3(typename DeviceGaugeFieldType<rank, Nc>::type &V,
                    GradientFlowWorkspace<rank, Nc> &workspace,
-                   const real_t dt) {
+                   const real_t dt,
+                   const bool temporal_dirichlet = false) {
   compute_flow_force<rank, Nc>(V, workspace.Z0, dt);
   apply_flow_stage<rank, Nc>(V, workspace.W1, workspace.Z0, workspace.Z1,
-                             workspace.Z2, 0.25, 0.0, 0.0);
+                             workspace.Z2, 0.25, 0.0, 0.0,
+                             temporal_dirichlet);
 
   compute_flow_force<rank, Nc>(workspace.W1, workspace.Z1, dt);
   apply_flow_stage<rank, Nc>(workspace.W1, workspace.W2, workspace.Z0,
                              workspace.Z1, workspace.Z2, -17.0 / 36.0,
-                             8.0 / 9.0, 0.0);
+                             8.0 / 9.0, 0.0, temporal_dirichlet);
 
   compute_flow_force<rank, Nc>(workspace.W2, workspace.Z2, dt);
   apply_flow_stage<rank, Nc>(workspace.W2, V, workspace.Z0, workspace.Z1,
-                             workspace.Z2, 17.0 / 36.0, -8.0 / 9.0, 0.75);
+                             workspace.Z2, 17.0 / 36.0, -8.0 / 9.0, 0.75,
+                             temporal_dirichlet);
 
-  reunitarize_flow_field<rank, Nc>(V);
+  reunitarize_flow_field<rank, Nc>(V, temporal_dirichlet);
 }
 
 template <size_t rank, size_t Nc>
 void flow_to_target_time(typename DeviceGaugeFieldType<rank, Nc>::type &V,
                          GradientFlowWorkspace<rank, Nc> &workspace,
                          real_t &current_t, const real_t target_t,
-                         const real_t dt) {
+                         const real_t dt,
+                         const bool temporal_dirichlet = false) {
   while (current_t + 1.0e-14 < target_t) {
     const real_t step = std::min(dt, target_t - current_t);
-    flow_step_rk3<rank, Nc>(V, workspace, step);
+    flow_step_rk3<rank, Nc>(V, workspace, step, temporal_dirichlet);
     current_t += step;
   }
   current_t = target_t;
@@ -718,7 +743,8 @@ void runGradientFlowMeasurements(
     const real_t next_stop_t = std::min(max_t, next_output_t);
     const real_t step_t = std::min(flowParams.dt, next_stop_t - current_t);
 
-    flow_step_rk3<rank, Nc>(V, workspace, step_t);
+    flow_step_rk3<rank, Nc>(V, workspace, step_t,
+                            updateParams.temporal_dirichlet);
     current_t += step_t;
     if (Kokkos::abs(current_t - next_stop_t) < time_tol) {
       current_t = next_stop_t;

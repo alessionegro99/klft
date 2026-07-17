@@ -12,6 +12,8 @@ set(CMAKE_CXX_EXTENSIONS Off)
 
 set(KLFT_NDIM 4 CACHE STRING "Compile-time spacetime dimension (2, 3, or 4)")
 set(KLFT_NC 3 CACHE STRING "Compile-time gauge group selector: 1=U(1), 2=SU(2), 3=SU(3)")
+option(KLFT_ENABLE_STATISTICAL_TESTS
+  "Register autocorrelation-aware statistical integration tests" OFF)
 
 if(NOT KLFT_NDIM MATCHES "^[234]$")
   message(FATAL_ERROR "KLFT_NDIM must be one of: 2, 3, 4")

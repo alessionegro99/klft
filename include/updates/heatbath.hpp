@@ -1,5 +1,6 @@
 #pragma once
 #include "core/indexing.hpp"
+#include "core/temporal_dirichlet.hpp"
 #include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/gauge_observables.hpp"
@@ -22,19 +23,25 @@ struct HeatbathGaugeField {
   const RNG rng;
   const HeatbathParams params;
   const index_t dir;
-  const Kokkos::Array<bool, rank> oddeven;
+  const Kokkos::Array<index_t, rank> colors;
 
   HeatbathGaugeField(const GaugeFieldType &g_in, const HeatbathParams &params,
-                     const index_t dir, const Kokkos::Array<bool, rank> &oddeven,
+                     const index_t dir,
+                     const Kokkos::Array<index_t, rank> &colors,
                      const RNG &rng)
-      : g_in(g_in), rng(rng), params(params), dir(dir), oddeven(oddeven) {}
+      : g_in(g_in), rng(rng), params(params), dir(dir), colors(colors) {}
 
   template <typename... Indices>
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
-    auto generator = rng.get_state();
-    const IndexArray<rank> site = index_odd_even<rank, size_t>(
-        Kokkos::Array<size_t, rank>{Idcs...}, oddeven);
+    const IndexArray<rank> site = index_lattice_color<rank, size_t>(
+        Kokkos::Array<size_t, rank>{Idcs...}, colors, g_in.dimensions,
+        params.temporal_dirichlet);
+    if (params.temporal_dirichlet &&
+        is_temporal_dirichlet_link<rank>(site, dir, g_in.dimensions)) {
+      return;
+    }
 
+    auto generator = rng.get_state();
     auto link = g_in(site, dir);
     const auto matrix = effective_local_matrix<Nc>(g_in.staple(site, dir),
                                                    params.beta,
@@ -56,12 +63,21 @@ template <size_t rank, size_t Nc> struct UnitarizeGaugeField {
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
 
   GaugeFieldType g_in;
-  UnitarizeGaugeField(const GaugeFieldType &g_in) : g_in(g_in) {}
+  const bool temporal_dirichlet;
+  UnitarizeGaugeField(const GaugeFieldType &g_in,
+                      const bool temporal_dirichlet)
+      : g_in(g_in), temporal_dirichlet(temporal_dirichlet) {}
 
   template <typename... Indices>
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... Idcs) const {
+    const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < Nd; ++mu) {
+      if (temporal_dirichlet &&
+          is_temporal_dirichlet_link<rank>(site, mu, g_in.dimensions)) {
+        g_in(site, mu) = identitySUN<Nc>();
+        continue;
+      }
       auto link = g_in(Idcs..., mu);
       restoreSUN(link);
       g_in(Idcs..., mu) = link;
@@ -81,35 +97,53 @@ void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   IndexArray<rank> full_end;
   for (index_t i = 0; i < Nd; ++i) {
     start[i] = 0;
-    end[i] = static_cast<index_t>(dimensions[i] / 2);
+    end[i] = lattice_color_extent<rank>(g_in.dimensions, i, 0,
+                                        params.temporal_dirichlet);
     full_start[i] = 0;
     full_end[i] = dimensions[i];
   }
+  const index_t color_count =
+      lattice_color_total<rank>(g_in.dimensions, params.temporal_dirichlet);
 
   for (index_t dir = 0; dir < Nd; ++dir) {
-    for (index_t i = 0; i < (1 << rank); ++i) {
+    for (index_t i = 0; i < color_count; ++i) {
+      const auto colors = decode_lattice_color<rank>(
+          i, g_in.dimensions, params.temporal_dirichlet);
+      auto color_end = end;
+      for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
+        color_end[d] = lattice_color_extent<rank>(
+            g_in.dimensions, d, colors[d], params.temporal_dirichlet);
+      }
       Kokkos::parallel_for(
-          Policy<rank>(start, end),
+          Policy<rank>(start, color_end),
           HeatbathGaugeField<rank, Nc, RNG, false>(g_in, params, dir,
-                                                   oddeven_array<rank>(i), rng));
+                                                   colors, rng));
       Kokkos::fence();
     }
   }
 
   for (index_t dir = 0; dir < Nd; ++dir) {
     for (index_t j = 0; j < params.nOverrelax; ++j) {
-      for (index_t i = 0; i < (1 << rank); ++i) {
+      for (index_t i = 0; i < color_count; ++i) {
+        const auto colors = decode_lattice_color<rank>(
+            i, g_in.dimensions, params.temporal_dirichlet);
+        auto color_end = end;
+        for (index_t d = 0; d < static_cast<index_t>(rank); ++d) {
+          color_end[d] = lattice_color_extent<rank>(
+              g_in.dimensions, d, colors[d], params.temporal_dirichlet);
+        }
         Kokkos::parallel_for(
-            Policy<rank>(start, end),
+            Policy<rank>(start, color_end),
             HeatbathGaugeField<rank, Nc, RNG, true>(
-                g_in, params, dir, oddeven_array<rank>(i), rng));
+                g_in, params, dir, colors, rng));
         Kokkos::fence();
       }
     }
   }
 
   Kokkos::parallel_for(Policy<rank>(full_start, full_end),
-                       UnitarizeGaugeField<rank, Nc>(g_in));
+                       UnitarizeGaugeField<rank, Nc>(
+                           g_in, params.temporal_dirichlet));
   Kokkos::fence();
 }
 
@@ -120,7 +154,11 @@ int run_heatbath(GaugeFieldType &g_in, const HeatbathParams &heatbathParams,
                  const GradientFlowParams &gradientFlowParams,
                  const RNG &rng) {
   const auto &dimensions = g_in.dimensions;
-  validate_even_extents<rank>(dimensions, "Heatbath");
+  if (heatbathParams.temporal_dirichlet) {
+    validate_temporal_dirichlet_extents<rank>(dimensions, "Heatbath");
+  } else {
+    validate_even_extents<rank>(dimensions, "Heatbath");
+  }
   gaugeObsParams.include_acceptance_rate = false;
 
   assert(heatbathParams.L0 == dimensions[0]);

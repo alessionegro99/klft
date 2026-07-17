@@ -1,4 +1,6 @@
 #include "core/compiled_theory.hpp"
+#include "core/temporal_dirichlet.hpp"
+#include "io/gauge_configuration.hpp"
 #include "io/input_parser.hpp"
 #include "updates/metropolis.hpp"
 #include "updates/partitioned_metropolis.hpp"
@@ -35,6 +37,10 @@ int Metropolis(const std::string &input_file) {
     printf("Error validating gradient-flow input\n");
     return -1;
   }
+  if (!validateTemporalDirichletParams(metropolisParams, gaugeObsParams)) {
+    printf("Error validating temporal Dirichlet input\n");
+    return -1;
+  }
   if (!validatePartitioningParams(partitioningParams, metropolisParams,
                                   gaugeObsParams)) {
     printf("Error validating partitioning input\n");
@@ -50,11 +56,33 @@ int Metropolis(const std::string &input_file) {
       auto gauge_field = make_identity_gauge_field<compiled_rank, 2>(
           metropolisParams.L0, metropolisParams.L1, metropolisParams.L2,
           metropolisParams.L3);
-      auto partition_indices = initializePartitionGaugeField<compiled_rank>(
-          gauge_field, table, metropolisParams.start, rng);
-      return runPartitionedMetropolis<compiled_rank>(
+      PartitionIndexField partition_indices;
+      if (metropolisParams.start == "restart") {
+        if (!load_gauge_configuration<compiled_rank, 2>(
+                metropolisParams.configuration_input, gauge_field,
+                metropolisParams.temporal_dirichlet)) {
+          return -1;
+        }
+        partition_indices = initializePartitionIndicesFromGauge<compiled_rank>(
+            gauge_field, table, metropolisParams.temporal_dirichlet);
+        if (partition_indices.extent(0) == 0) {
+          return -1;
+        }
+      } else {
+        partition_indices = initializePartitionGaugeField<compiled_rank>(
+            gauge_field, table, metropolisParams.start, rng,
+            metropolisParams.temporal_dirichlet);
+      }
+      const int run_status = runPartitionedMetropolis<compiled_rank>(
           gauge_field, partition_indices, table, metropolisParams,
           gaugeObsParams, gradientFlowParams, rng);
+      if (run_status == 0 && !metropolisParams.configuration_output.empty() &&
+          !save_gauge_configuration<compiled_rank, 2>(
+              metropolisParams.configuration_output, gauge_field,
+              metropolisParams.temporal_dirichlet)) {
+        return -1;
+      }
+      return run_status;
     }
   }
   auto gauge_field =
@@ -65,10 +93,27 @@ int Metropolis(const std::string &input_file) {
           : make_identity_gauge_field<compiled_rank, compiled_nc>(
                 metropolisParams.L0, metropolisParams.L1,
                 metropolisParams.L2, metropolisParams.L3);
-  run_metropolis<compiled_rank, compiled_nc>(gauge_field, metropolisParams,
-                                             gaugeObsParams,
-                                             gradientFlowParams, rng);
-  return 0;
+  if (metropolisParams.start == "restart") {
+    if (!load_gauge_configuration<compiled_rank, compiled_nc>(
+            metropolisParams.configuration_input, gauge_field,
+            metropolisParams.temporal_dirichlet)) {
+      return -1;
+    }
+  }
+  if (metropolisParams.temporal_dirichlet &&
+      metropolisParams.start != "restart") {
+    apply_temporal_dirichlet_boundaries<compiled_rank, compiled_nc>(
+        gauge_field);
+  }
+  const int run_status = run_metropolis<compiled_rank, compiled_nc>(
+      gauge_field, metropolisParams, gaugeObsParams, gradientFlowParams, rng);
+  if (run_status == 0 && !metropolisParams.configuration_output.empty() &&
+      !save_gauge_configuration<compiled_rank, compiled_nc>(
+          metropolisParams.configuration_output, gauge_field,
+          metropolisParams.temporal_dirichlet)) {
+    return -1;
+  }
+  return run_status;
 }
 
 } // namespace klft

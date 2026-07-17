@@ -1,4 +1,5 @@
 #pragma once
+#include "observables/dirichlet_observables.hpp"
 #include "observables/nested_wilson_action.hpp"
 #include "observables/plaquette.hpp"
 #include "observables/polyakov_correlator.hpp"
@@ -25,6 +26,14 @@ struct GaugeObservableParams {
   bool measure_polyakov_susceptibility;
   bool measure_retrace_U;
   bool measure_retrace_U2;
+  bool measure_dirichlet_holonomy;
+  bool measure_dirichlet_plaquette_profiles;
+  bool measure_boundary_wilson_loops;
+  bool measure_boundary_wilson_all_heights;
+  bool measure_dirichlet_bulk_polyakov;
+  index_t dirichlet_correlator_max_r;
+  index_t boundary_wilson_max_r;
+  index_t dirichlet_bulk_polyakov_max_r;
   index_t wilson_loop_multihit;
   index_t polyakov_loop_multihit;
   index_t polyakov_correlator_max_r;
@@ -52,6 +61,14 @@ struct GaugeObservableParams {
   std::vector<Kokkos::Array<real_t, 2>> polyakov_susceptibility_measurements;
   std::vector<real_t> retraceU_measurements;
   std::vector<real_t> retraceU2_measurements;
+  std::vector<DirichletHolonomyMeasurement>
+      dirichlet_holonomy_measurements;
+  std::vector<DirichletPlaquetteProfileMeasurement>
+      dirichlet_plaquette_profile_measurements;
+  std::vector<BoundaryWilsonLoopMeasurement>
+      boundary_wilson_loop_measurements;
+  std::vector<DirichletBulkPolyakovMeasurement>
+      dirichlet_bulk_polyakov_measurements;
 
   std::vector<real_t> nested_plaq_V_measurements;
   std::vector<real_t> nested_plaq_child_measurements;
@@ -66,6 +83,11 @@ struct GaugeObservableParams {
   std::string polyakov_susceptibility_filename;
   std::string RetraceU_filename;
   std::string RetraceU2_filename;
+  std::string dirichlet_holonomy_correlator_filename;
+  std::string dirichlet_holonomy_summary_filename;
+  std::string dirichlet_plaquette_profile_filename;
+  std::string boundary_wilson_loop_filename;
+  std::string dirichlet_bulk_polyakov_filename;
   std::string nested_wilson_action_filename;
 
   bool write_to_file;
@@ -77,6 +99,13 @@ struct GaugeObservableParams {
         measure_polyakov_loop(false), measure_polyakov_correlator(false),
         measure_polyakov_susceptibility(false), measure_retrace_U(false),
         measure_retrace_U2(false),
+        measure_dirichlet_holonomy(false),
+        measure_dirichlet_plaquette_profiles(false),
+        measure_boundary_wilson_loops(false),
+        measure_boundary_wilson_all_heights(false),
+        measure_dirichlet_bulk_polyakov(false),
+        dirichlet_correlator_max_r(0), boundary_wilson_max_r(0),
+        dirichlet_bulk_polyakov_max_r(0),
         wilson_loop_multihit(1),
         polyakov_loop_multihit(1), polyakov_correlator_max_r(0),
         measure_nested_wilson_action(false), include_acceptance_rate(false),
@@ -87,6 +116,14 @@ inline bool
 anyPlaquetteMeasurementEnabled(const GaugeObservableParams &params) {
   return params.measure_plaquette || params.measure_plaquette_spatial ||
          params.measure_plaquette_temporal;
+}
+
+inline bool
+anyDirichletMeasurementEnabled(const GaugeObservableParams &params) {
+  return params.measure_dirichlet_holonomy ||
+         params.measure_dirichlet_plaquette_profiles ||
+         params.measure_boundary_wilson_loops ||
+         params.measure_dirichlet_bulk_polyakov;
 }
 
 inline bool appendLatestGaugeObservables(const GaugeObservableParams &params);
@@ -171,6 +208,43 @@ void measureGaugeObservables(
   if (params.measure_retrace_U2) {
     params.retraceU2_measurements.push_back(
         RetraceU2_links_avg<rank, Nc>(g_in));
+  }
+
+
+  if (anyDirichletMeasurementEnabled(params)) {
+    if constexpr (rank == 3 && Nc == 2) {
+      if (!updateParams.temporal_dirichlet) {
+        throw std::runtime_error(
+            "Dirichlet observables require temporal_dirichlet: true.");
+      }
+      if (!temporal_dirichlet_boundaries_are_exact<3, 2>(g_in)) {
+        throw std::runtime_error(
+            "fixed temporal Dirichlet links are not exact identities.");
+      }
+      if (params.measure_dirichlet_holonomy) {
+        params.dirichlet_holonomy_measurements.push_back(
+            MeasureDirichletHolonomy<2>(
+                g_in, params.dirichlet_correlator_max_r));
+      }
+      if (params.measure_dirichlet_plaquette_profiles) {
+        params.dirichlet_plaquette_profile_measurements.push_back(
+            MeasureDirichletPlaquetteProfiles<2>(g_in));
+      }
+      if (params.measure_boundary_wilson_loops) {
+        params.boundary_wilson_loop_measurements.push_back(
+            MeasureBoundaryWilsonLoops<2>(
+                g_in, params.measure_boundary_wilson_all_heights,
+                params.boundary_wilson_max_r));
+      }
+      if (params.measure_dirichlet_bulk_polyakov) {
+        params.dirichlet_bulk_polyakov_measurements.push_back(
+            MeasureDirichletBulkPolyakovCorrelator<2>(
+                g_in, params.dirichlet_bulk_polyakov_max_r));
+      }
+    } else {
+      throw std::runtime_error(
+          "Dirichlet PCM observables require a 3D SU(2) build.");
+    }
   }
 
   if (params.measure_nested_wilson_action) {
@@ -512,6 +586,128 @@ inline bool flushRetraceU2(std::ofstream &file,
   return static_cast<bool>(file);
 }
 
+inline bool flushDirichletHolonomyCorrelator(
+    std::ofstream &file, const GaugeObservableParams &params,
+    const bool HEADER = true) {
+  if (!file.is_open() || !params.measure_dirichlet_holonomy ||
+      params.measurement_steps.size() !=
+          params.dirichlet_holonomy_measurements.size()) {
+    printf("Error: invalid Dirichlet holonomy correlator output state\n");
+    return false;
+  }
+  if (HEADER) {
+    file << "# step R C_G C_double m_eff_log\n";
+  }
+  file << std::setprecision(12);
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    for (const auto &point :
+         params.dirichlet_holonomy_measurements[i].correlator) {
+      file << params.measurement_steps[i] << " " << point.separation << " "
+           << point.chiral_correlator << " " << point.legacy_double_trace
+           << " " << point.effective_log_slope << "\n";
+    }
+  }
+  return static_cast<bool>(file);
+}
+
+inline bool flushDirichletHolonomySummary(
+    std::ofstream &file, const GaugeObservableParams &params,
+    const bool HEADER = true) {
+  if (!file.is_open() || !params.measure_dirichlet_holonomy ||
+      params.measurement_steps.size() !=
+          params.dirichlet_holonomy_measurements.size()) {
+    printf("Error: invalid Dirichlet holonomy summary output state\n");
+    return false;
+  }
+  if (HEADER) {
+    file << "# step ReTrG ImTrG Ctilde_0 Ctilde_pmin xi_2nd_config\n";
+  }
+  file << std::setprecision(12);
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    const auto &measurement = params.dirichlet_holonomy_measurements[i];
+    file << params.measurement_steps[i] << " "
+         << measurement.mean_trace_real << " " << measurement.mean_trace_imag
+         << " " << measurement.fourier_zero << " "
+         << measurement.fourier_pmin << " "
+         << measurement.second_moment_xi << "\n";
+  }
+  return static_cast<bool>(file);
+}
+
+inline bool flushDirichletPlaquetteProfiles(
+    std::ofstream &file, const GaugeObservableParams &params,
+    const bool HEADER = true) {
+  if (!file.is_open() || !params.measure_dirichlet_plaquette_profiles ||
+      params.measurement_steps.size() !=
+          params.dirichlet_plaquette_profile_measurements.size()) {
+    printf("Error: invalid Dirichlet plaquette-profile output state\n");
+    return false;
+  }
+  if (HEADER) {
+    file << "# kind: 0=spatial P_s(t), 1=temporal P_t(t+1/2)\n"
+         << "# step kind t ReTrU_over_Nc\n";
+  }
+  file << std::setprecision(12);
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    const auto &measurement =
+        params.dirichlet_plaquette_profile_measurements[i];
+    for (const auto &point : measurement.spatial) {
+      file << params.measurement_steps[i] << " 0 " << point[0] << " "
+           << point[1] << "\n";
+    }
+    for (const auto &point : measurement.temporal) {
+      file << params.measurement_steps[i] << " 1 " << point[0] << " "
+           << point[1] << "\n";
+    }
+  }
+  return static_cast<bool>(file);
+}
+
+inline bool flushBoundaryWilsonLoops(std::ofstream &file,
+                                     const GaugeObservableParams &params,
+                                     const bool HEADER = true) {
+  if (!file.is_open() || !params.measure_boundary_wilson_loops ||
+      params.measurement_steps.size() !=
+          params.boundary_wilson_loop_measurements.size()) {
+    printf("Error: invalid boundary Wilson-loop output state\n");
+    return false;
+  }
+  if (HEADER) {
+    file << "# step R H W_b\n";
+  }
+  file << std::setprecision(12);
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    for (const auto &loop : params.boundary_wilson_loop_measurements[i].loops) {
+      file << params.measurement_steps[i] << " " << loop[0] << " " << loop[1]
+           << " " << loop[2] << "\n";
+    }
+  }
+  return static_cast<bool>(file);
+}
+
+inline bool flushDirichletBulkPolyakov(
+    std::ofstream &file, const GaugeObservableParams &params,
+    const bool HEADER = true) {
+  if (!file.is_open() || !params.measure_dirichlet_bulk_polyakov ||
+      params.measurement_steps.size() !=
+          params.dirichlet_bulk_polyakov_measurements.size()) {
+    printf("Error: invalid Dirichlet bulk-Polyakov output state\n");
+    return false;
+  }
+  if (HEADER) {
+    file << "# step R C_horizontal_double_trace\n";
+  }
+  file << std::setprecision(12);
+  for (size_t i = 0; i < params.measurement_steps.size(); ++i) {
+    for (const auto &point :
+         params.dirichlet_bulk_polyakov_measurements[i].correlator) {
+      file << params.measurement_steps[i] << " " << point[0] << " "
+           << point[1] << "\n";
+    }
+  }
+  return static_cast<bool>(file);
+}
+
 // Append the staged nested-action rows to disk.
 inline bool flushNestedWilsonAction(std::ofstream &file,
                                     const GaugeObservableParams &params,
@@ -566,6 +762,10 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.polyakov_susceptibility_measurements.clear();
   params.retraceU_measurements.clear();
   params.retraceU2_measurements.clear();
+  params.dirichlet_holonomy_measurements.clear();
+  params.dirichlet_plaquette_profile_measurements.clear();
+  params.boundary_wilson_loop_measurements.clear();
+  params.dirichlet_bulk_polyakov_measurements.clear();
 
   params.nested_plaq_V_measurements.clear();
   params.nested_plaq_child_measurements.clear();
@@ -634,6 +834,24 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
       params.nested_wilson_action_filename != "") {
     can_open_all &=
         canOpenObservableOutputFile(params.nested_wilson_action_filename);
+  }
+  if (params.measure_dirichlet_holonomy) {
+    can_open_all &= canOpenObservableOutputFile(
+        params.dirichlet_holonomy_correlator_filename);
+    can_open_all &= canOpenObservableOutputFile(
+        params.dirichlet_holonomy_summary_filename);
+  }
+  if (params.measure_dirichlet_plaquette_profiles) {
+    can_open_all &= canOpenObservableOutputFile(
+        params.dirichlet_plaquette_profile_filename);
+  }
+  if (params.measure_boundary_wilson_loops) {
+    can_open_all &=
+        canOpenObservableOutputFile(params.boundary_wilson_loop_filename);
+  }
+  if (params.measure_dirichlet_bulk_polyakov) {
+    can_open_all &= canOpenObservableOutputFile(
+        params.dirichlet_bulk_polyakov_filename);
   }
   if (!can_open_all) {
     return false;
@@ -704,6 +922,47 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
     ok &= flushNestedWilsonAction(
         file, params, fileNeedsHeader(params.nested_wilson_action_filename));
     ok &= closeObservableOutputFile(file, params.nested_wilson_action_filename);
+  }
+  if (params.measure_dirichlet_holonomy) {
+    std::ofstream correlator_file(params.dirichlet_holonomy_correlator_filename,
+                                  std::ios::app);
+    ok &= flushDirichletHolonomyCorrelator(
+        correlator_file, params,
+        fileNeedsHeader(params.dirichlet_holonomy_correlator_filename));
+    ok &= closeObservableOutputFile(
+        correlator_file, params.dirichlet_holonomy_correlator_filename);
+    std::ofstream summary_file(params.dirichlet_holonomy_summary_filename,
+                               std::ios::app);
+    ok &= flushDirichletHolonomySummary(
+        summary_file, params,
+        fileNeedsHeader(params.dirichlet_holonomy_summary_filename));
+    ok &= closeObservableOutputFile(
+        summary_file, params.dirichlet_holonomy_summary_filename);
+  }
+  if (params.measure_dirichlet_plaquette_profiles) {
+    std::ofstream file(params.dirichlet_plaquette_profile_filename,
+                       std::ios::app);
+    ok &= flushDirichletPlaquetteProfiles(
+        file, params,
+        fileNeedsHeader(params.dirichlet_plaquette_profile_filename));
+    ok &= closeObservableOutputFile(
+        file, params.dirichlet_plaquette_profile_filename);
+  }
+  if (params.measure_boundary_wilson_loops) {
+    std::ofstream file(params.boundary_wilson_loop_filename, std::ios::app);
+    ok &= flushBoundaryWilsonLoops(
+        file, params, fileNeedsHeader(params.boundary_wilson_loop_filename));
+    ok &= closeObservableOutputFile(file,
+                                    params.boundary_wilson_loop_filename);
+  }
+  if (params.measure_dirichlet_bulk_polyakov) {
+    std::ofstream file(params.dirichlet_bulk_polyakov_filename,
+                       std::ios::app);
+    ok &= flushDirichletBulkPolyakov(
+        file, params,
+        fileNeedsHeader(params.dirichlet_bulk_polyakov_filename));
+    ok &= closeObservableOutputFile(
+        file, params.dirichlet_bulk_polyakov_filename);
   }
   return ok;
 }

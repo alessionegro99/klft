@@ -14,6 +14,9 @@ struct MetropolisParams {
   index_t nSweep;
   index_t seed;
   std::string start;
+  bool temporal_dirichlet;
+  std::string configuration_input;
+  std::string configuration_output;
   real_t beta;
   real_t delta;
   real_t epsilon1;
@@ -28,6 +31,9 @@ struct MetropolisParams {
     nSweep = 1000;
     seed = 1234;
     start = "cold";
+    temporal_dirichlet = false;
+    configuration_input = "";
+    configuration_output = "";
 
     beta = 1.0;
     delta = 0.1;

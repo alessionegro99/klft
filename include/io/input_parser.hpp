@@ -64,12 +64,17 @@ inline std::vector<index_t> parseIndexRange(const YAML::Node &node, bool &ok) {
 
 inline bool validateLatticeExtents(const index_t L0, const index_t L1,
                                    const index_t L2, const index_t L3,
-                                   const char *section_name) {
+                                   const char *section_name,
+                                   const bool temporal_dirichlet = false) {
   const index_t dims[4] = {L0, L1, L2, L3};
   for (size_t d = 0; d < compiled_rank; ++d) {
-    if (dims[d] <= 0 || dims[d] % 2 != 0) {
-      printf("Error: %s requires positive even lattice extents; "
-             "dimension %zu is %d\n",
+    const bool is_time = d == compiled_rank - 1;
+    const bool valid_dirichlet_extent =
+        temporal_dirichlet && (is_time ? dims[d] >= 2 : dims[d] > 0);
+    if (!valid_dirichlet_extent && (dims[d] <= 0 || dims[d] % 2 != 0)) {
+      printf("Error: %s requires positive even extents unless temporal "
+             "Dirichlet mode is enabled (then spatial extents are positive "
+             "and temporal_site_extent is at least 2); dimension %zu is %d\n",
              section_name, d, dims[d]);
       return false;
     }
@@ -79,10 +84,11 @@ inline bool validateLatticeExtents(const index_t L0, const index_t L1,
 
 inline bool validateStart(const std::string &start,
                           const char *section_name) {
-  if (start == "cold" || start == "hot") {
+  if (start == "cold" || start == "hot" || start == "restart") {
     return true;
   }
-  printf("Error: %s.start must be either 'cold' or 'hot'\n", section_name);
+  printf("Error: %s.start must be 'cold', 'hot', or 'restart'\n",
+         section_name);
   return false;
 }
 
@@ -133,6 +139,28 @@ inline bool validateObservableFilenames(const GaugeObservableParams &params) {
            "empty\n");
     return false;
   }
+  if (params.measure_dirichlet_holonomy &&
+      (params.dirichlet_holonomy_correlator_filename.empty() ||
+       params.dirichlet_holonomy_summary_filename.empty())) {
+    printf("Error: Dirichlet holonomy measurement requires both correlator "
+           "and summary filenames\n");
+    return false;
+  }
+  if (params.measure_dirichlet_plaquette_profiles &&
+      params.dirichlet_plaquette_profile_filename.empty()) {
+    printf("Error: Dirichlet plaquette profiles require a filename\n");
+    return false;
+  }
+  if (params.measure_boundary_wilson_loops &&
+      params.boundary_wilson_loop_filename.empty()) {
+    printf("Error: boundary Wilson loops require a filename\n");
+    return false;
+  }
+  if (params.measure_dirichlet_bulk_polyakov &&
+      params.dirichlet_bulk_polyakov_filename.empty()) {
+    printf("Error: Dirichlet bulk Polyakov correlator requires a filename\n");
+    return false;
+  }
   if (params.measure_nested_wilson_action &&
       params.nested_wilson_action_filename.empty()) {
     printf("Error: measure_nested_wilson_action is enabled but "
@@ -163,6 +191,12 @@ inline bool parseInputFile(const std::string &filename,
   metropolisParams.nSweep = mp["nSweep"].as<index_t>(1000);
   metropolisParams.seed = mp["seed"].as<index_t>(1234);
   metropolisParams.start = mp["start"].as<std::string>("cold");
+  metropolisParams.temporal_dirichlet =
+      mp["temporal_dirichlet"].as<bool>(false);
+  metropolisParams.configuration_input =
+      mp["configuration_input"].as<std::string>("");
+  metropolisParams.configuration_output =
+      mp["configuration_output"].as<std::string>("");
   metropolisParams.beta = mp["beta"].as<real_t>(1.0);
   metropolisParams.delta = mp["delta"].as<real_t>(0.1);
   metropolisParams.epsilon1 = mp["epsilon1"].as<real_t>(0.0);
@@ -170,10 +204,17 @@ inline bool parseInputFile(const std::string &filename,
 
   if (!validateLatticeExtents(metropolisParams.L0, metropolisParams.L1,
                               metropolisParams.L2, metropolisParams.L3,
-                              "MetropolisParams")) {
+                              "MetropolisParams",
+                              metropolisParams.temporal_dirichlet)) {
     return false;
   }
   if (!validateStart(metropolisParams.start, "MetropolisParams")) {
+    return false;
+  }
+  if (metropolisParams.start == "restart" &&
+      metropolisParams.configuration_input.empty()) {
+    printf("Error: MetropolisParams.configuration_input is required for a "
+           "restart\n");
     return false;
   }
   if (metropolisParams.nHits < 1) {
@@ -258,16 +299,29 @@ inline bool parseInputFile(const std::string &filename,
   heatbathParams.nOverrelax = hp["nOverrelax"].as<index_t>(5);
   heatbathParams.seed = hp["seed"].as<index_t>(1234);
   heatbathParams.start = hp["start"].as<std::string>("cold");
+  heatbathParams.temporal_dirichlet =
+      hp["temporal_dirichlet"].as<bool>(false);
+  heatbathParams.configuration_input =
+      hp["configuration_input"].as<std::string>("");
+  heatbathParams.configuration_output =
+      hp["configuration_output"].as<std::string>("");
   heatbathParams.beta = hp["beta"].as<real_t>(1.0);
   heatbathParams.epsilon1 = hp["epsilon1"].as<real_t>(0.0);
   heatbathParams.epsilon2 = hp["epsilon2"].as<real_t>(0.0);
 
   if (!validateLatticeExtents(heatbathParams.L0, heatbathParams.L1,
                               heatbathParams.L2, heatbathParams.L3,
-                              "HeatbathParams")) {
+                              "HeatbathParams",
+                              heatbathParams.temporal_dirichlet)) {
     return false;
   }
   if (!validateStart(heatbathParams.start, "HeatbathParams")) {
+    return false;
+  }
+  if (heatbathParams.start == "restart" &&
+      heatbathParams.configuration_input.empty()) {
+    printf("Error: HeatbathParams.configuration_input is required for a "
+           "restart\n");
     return false;
   }
   if (heatbathParams.nSweep < 0) {
@@ -398,6 +452,22 @@ inline bool parseInputFile(const std::string &filename,
       gp["measure_retrace_U"].as<bool>(false);
   gaugeObservableParams.measure_retrace_U2 =
       gp["measure_retrace_U2"].as<bool>(false);
+  gaugeObservableParams.measure_dirichlet_holonomy =
+      gp["measure_dirichlet_holonomy"].as<bool>(false);
+  gaugeObservableParams.measure_dirichlet_plaquette_profiles =
+      gp["measure_dirichlet_plaquette_profiles"].as<bool>(false);
+  gaugeObservableParams.measure_boundary_wilson_loops =
+      gp["measure_boundary_wilson_loops"].as<bool>(false);
+  gaugeObservableParams.measure_boundary_wilson_all_heights =
+      gp["measure_boundary_wilson_all_heights"].as<bool>(false);
+  gaugeObservableParams.measure_dirichlet_bulk_polyakov =
+      gp["measure_dirichlet_bulk_polyakov"].as<bool>(false);
+  gaugeObservableParams.dirichlet_correlator_max_r =
+      gp["dirichlet_correlator_max_r"].as<index_t>(0);
+  gaugeObservableParams.boundary_wilson_max_r =
+      gp["boundary_wilson_max_r"].as<index_t>(0);
+  gaugeObservableParams.dirichlet_bulk_polyakov_max_r =
+      gp["dirichlet_bulk_polyakov_max_r"].as<index_t>(0);
   gaugeObservableParams.wilson_loop_multihit =
       gp["wilson_loop_multihit"].as<index_t>(1);
   gaugeObservableParams.polyakov_loop_multihit =
@@ -452,6 +522,16 @@ inline bool parseInputFile(const std::string &filename,
       gp["RetraceU_filename"].as<std::string>("");
   gaugeObservableParams.RetraceU2_filename =
       gp["RetraceU2_filename"].as<std::string>("");
+  gaugeObservableParams.dirichlet_holonomy_correlator_filename =
+      gp["dirichlet_holonomy_correlator_filename"].as<std::string>("");
+  gaugeObservableParams.dirichlet_holonomy_summary_filename =
+      gp["dirichlet_holonomy_summary_filename"].as<std::string>("");
+  gaugeObservableParams.dirichlet_plaquette_profile_filename =
+      gp["dirichlet_plaquette_profile_filename"].as<std::string>("");
+  gaugeObservableParams.boundary_wilson_loop_filename =
+      gp["boundary_wilson_loop_filename"].as<std::string>("");
+  gaugeObservableParams.dirichlet_bulk_polyakov_filename =
+      gp["dirichlet_bulk_polyakov_filename"].as<std::string>("");
   gaugeObservableParams.nested_wilson_action_filename =
       gp["nested_wilson_action_filename"].as<std::string>("");
 
@@ -464,6 +544,7 @@ inline bool parseInputFile(const std::string &filename,
       gaugeObservableParams.measure_polyakov_susceptibility ||
       gaugeObservableParams.measure_retrace_U ||
       gaugeObservableParams.measure_retrace_U2 ||
+      anyDirichletMeasurementEnabled(gaugeObservableParams) ||
       gaugeObservableParams.measure_nested_wilson_action;
 
   if (any_measurement_enabled && gaugeObservableParams.measurement_interval == 0) {
@@ -481,6 +562,17 @@ inline bool parseInputFile(const std::string &filename,
   }
   if (gaugeObservableParams.polyakov_correlator_max_r < 0) {
     printf("Error: polyakov_correlator_max_r must be >= 0\n");
+    return false;
+  }
+  if (gaugeObservableParams.dirichlet_correlator_max_r < 0 ||
+      gaugeObservableParams.boundary_wilson_max_r < 0 ||
+      gaugeObservableParams.dirichlet_bulk_polyakov_max_r < 0) {
+    printf("Error: Dirichlet observable maximum separations must be >= 0\n");
+    return false;
+  }
+  if (anyDirichletMeasurementEnabled(gaugeObservableParams) &&
+      (compiled_rank != 3 || compiled_nc != 2)) {
+    printf("Error: Dirichlet PCM observables require a 3D SU(2) build\n");
     return false;
   }
   if (gaugeObservableParams.measure_plaquette_spatial && compiled_rank < 3) {
@@ -511,6 +603,36 @@ inline bool parseInputFile(const std::string &filename,
     return false;
   }
 
+  return true;
+}
+
+template <class UpdateParams>
+inline bool validateTemporalDirichletParams(
+    const UpdateParams &updateParams,
+    const GaugeObservableParams &observableParams) {
+  if (!updateParams.temporal_dirichlet) {
+    if (anyDirichletMeasurementEnabled(observableParams)) {
+      printf("Error: Dirichlet observables require temporal_dirichlet: true\n");
+      return false;
+    }
+    return true;
+  }
+  if (compiled_rank != 3 || compiled_nc != 2) {
+    printf("Error: temporal Dirichlet mode requires a 3D SU(2) build\n");
+    return false;
+  }
+  if (updateParams.epsilon1 != 0.0 || updateParams.epsilon2 != 0.0) {
+    printf("Error: temporal Dirichlet mode implements pure Wilson Yang-Mills; "
+           "epsilon1 and epsilon2 must be zero\n");
+    return false;
+  }
+  if (observableParams.measure_polyakov_loop ||
+      observableParams.measure_polyakov_correlator ||
+      observableParams.measure_polyakov_susceptibility) {
+    printf("Error: periodic Polyakov observables include the wrapping link; "
+           "use measure_dirichlet_holonomy in Dirichlet mode\n");
+    return false;
+  }
   return true;
 }
 

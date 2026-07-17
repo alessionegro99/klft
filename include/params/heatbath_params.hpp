@@ -14,6 +14,9 @@ struct HeatbathParams {
   index_t nOverrelax;
   index_t seed;
   std::string start;
+  bool temporal_dirichlet;
+  std::string configuration_input;
+  std::string configuration_output;
 
   real_t beta;
   real_t epsilon1;
@@ -21,7 +24,9 @@ struct HeatbathParams {
 
   HeatbathParams()
       : L0(4), L1(4), L2(4), L3(4), nSweep(1000), nOverrelax(5),
-        seed(1234), start("cold"), beta(1.0), epsilon1(0.0), epsilon2(0.0) {}
+        seed(1234), start("cold"), temporal_dirichlet(false),
+        configuration_input(""), configuration_output(""), beta(1.0),
+        epsilon1(0.0), epsilon2(0.0) {}
 };
 
 } // namespace klft

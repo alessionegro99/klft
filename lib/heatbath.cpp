@@ -1,4 +1,6 @@
 #include "core/compiled_theory.hpp"
+#include "core/temporal_dirichlet.hpp"
+#include "io/gauge_configuration.hpp"
 #include "io/input_parser.hpp"
 #include "updates/heatbath.hpp"
 
@@ -39,6 +41,10 @@ int Heatbath(const std::string &input_file) {
     printf("Error validating gradient-flow input\n");
     return -1;
   }
+  if (!validateTemporalDirichletParams(heatbathParams, gaugeObsParams)) {
+    printf("Error validating temporal Dirichlet input\n");
+    return -1;
+  }
 
   if (heatbathParams.epsilon2 != 0.0) {
     printf("Error: heatbath/overrelaxation currently supports epsilon1 only; "
@@ -55,11 +61,27 @@ int Heatbath(const std::string &input_file) {
           : make_identity_gauge_field<compiled_rank, compiled_nc>(
                 heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
                 heatbathParams.L3);
-  run_heatbath<compiled_rank, compiled_nc>(gauge_field, heatbathParams,
-                                           gaugeObsParams, gradientFlowParams,
-                                           rng);
-
-  return 0;
+  if (heatbathParams.start == "restart") {
+    if (!load_gauge_configuration<compiled_rank, compiled_nc>(
+            heatbathParams.configuration_input, gauge_field,
+            heatbathParams.temporal_dirichlet)) {
+      return -1;
+    }
+  }
+  if (heatbathParams.temporal_dirichlet &&
+      heatbathParams.start != "restart") {
+    apply_temporal_dirichlet_boundaries<compiled_rank, compiled_nc>(
+        gauge_field);
+  }
+  const int run_status = run_heatbath<compiled_rank, compiled_nc>(
+      gauge_field, heatbathParams, gaugeObsParams, gradientFlowParams, rng);
+  if (run_status == 0 && !heatbathParams.configuration_output.empty() &&
+      !save_gauge_configuration<compiled_rank, compiled_nc>(
+          heatbathParams.configuration_output, gauge_field,
+          heatbathParams.temporal_dirichlet)) {
+    return -1;
+  }
+  return run_status;
 }
 
 } // namespace klft

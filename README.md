@@ -2,6 +2,27 @@
 
 A library for lattice field theory simulation accelerated using Kokkos
 
+## Temporal Dirichlet slabs
+
+Temporal Dirichlet mode currently targets a three-dimensional SU(2) pure
+Wilson build. For physical slab thickness `Nt`, set the stored temporal extent
+to `L2: Nt + 1` and enable `temporal_dirichlet: true` in the heatbath or
+Metropolis section. Spatial links in directions 0 and 1 at stored slices 0 and
+`Nt` are fixed to the identity; every direction-2 link remains dynamical.
+
+KLFT retains its periodic neighbor tables. The direction-2 link based at
+`t=Nt` belongs to an exactly factorized wrapping PCM and is excluded from the
+physical holonomy. The physical product is
+`G(x)=U_2(x,0)...U_2(x,Nt-1)`. Dedicated Dirichlet measurements provide the
+normalized `(1/2) Re Tr[G(x)G(y)^dagger]` correlator, slice plaquettes, and
+boundary-anchored Wilson loops. Existing aggregate plaquette measurements
+still include the factorized wrapping sector.
+
+Use `configuration_output` to save a versioned restart and
+`start: "restart"` with `configuration_input` to restore it. Restart loading
+validates the fixed links and fails instead of repairing an invalid boundary.
+The default `temporal_dirichlet: false` path is unchanged.
+
 # Installation
 
 use git to clone the repository
