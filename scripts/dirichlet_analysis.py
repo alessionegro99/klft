@@ -52,25 +52,33 @@ def load_keyed_chain(
     steps = steps[discard:]
     raw = raw[np.isin(raw[:, 0], steps)]
     if key_columns:
-        keys = np.unique(raw[:, key_columns], axis=0)
+        keys = np.unique(raw[:, list(key_columns)], axis=0)
     else:
         keys = np.zeros((1, 0), dtype=np.float64)
-    values = np.empty(
-        (len(steps), len(keys), len(value_columns)), dtype=np.float64
+    expected_rows = len(steps) * len(keys)
+    if len(raw) != expected_rows:
+        raise ValueError(
+            f"{path}: expected {expected_rows} step/key rows, found {len(raw)}"
+        )
+    # Sort once by step and then by each key. This avoids an O(n_steps*n_keys^2)
+    # scan for long boundary-Wilson tables while retaining explicit grid checks.
+    sort_columns = [raw[:, column] for column in reversed(key_columns)]
+    sort_columns.append(raw[:, 0])
+    ordered = raw[np.lexsort(tuple(sort_columns))]
+    step_grid = ordered[:, 0].reshape(len(steps), len(keys))
+    if not np.array_equal(step_grid, np.broadcast_to(steps[:, None], step_grid.shape)):
+        raise ValueError(f"{path}: incomplete or duplicate measurement steps")
+    if key_columns:
+        key_grid = ordered[:, list(key_columns)].reshape(
+            len(steps), len(keys), len(key_columns)
+        )
+        if not np.array_equal(
+            key_grid, np.broadcast_to(keys[None, :, :], key_grid.shape)
+        ):
+            raise ValueError(f"{path}: incomplete, duplicate, or inconsistent keys")
+    values = ordered[:, list(value_columns)].reshape(
+        len(steps), len(keys), len(value_columns)
     )
-    for step_index, step in enumerate(steps):
-        rows = raw[raw[:, 0] == step]
-        if len(rows) != len(keys):
-            raise ValueError(f"{path}: incomplete or duplicate rows at step {step:g}")
-        for key_index, key in enumerate(keys):
-            if key_columns:
-                match = np.all(rows[:, key_columns] == key, axis=1)
-                selected = rows[match]
-            else:
-                selected = rows
-            if len(selected) != 1:
-                raise ValueError(f"{path}: invalid key multiplicity at step {step:g}")
-            values[step_index, key_index] = selected[0, value_columns]
     if not np.all(np.isfinite(values)):
         raise ValueError(f"{path}: non-finite measurements")
     return KeyedChain(path, steps, keys, values)
@@ -432,6 +440,12 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
         xi, xi_covariance = jackknife_transform(summary_blocks, xi_transform)
         result["mean_TrG"] = float(summary_mean[0])
         result["mean_TrG_error"] = float(math.sqrt(summary_covariance[0, 0]))
+        # The measurement file retains raw Tr G for the legacy group-averaging
+        # identity. The thesis plots a trace normalized to one at G=I.
+        result["mean_half_TrG"] = 0.5 * float(summary_mean[0])
+        result["mean_half_TrG_error"] = 0.5 * float(
+            math.sqrt(summary_covariance[0, 0])
+        )
         result["xi_2nd"] = float(xi[0]) if np.isfinite(xi[0]) else None
         result["xi_2nd_error"] = (
             float(math.sqrt(xi_covariance[0, 0]))

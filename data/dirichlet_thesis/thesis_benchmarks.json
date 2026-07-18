@@ -1,6 +1,6 @@
 {
   "source": "Marco Nebbia, Effects of Dirichlet Boundary Conditions in Yang-Mills Theories, MSc thesis, University of Turin, academic year 2024/2025, Table 4.4",
-  "observable": "raw ensemble mean of Tr G",
+  "observable": "ensemble mean of (1/2) Tr G for SU(2), normalized to one at the identity",
   "beta": 12.15266,
   "spatial_size": [64, 64],
   "values": {
@@ -15,5 +15,15 @@
     "10": [0.010, 0.007],
     "11": [0.006, 0.006],
     "12": [-0.001, 0.004]
+  },
+  "boundary_wilson_R64_H1": {
+    "source": "Marco Nebbia thesis, Table 4.7",
+    "observable": "W_b(Ns,1) with normalized SU(2) trace",
+    "values": {
+      "3": [0.0535, 0.0002],
+      "6": [0.0416, 0.0002],
+      "9": [0.0396, 0.0002],
+      "12": [0.0389, 0.0002]
+    }
   }
 }

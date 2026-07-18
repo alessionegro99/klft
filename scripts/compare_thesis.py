@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare analyzed Tr G values with thesis Table 4.4 using combined errors."""
+"""Compare analyzed (1/2) Tr G values with thesis Table 4.4."""
 
 from __future__ import annotations
 
@@ -17,6 +17,19 @@ def parse_result(specification: str) -> tuple[int, Path]:
     return int(nt_text), Path(path_text)
 
 
+def normalized_trace(analysis: dict[str, object]) -> tuple[float, float]:
+    """Return the SU(2) trace normalized to one at the identity."""
+    if "mean_half_TrG" in analysis:
+        return (
+            float(analysis["mean_half_TrG"]),
+            float(analysis["mean_half_TrG_error"]),
+        )
+    return (
+        0.5 * float(analysis["mean_TrG"]),
+        0.5 * float(analysis["mean_TrG_error"]),
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("result", type=parse_result, nargs="+")
@@ -32,11 +45,10 @@ def main() -> None:
     )
     args = parser.parse_args()
     benchmarks = json.loads(args.benchmarks.read_text(encoding="utf-8"))
-    print("Nt measured error thesis error difference_z")
+    print("Nt measured_half_TrG error thesis error difference_z")
     for nt, path in args.result:
         analysis = json.loads(path.read_text(encoding="utf-8"))
-        measured = float(analysis["mean_TrG"])
-        measured_error = float(analysis["mean_TrG_error"])
+        measured, measured_error = normalized_trace(analysis)
         reference, reference_error = benchmarks["values"][str(nt)]
         combined_error = math.hypot(measured_error, reference_error)
         z_score = (measured - reference) / combined_error

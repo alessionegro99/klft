@@ -29,6 +29,9 @@ class DirichletAnalysisTest(unittest.TestCase):
                 for separation in range(3):
                     value = 1.0 if separation == 0 else 0.1 * step / separation
                     rows.append(f"{step} {separation} {value} {value} 0")
+            body = np.asarray(rows[1:], dtype=object)
+            np.random.default_rng(17).shuffle(body)
+            rows[1:] = body.tolist()
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
             chain = load_keyed_chain(path, (1,), (2, 3), discard=2)
             np.testing.assert_array_equal(chain.steps, np.arange(3, 7))

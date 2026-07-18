@@ -9,3 +9,7 @@ data/dirichlet_thesis/runs/
 *.out
 *.npz
 *_analysis.json
+
+# Compact, versioned products of the qbig Dirichlet analysis.
+!analysis/dirichlet_thesis/**/covariance.npz
+analysis/dirichlet_thesis/**/analysis.log
