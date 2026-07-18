@@ -1,0 +1,13 @@
+run	input	physical_Nt	nx	ny	seed
+Nt_2_Ns_64_b_12p15266/seed_32091	data/dirichlet_thesis/qbig/thesis_initial/Nt_2_Ns_64_b_12p15266/seed_32091/input.yaml	2	64	64	32091
+Nt_2_Ns_64_b_12p15266/seed_90517	data/dirichlet_thesis/qbig/thesis_initial/Nt_2_Ns_64_b_12p15266/seed_90517/input.yaml	2	64	64	90517
+Nt_2_Ns_64_b_12p15266/seed_177013	data/dirichlet_thesis/qbig/thesis_initial/Nt_2_Ns_64_b_12p15266/seed_177013/input.yaml	2	64	64	177013
+Nt_2_Ns_64_b_12p15266/seed_515029	data/dirichlet_thesis/qbig/thesis_initial/Nt_2_Ns_64_b_12p15266/seed_515029/input.yaml	2	64	64	515029
+Nt_6_Ns_64_b_12p15266/seed_32091	data/dirichlet_thesis/qbig/thesis_initial/Nt_6_Ns_64_b_12p15266/seed_32091/input.yaml	6	64	64	32091
+Nt_6_Ns_64_b_12p15266/seed_90517	data/dirichlet_thesis/qbig/thesis_initial/Nt_6_Ns_64_b_12p15266/seed_90517/input.yaml	6	64	64	90517
+Nt_6_Ns_64_b_12p15266/seed_177013	data/dirichlet_thesis/qbig/thesis_initial/Nt_6_Ns_64_b_12p15266/seed_177013/input.yaml	6	64	64	177013
+Nt_6_Ns_64_b_12p15266/seed_515029	data/dirichlet_thesis/qbig/thesis_initial/Nt_6_Ns_64_b_12p15266/seed_515029/input.yaml	6	64	64	515029
+Nt_12_Ns_64_b_12p15266/seed_32091	data/dirichlet_thesis/qbig/thesis_initial/Nt_12_Ns_64_b_12p15266/seed_32091/input.yaml	12	64	64	32091
+Nt_12_Ns_64_b_12p15266/seed_90517	data/dirichlet_thesis/qbig/thesis_initial/Nt_12_Ns_64_b_12p15266/seed_90517/input.yaml	12	64	64	90517
+Nt_12_Ns_64_b_12p15266/seed_177013	data/dirichlet_thesis/qbig/thesis_initial/Nt_12_Ns_64_b_12p15266/seed_177013/input.yaml	12	64	64	177013
+Nt_12_Ns_64_b_12p15266/seed_515029	data/dirichlet_thesis/qbig/thesis_initial/Nt_12_Ns_64_b_12p15266/seed_515029/input.yaml	12	64	64	515029

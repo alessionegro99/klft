@@ -17,7 +17,7 @@ def main() -> None:
     binary = args.binary.resolve()
     if not binary.is_file():
         raise FileNotFoundError(binary)
-    inputs = sorted(args.root.glob("*/input.yaml"))
+    inputs = sorted(args.root.rglob("input.yaml"))
     if not inputs:
         raise FileNotFoundError(f"no */input.yaml files below {args.root}")
     for input_path in inputs:

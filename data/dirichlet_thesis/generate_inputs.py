@@ -8,6 +8,12 @@ from pathlib import Path
 
 
 DEFAULT_SEEDS = (32091, 90517, 177013, 515029)
+BETA = 12.15266
+
+
+def beta_tag(beta: float) -> str:
+    """Return a filesystem-safe decimal coupling."""
+    return str(beta).replace(".", "p")
 
 
 def input_text(
@@ -45,7 +51,7 @@ HeatbathParams:
   temporal_dirichlet: true
   configuration_input: ""
   configuration_output: "configuration_final.klft"
-  beta: 12.15266
+  beta: {BETA}
   epsilon1: 0.0
   epsilon2: 0.0
 
@@ -125,6 +131,11 @@ def main() -> None:
         help="measure only H=1 and H=Nt instead of every Wilson-loop height",
     )
     parser.add_argument(
+        "--nested-ensemble-layout",
+        action="store_true",
+        help="write Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/ directories",
+    )
+    parser.add_argument(
         "--quality-benchmark",
         action="store_true",
         help="also generate the expensive Nt=160, 9x160 horizontal-loop check",
@@ -135,7 +146,11 @@ def main() -> None:
     manifest_lines = ["run\tinput\tphysical_Nt\tnx\tny\tseed"]
     for nt in args.nt:
         for seed in args.seeds:
-            name = f"nt_{nt:03d}_seed_{seed}"
+            if args.nested_ensemble_layout:
+                ensemble = f"Nt_{nt}_Ns_{args.ns}_b_{beta_tag(BETA)}"
+                name = f"{ensemble}/seed_{seed}"
+            else:
+                name = f"nt_{nt:03d}_seed_{seed}"
             path = write_run(
                 args.output,
                 name,
