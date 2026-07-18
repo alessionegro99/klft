@@ -4,6 +4,10 @@ This workspace contains the project-specific analysis and production inputs
 for temporal Dirichlet boundaries in KLFT. The physics reference is
 [`docs/marconebbia_tesi.pdf`](docs/marconebbia_tesi.pdf).
 
+Simulation inputs and campaign metadata are in `data/`, Python programs are in
+`scripts/`, and compact analyzed data and plots are in `analysis/`. Raw Markov
+chains remain on qbig and are never synchronized to this workspace.
+
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
 build. Set `temporal_dirichlet: true` in either update section. With it false,
 the original periodic initialization, checkerboard, action, updates, and
@@ -78,9 +82,10 @@ identity has been checked by the tests.
 `Tr G(x) Tr G(y)^dagger`, and the configuration-level logarithmic slope. The
 latter is diagnostic: a 2D asymptotic correlator is proportional to `K0(mR)`,
 not exactly to an exponential. `holonomy_summary.out` contains raw `Tr G` and
-the zero/minimum-momentum structure factors. Its per-configuration `xi` is
-also diagnostic; the analysis program forms the second-moment length from
-ensemble means with a block jackknife.
+the zero/minimum-momentum structure factors. Analysis output includes raw
+`mean_TrG` and thesis-normalized `mean_half_TrG=(1/2)mean_TrG`. The
+per-configuration `xi` is also diagnostic; the analysis program forms the
+second-moment length from ensemble means with a block jackknife.
 
 The legacy `Tr G` is not invariant under independent left and right rotations.
 After correct global-orientation sampling, SU(2) Haar averaging gives
@@ -131,7 +136,9 @@ cmake -S klft -B build/klft -DKLFT_NDIM=3 -DKLFT_NC=2 \
   -DKokkos_ENABLE_OPENMP=ON -DKLFT_ENABLE_STATISTICAL_TESTS=ON
 cmake --build build/klft -j
 OMP_NUM_THREADS=2 ctest --test-dir build/klft --output-on-failure
-uv run python analysis/test_dirichlet_analysis.py
+uv run --frozen python scripts/test_dirichlet_analysis.py
+uv run --frozen python scripts/test_thermalization_diagnostics.py
+uv run --frozen python scripts/test_compare_thesis.py
 ```
 
 The fast suite covers boundary initialization and updates, restart I/O, local
@@ -169,16 +176,35 @@ all boundary-loop heights, and separate directories/seeds. Production
 thermalization must be assessed from the saved histories; 500 is only the
 thesis starting cut, not a universal guarantee.
 
-Analyze one thickness without merging histories first:
+The qbig campaign uses the nested naming convention and only the required
+boundary-loop heights in its first pass:
 
 ```bash
-uv run python analysis/dirichlet_analysis.py --ns 64 --thermalization 500 \
-  --correlator data/dirichlet_thesis/runs/nt_002_seed_*/holonomy_correlator.out \
-  --summary data/dirichlet_thesis/runs/nt_002_seed_*/holonomy_summary.out \
-  --profile data/dirichlet_thesis/runs/nt_002_seed_*/plaquette_profile.out \
-  --wilson data/dirichlet_thesis/runs/nt_002_seed_*/boundary_wilson.out \
-  --output nt2_analysis.json --covariance-output nt2_covariance.npz
+uv run --frozen python data/dirichlet_thesis/generate_inputs.py \
+  --output data/dirichlet_thesis/qbig/thesis_initial \
+  --nt 2 6 12 --ns 64 --sweeps 8000 \
+  --seeds 32091 90517 177013 515029 \
+  --only-minimum-heights --nested-ensemble-layout
 ```
+
+Raw histories live below `/qbigwork2/negro/dirichlet/data/`; the locked qbig
+analysis environment is below `/qbigwork2/negro/dirichlet/project/`. Diagnose
+thermalization before selecting a common cut, then run the full correlated
+analysis:
+
+```bash
+ssh negro@qbig /qbigwork2/negro/dirichlet/project/data/dirichlet_thesis/qbig/analyze_ensemble.sh diagnose 2
+ssh negro@qbig /qbigwork2/negro/dirichlet/project/data/dirichlet_thesis/qbig/analyze_ensemble.sh analyse 2 CUT
+data/dirichlet_thesis/qbig/sync_compact.sh --dry-run
+data/dirichlet_thesis/qbig/sync_compact.sh
+```
+
+MSER-5 only proposes a cut. The post-cut split-history, between-chain,
+autocorrelation, and global-orientation checks decide whether the cut and
+history length are adequate. The sync script transfers only compact analysis
+products into `analysis/dirichlet_thesis/`, excludes duplicate analysis logs,
+and never uses `--delete`. Run both the numerical analysis and plotting on
+qbig; synchronize only the resulting JSON, CSV, covariance matrices, and PDFs.
 
 The program selects a block length greater than twice the largest estimated
 autocorrelation time, reports split-history and between-chain diagnostics,
@@ -192,13 +218,17 @@ standard deviations, refuses redundant `R>Ns/2` input, and refuses a singular
 correlated fit. Adjust `--max-diagnostic-z` only with a stated statistical
 reason.
 
-Compare raw `Tr G` against thesis Table 4.4 with combined uncertainties:
+Compare `(1/2)Tr G` against thesis Table 4.4 with combined uncertainties:
 
 ```bash
-uv run python analysis/compare_thesis.py \
+uv run python scripts/compare_thesis.py \
   2=nt2_analysis.json 3=nt3_analysis.json 4=nt4_analysis.json
 ```
 
 Generate the optional 16000-sweep rotated `Nt=160`, `9x160` benchmark with
 `--quality-benchmark`. Analyze its `bulk_horizontal_polyakov.out` through the
 `--bulk-polyakov` option. This benchmark is intentionally not a default test.
+
+The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
+and cluster-generated plots are documented in
+[`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).

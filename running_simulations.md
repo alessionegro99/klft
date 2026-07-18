@@ -73,7 +73,7 @@ No thesis-scale chains should be submitted until an `Ns=64` timing run passes.
 - Thermalization: MSER-5 plus post-cut diagnostics recommends the common thesis cut of 500 for all three thicknesses
 - Initial Slurm analysis: CPU array job `259731_[0-2]`; all tasks completed with exit code 0
 - Final reproducible analysis after the `scripts/` layout and explicit `(1/2)Tr G` output: job `259734_[0-2]`; Nt=2, 6, and 12 completed in 2:42, 2:20, and 9:07 with exit code 0
-- Plotting and campaign table: dependent job `259737`, completed with exit code 0 in 30 seconds
-- Logs: `/qbigwork2/negro/dirichlet/logs/analysis-259734_<task>.out` and `/qbigwork2/negro/dirichlet/logs/plots-259737.out`
+- Plotting and campaign table: dependent job `259737` completed with exit code 0 in 30 seconds; job `259738` regenerated the compact products with portable LF CSV output and completed with exit code 0 in 18 seconds
+- Logs: `/qbigwork2/negro/dirichlet/logs/analysis-259734_<task>.out` and `/qbigwork2/negro/dirichlet/logs/plots-{259737,259738}.out`
 - Compact outputs: `/qbigwork2/negro/dirichlet/analysis/Nt_<Nt>_Ns_64_b_12p15266/`
 - Local compact outputs: `analysis/dirichlet_thesis/`; raw histories were not synchronized

@@ -265,7 +265,9 @@ def write_summary(
     with (output / "campaign_summary.csv").open(
         "w", encoding="utf-8", newline=""
     ) as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(
+            stream, fieldnames=list(rows[0]), lineterminator="\n"
+        )
         writer.writeheader()
         writer.writerows(rows)
 

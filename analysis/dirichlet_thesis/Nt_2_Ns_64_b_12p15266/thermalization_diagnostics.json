@@ -1,0 +1,90 @@
+{
+  "method": "MSER-5 candidate plus post-cut Sokal-window diagnostics",
+  "n_chains": 4,
+  "n_measurements_per_chain": 8000,
+  "minimum_cut": 500,
+  "recommended_common_cut": 500,
+  "chains": [
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_12p15266/seed_177013",
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 25,
+        "C_G_R1": 10
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 106.18750526624594,
+        "Ctilde_0": 1.3483191487961155,
+        "C_G_R1": 0.755482903417312
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.8238929586598271,
+        "Ctilde_0": 0.6452206106005274,
+        "C_G_R1": 0.5090107415365405
+      }
+    },
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_12p15266/seed_32091",
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 10,
+        "C_G_R1": 10
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 89.31653218013369,
+        "Ctilde_0": 1.3076515787007554,
+        "C_G_R1": 0.6964838125811615
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.3361704509860329,
+        "Ctilde_0": 0.168502627942098,
+        "C_G_R1": 0.09658183447296047
+      }
+    },
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_12p15266/seed_515029",
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 10,
+        "C_G_R1": 15
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 146.61294897663697,
+        "Ctilde_0": 1.3988950531449198,
+        "C_G_R1": 0.6923813876316846
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.06825489756792025,
+        "Ctilde_0": 0.8731460902593696,
+        "C_G_R1": 0.09222651512034707
+      }
+    },
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_12p15266/seed_90517",
+      "mser5_cut": {
+        "mean_TrG": 40,
+        "Ctilde_0": 10,
+        "C_G_R1": 10
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 108.73011514071428,
+        "Ctilde_0": 1.2727593099006365,
+        "C_G_R1": 0.7083303604147688
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.06869911586371993,
+        "Ctilde_0": 1.731408893465406,
+        "C_G_R1": 1.5766595588397554
+      }
+    }
+  ],
+  "post_cut_max_pairwise_chain_z": {
+    "mean_TrG": 3.1795123592807295,
+    "Ctilde_0": 1.1775346871969,
+    "C_G_R1": 1.6407234177919905
+  }
+}
