@@ -59,13 +59,12 @@ def plot_xi(results: dict[float, dict[str, object]], output: Path) -> None:
 
     figure, axis = plt.subplots(figsize=FIGURE_SIZE)
     axis.axhspan(minimum_xi, maximum_xi, **pu.conf_band(7, alpha=0.18))
-    axis.errorbar(beta, xi, error, label=r"hierarchical bootstrap", **pu.data(1))
+    axis.errorbar(beta, xi, error, **pu.data(1))
     pu.style_axes(
         axis,
         xlabel=r"$\beta$",
         ylabel=r"$\xi_{\mathrm{2nd}}/a$",
         title=rf"Exact SU(2) PCM limit, $N_s={ns}$",
-        legend=True,
         grid=True,
         xlim=(float(beta[0] - 0.03), float(beta[-1] + 0.03)),
     )
