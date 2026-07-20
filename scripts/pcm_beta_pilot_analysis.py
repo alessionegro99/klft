@@ -134,7 +134,7 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
     separations = correlators[0].keys[:, 0].astype(np.int64)
     if not np.array_equal(separations, np.arange(args.ns // 2 + 1)):
         raise ValueError("expected exactly the independent R=0,...,floor(Ns/2) grid")
-    if any(not np.array_equal(chain.values[:, 0, 0], 1.0) for chain in correlators):
+    if any(not np.all(chain.values[:, 0, 0] == 1.0) for chain in correlators):
         raise ValueError("C_G(0) is not exactly one configuration by configuration")
 
     per_chain_blocks: list[FloatArray] = []
