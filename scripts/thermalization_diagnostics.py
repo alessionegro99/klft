@@ -99,44 +99,42 @@ def analyse(
         load_diagnostics(summary, correlator)
         for summary, correlator in zip(summary_paths, correlator_paths, strict=True)
     ]
-    lengths = {len(next(iter(chain.values()))) for chain in chains}
-    if len(lengths) != 1:
-        raise ValueError("independent chains have different history lengths")
-    n_measurements = lengths.pop()
+    lengths = [len(next(iter(chain.values()))) for chain in chains]
     per_chain: list[dict[str, object]] = []
-    recommended_cut = minimum_cut
-    for summary_path, chain in zip(summary_paths, chains, strict=True):
+    recommended_cuts: list[int] = []
+    for summary_path, chain, n_measurements in zip(
+        summary_paths, chains, lengths, strict=True
+    ):
         cuts = {name: mser5_cut(values) for name, values in chain.items()}
         chain_cut = max([minimum_cut, *cuts.values()])
-        recommended_cut = max(recommended_cut, chain_cut)
+        if chain_cut >= n_measurements - 4:
+            raise ValueError(
+                f"{summary_path.parent}: candidate cut leaves too few measurements"
+            )
+        recommended_cuts.append(chain_cut)
+        post_cut = {name: values[chain_cut:] for name, values in chain.items()}
         per_chain.append(
             {
                 "chain": str(summary_path.parent),
+                "n_measurements": n_measurements,
                 "mser5_cut": cuts,
                 "candidate_cut": chain_cut,
+                "post_cut_tau_int": {
+                    name: integrated_autocorrelation_time(values)
+                    for name, values in post_cut.items()
+                },
+                "post_cut_split_z": {
+                    name: split_z_score(values) for name, values in post_cut.items()
+                },
             }
         )
-    if recommended_cut >= n_measurements - 4:
-        raise ValueError("candidate thermalization cut leaves too few measurements")
-
-    for entry, chain in zip(per_chain, chains, strict=True):
-        post_cut = {
-            name: values[recommended_cut:] for name, values in chain.items()
-        }
-        entry["post_cut_tau_int"] = {
-            name: integrated_autocorrelation_time(values)
-            for name, values in post_cut.items()
-        }
-        entry["post_cut_split_z"] = {
-            name: split_z_score(values) for name, values in post_cut.items()
-        }
 
     chain_pair_max_z: dict[str, float] = {}
     for name in chains[0]:
         means = []
         variances = []
-        for chain in chains:
-            values = chain[name][recommended_cut:]
+        for chain, chain_cut in zip(chains, recommended_cuts, strict=True):
+            values = chain[name][chain_cut:]
             tau = integrated_autocorrelation_time(values)
             means.append(float(np.mean(values)))
             variances.append(float(np.var(values, ddof=1) * 2.0 * tau / len(values)))
@@ -154,9 +152,9 @@ def analyse(
     return {
         "method": "MSER-5 candidate plus post-cut Sokal-window diagnostics",
         "n_chains": len(chains),
-        "n_measurements_per_chain": n_measurements,
+        "n_measurements_per_chain": lengths,
         "minimum_cut": minimum_cut,
-        "recommended_common_cut": recommended_cut,
+        "recommended_per_chain_cuts": recommended_cuts,
         "chains": per_chain,
         "post_cut_max_pairwise_chain_z": chain_pair_max_z,
     }

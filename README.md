@@ -237,6 +237,28 @@ Generate the optional 16000-sweep rotated `Nt=160`, `9x160` benchmark with
 `--quality-benchmark`. Analyze its `bulk_horizontal_polyakov.out` through the
 `--bulk-polyakov` option. This benchmark is intentionally not a default test.
 
+### Exact-PCM beta pilot
+
+The first coupling calibration uses only KLFT at physical `Nt=1`, where its
+holonomy is exactly the SU(2) PCM spin. Generate the `Ns=96`, beta
+`1.9, 2.0, 2.1` pilot with:
+
+```bash
+uv run --frozen python data/dirichlet_thesis/generate_inputs.py \
+  --output data/dirichlet_thesis/qbig/pcm_beta_pilot \
+  --nt 1 --beta 1.9 2.0 2.1 --ns 96 --sweeps 10000 \
+  --seeds 32091 90517 177013 515029 \
+  --holonomy-only --nested-ensemble-layout
+```
+
+On qbig, first submit `submit_pcm_beta_analysis.slurm` with `MODE=diagnose`.
+Inspect every chain's proposed cut, post-cut `tau_int`, split-history check, and
+between-chain consistency. Then resubmit it with `MODE=analyse`. The numerical
+stage enforces at least 30 complete blocks in every chain and uses a seeded
+hierarchical bootstrap of full correlator vectors. A coupling is conservatively
+accepted only if the 68% interval satisfies `xi_2nd >= 5` and
+`Ns/xi_2nd >= 8`.
+
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in
 [`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).
