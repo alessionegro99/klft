@@ -10,8 +10,11 @@ The simulation used KLFT commit `2871b8abc9c28917c2049243d3483d6dada4276a`
 and the P100 executable with SHA-256
 `5e7ad09405829c2a7831b666de16bb0e195391c6b020b4df901134cd632cdaa4`.
 Production jobs were `259718` and `259723`; final analysis was job `259734`
-and the final plot regeneration was job `259738`, both completed with exit code
-zero.
+and its original plot regeneration was job `259738`, both completed with exit
+code zero. On 2026-07-20 the plots were regenerated from these unchanged
+compact products with the project plotting rules below. This presentation-only
+regeneration was local because qbig's SSH port was unreachable; no raw history
+was transferred and `campaign_summary.csv` did not change.
 
 ## Main comparisons
 
@@ -83,11 +86,19 @@ study.
 
 ## Compact products
 
+Every figure below is a single-page 16:9 PDF with one plot, LaTeX text, and the
+palette and styles from `statanalysis-Bonn/plot_utils.py`.
+
 - [campaign summary](thesis_initial_plots/campaign_summary.csv)
-- [plaquette profiles](thesis_initial_plots/plaquette_profiles.pdf)
-- [holonomy and boundary-loop correlators](thesis_initial_plots/correlators.pdf)
+- Plaquette profiles: [Nt=2](thesis_initial_plots/plaquette_profile_Nt_2.pdf),
+  [Nt=6](thesis_initial_plots/plaquette_profile_Nt_6.pdf), and
+  [Nt=12](thesis_initial_plots/plaquette_profile_Nt_12.pdf)
+- [holonomy correlator](thesis_initial_plots/holonomy_correlator.pdf)
+- [height-one boundary loop](thesis_initial_plots/boundary_loop_H_1.pdf)
 - [traced-holonomy comparison](thesis_initial_plots/traced_holonomy_comparison.pdf)
-- [correlation matrices](thesis_initial_plots/holonomy_correlation_matrices.pdf)
+- Holonomy correlation matrices: [Nt=2](thesis_initial_plots/holonomy_correlation_matrix_Nt_2.pdf),
+  [Nt=6](thesis_initial_plots/holonomy_correlation_matrix_Nt_6.pdf), and
+  [Nt=12](thesis_initial_plots/holonomy_correlation_matrix_Nt_12.pdf)
 
 Each `Nt_*` directory contains the full compact JSON result, thermalization
 diagnostics, and the independent-distance covariance matrix. No raw Markov

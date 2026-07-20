@@ -228,7 +228,13 @@ def fit_k0(
     ns: int,
     correlated: bool,
 ) -> dict[str, float | bool]:
-    """Fit the finite-periodic-volume K0 correlator with A>0 and m>0."""
+    """Fit the finite-periodic-volume K0 correlator with A>0 and m>0.
+
+    ``statanalysis-Bonn/fit_utils.py`` accepts independent pointwise errors,
+    whereas this fit must retain the full cross-distance covariance.  The
+    explicit whitening below is therefore the smallest statistically correct
+    implementation for this analysis.
+    """
     if len(separations) < 3 or np.any(separations <= 0):
         raise ValueError("K0 fit needs at least three strictly positive distances")
     if correlated:

@@ -21,6 +21,22 @@ Run KLFT's Python partitioning check with `cd klft && uv run python tools/test_g
 
 Use four spaces in Python, `snake_case` for files and functions, and `PascalCase` for classes. Add type hints to public signatures and NumPy-style docstrings. Use `numpy.float64` by default and `np.random.default_rng(seed)` for stochastic work. Keep reusable functions separate from plotting or exploratory scripts. Name production ensembles `data/Nt_<thickness>_Ns_<size>_b_<beta>/seed_<seed>/`, replacing the decimal point in beta by `p`, for example `data/Nt_2_Ns_64_b_12p15266/seed_12001/`. Here `Nt` is the physical number of temporal links between the Dirichlet surfaces; the current periodic-wrapper KLFT input therefore has temporal site extent `Nt + 1`.
 
+## Plotting and Fitting
+
+Save every figure as PDF. A PDF page may contain at most one plot: do not use
+subplots, panels, insets, or plot montages. Split related plots into separate
+single-page PDF files. Create every figure with `figsize=(16, 9)` and preserve
+that 16:9 canvas when saving.
+
+Use LaTeX rendering (`text.usetex = True`) with the serif style from
+`statanalysis-Bonn/plot_utils.py`. Use that module's `color_dict`, markers, and
+data/fit style helpers; do not choose ad hoc Matplotlib colors or markers.
+Use `statanalysis-Bonn/fit_utils.py` for standard fitting and uncertainty
+formatting. A project-specific fit implementation is justified only when the
+shared utility does not support the required statistical treatment, such as a
+full correlated covariance fit; document that reason where the fit is
+implemented.
+
 ## Testing and Reproducibility
 
 No root test framework or coverage threshold is configured. Place future Python tests beside the analysis code as `scripts/test_<module>.py`. Check small-volume or analytically known limits, and test KLFT changes with CTest. Every reported result must record the boundary conditions, lattice dimensions, coupling convention, seed, thermalization, measurement spacing, and dependency revision. Estimate Monte Carlo uncertainty with autocorrelation-aware binning, jackknife, or bootstrap; never use an independent-sample standard error for correlated chains.
