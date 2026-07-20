@@ -206,6 +206,14 @@ products into `analysis/dirichlet_thesis/`, excludes duplicate analysis logs,
 and never uses `--delete`. Run both the numerical analysis and plotting on
 qbig; synchronize only the resulting JSON, CSV, covariance matrices, and PDFs.
 
+Independent raw histories must never be appended before statistical analysis.
+Choose the thermalization cut and estimate `tau_int` for each run separately,
+block or resample within each run, and only then combine independent run-level
+fluctuations. For a correlator, use a hierarchical bootstrap so that each
+within-run resample carries the complete vector of independent `R` values and
+therefore preserves their covariance. This avoids artificial chain-boundary
+transitions and unstable plateaus based on too few pooled blocks.
+
 The program selects a block length greater than twice the largest estimated
 autocorrelation time, reports split-history and between-chain diagnostics,
 keeps the full independent-distance covariance, jackknifes derived slopes and

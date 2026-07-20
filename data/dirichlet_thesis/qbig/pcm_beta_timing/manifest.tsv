@@ -1,0 +1,2 @@
+run	input	physical_Nt	nx	ny	seed	beta
+Nt_1_Ns_96_b_1p9/seed_700019	data/dirichlet_thesis/qbig/pcm_beta_timing/Nt_1_Ns_96_b_1p9/seed_700019/input.yaml	1	96	96	700019	1.9

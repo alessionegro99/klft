@@ -1,0 +1,13 @@
+run	input	physical_Nt	nx	ny	seed	beta
+Nt_1_Ns_96_b_1p9/seed_32091	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_1p9/seed_32091/input.yaml	1	96	96	32091	1.9
+Nt_1_Ns_96_b_1p9/seed_90517	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_1p9/seed_90517/input.yaml	1	96	96	90517	1.9
+Nt_1_Ns_96_b_1p9/seed_177013	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_1p9/seed_177013/input.yaml	1	96	96	177013	1.9
+Nt_1_Ns_96_b_1p9/seed_515029	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_1p9/seed_515029/input.yaml	1	96	96	515029	1.9
+Nt_1_Ns_96_b_2p0/seed_32091	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p0/seed_32091/input.yaml	1	96	96	32091	2.0
+Nt_1_Ns_96_b_2p0/seed_90517	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p0/seed_90517/input.yaml	1	96	96	90517	2.0
+Nt_1_Ns_96_b_2p0/seed_177013	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p0/seed_177013/input.yaml	1	96	96	177013	2.0
+Nt_1_Ns_96_b_2p0/seed_515029	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p0/seed_515029/input.yaml	1	96	96	515029	2.0
+Nt_1_Ns_96_b_2p1/seed_32091	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p1/seed_32091/input.yaml	1	96	96	32091	2.1
+Nt_1_Ns_96_b_2p1/seed_90517	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p1/seed_90517/input.yaml	1	96	96	90517	2.1
+Nt_1_Ns_96_b_2p1/seed_177013	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p1/seed_177013/input.yaml	1	96	96	177013	2.1
+Nt_1_Ns_96_b_2p1/seed_515029	data/dirichlet_thesis/qbig/pcm_beta_pilot/Nt_1_Ns_96_b_2p1/seed_515029/input.yaml	1	96	96	515029	2.1

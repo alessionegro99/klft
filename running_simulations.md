@@ -1,5 +1,36 @@
 # Running simulations
 
+## Exact-PCM beta calibration pilot
+
+- Status: timing job `259743_0` submitted; production submission pending timing
+  output check
+- Purpose: choose a coupling in the exact physical-`Nt=1` SU(2) PCM limit with
+  `xi_2nd/a >= 5` and `Ns/xi_2nd >= 8`, before repeating the finite-thickness
+  thesis scan
+- Ensembles: physical `Nt=1`, `Ns=96`, beta = 1.9, 2.0, 2.1, hot starts
+- Seeds at each coupling: 32091, 90517, 177013, 515029
+- Planned history per chain: 10000 sweeps, five overrelaxation sweeps per
+  heatbath sweep, measurement interval 1
+- Observables: the normalized single-trace holonomy correlator and its
+  zero/minimum-momentum summary; at `Nt=1` these are exactly the SU(2) PCM spin
+  correlator and structure factors
+- Timing check: Slurm job `259743_0`, beta 1.9, seed 700019, 100 sweeps with
+  otherwise identical geometry and measurements
+- Slurm request: one typed Pascal GPU per task on `lnode13`--`lnode17`, three
+  CPU cores, 4 GiB; one timing task followed by a 12-task array only after the
+  timing output is inspected
+- Remote data: `/qbigwork2/negro/dirichlet/data/Nt_1_Ns_96_b_<beta>/seed_<seed>`
+- Inputs and manifest: `/qbigwork2/negro/dirichlet/campaigns/pcm_beta_pilot/`
+- Logs: `/qbigwork2/negro/dirichlet/logs/pcm-beta-<job>_<task>.out`
+- KLFT source/build: commit
+  `2871b8abc9c28917c2049243d3483d6dada4276a`,
+  `/hadron/negro/build/klft-p100-3D-su2`, heatbath SHA-256
+  `5e7ad09405829c2a7831b666de16bb0e195391c6b020b4df901134cd632cdaa4`
+- Analysis rule: select thermalization and estimate `tau_int` independently for
+  each chain; block and bootstrap only within each chain; combine runs with a
+  hierarchical bootstrap carrying the full `R` vector. Raw histories are never
+  concatenated before resampling.
+
 ## qbig P100 validation
 
 - Status: completed

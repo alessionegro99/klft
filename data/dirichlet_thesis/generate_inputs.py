@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 
 
 DEFAULT_SEEDS = (32091, 90517, 177013, 515029)
-BETA = 12.15266
+DEFAULT_BETA = 12.15266
 
 
 def beta_tag(beta: float) -> str:
@@ -21,10 +22,12 @@ def input_text(
     nx: int,
     ny: int,
     nt: int,
+    beta: float,
     seed: int,
     sweeps: int,
     measurement_interval: int,
     all_heights: bool,
+    holonomy_only: bool = False,
     quality_max_r: int = 0,
 ) -> str:
     """Return one 3D SU(2) heatbath input.
@@ -34,6 +37,8 @@ def input_text(
     """
     if nx < 1 or ny < 1 or nt < 1:
         raise ValueError("nx, ny, and nt must be positive")
+    if not math.isfinite(beta) or beta <= 0.0:
+        raise ValueError("beta must be finite and positive")
     if sweeps < 1 or measurement_interval < 1:
         raise ValueError("sweeps and measurement_interval must be positive")
     quality = quality_max_r > 0
@@ -51,7 +56,7 @@ HeatbathParams:
   temporal_dirichlet: true
   configuration_input: ""
   configuration_output: "configuration_final.klft"
-  beta: {BETA}
+  beta: {beta}
   epsilon1: 0.0
   epsilon2: 0.0
 
@@ -68,8 +73,8 @@ GaugeObservableParams:
   measure_retrace_U: false
   measure_retrace_U2: false
   measure_dirichlet_holonomy: true
-  measure_dirichlet_plaquette_profiles: {str(not quality).lower()}
-  measure_boundary_wilson_loops: {str(not quality).lower()}
+  measure_dirichlet_plaquette_profiles: {str(not quality and not holonomy_only).lower()}
+  measure_boundary_wilson_loops: {str(not quality and not holonomy_only).lower()}
   measure_boundary_wilson_all_heights: {str(all_heights).lower()}
   measure_dirichlet_bulk_polyakov: {str(quality).lower()}
   dirichlet_correlator_max_r: 0
@@ -121,6 +126,7 @@ def main() -> None:
         "--output", type=Path, default=Path("data/dirichlet_thesis/runs")
     )
     parser.add_argument("--nt", type=int, nargs="+", default=list(range(2, 13)))
+    parser.add_argument("--beta", type=float, nargs="+", default=[DEFAULT_BETA])
     parser.add_argument("--seeds", type=int, nargs="+", default=list(DEFAULT_SEEDS))
     parser.add_argument("--ns", type=int, default=64)
     parser.add_argument("--sweeps", type=int, default=8000)
@@ -129,6 +135,11 @@ def main() -> None:
         "--only-minimum-heights",
         action="store_true",
         help="measure only H=1 and H=Nt instead of every Wilson-loop height",
+    )
+    parser.add_argument(
+        "--holonomy-only",
+        action="store_true",
+        help="measure only the holonomy summary and correlator",
     )
     parser.add_argument(
         "--nested-ensemble-layout",
@@ -143,30 +154,33 @@ def main() -> None:
     args = parser.parse_args()
 
     args.output.mkdir(parents=True, exist_ok=True)
-    manifest_lines = ["run\tinput\tphysical_Nt\tnx\tny\tseed"]
-    for nt in args.nt:
-        for seed in args.seeds:
-            if args.nested_ensemble_layout:
-                ensemble = f"Nt_{nt}_Ns_{args.ns}_b_{beta_tag(BETA)}"
-                name = f"{ensemble}/seed_{seed}"
-            else:
-                name = f"nt_{nt:03d}_seed_{seed}"
-            path = write_run(
-                args.output,
-                name,
-                input_text(
-                    nx=args.ns,
-                    ny=args.ns,
-                    nt=nt,
-                    seed=seed,
-                    sweeps=args.sweeps,
-                    measurement_interval=args.measurement_interval,
-                    all_heights=not args.only_minimum_heights,
-                ),
-            )
-            manifest_lines.append(
-                f"{name}\t{path}\t{nt}\t{args.ns}\t{args.ns}\t{seed}"
-            )
+    manifest_lines = ["run\tinput\tphysical_Nt\tnx\tny\tseed\tbeta"]
+    for beta in args.beta:
+        for nt in args.nt:
+            for seed in args.seeds:
+                if args.nested_ensemble_layout:
+                    ensemble = f"Nt_{nt}_Ns_{args.ns}_b_{beta_tag(beta)}"
+                    name = f"{ensemble}/seed_{seed}"
+                else:
+                    name = f"b_{beta_tag(beta)}_nt_{nt:03d}_seed_{seed}"
+                path = write_run(
+                    args.output,
+                    name,
+                    input_text(
+                        nx=args.ns,
+                        ny=args.ns,
+                        nt=nt,
+                        beta=beta,
+                        seed=seed,
+                        sweeps=args.sweeps,
+                        measurement_interval=args.measurement_interval,
+                        all_heights=not args.only_minimum_heights,
+                        holonomy_only=args.holonomy_only,
+                    ),
+                )
+                manifest_lines.append(
+                    f"{name}\t{path}\t{nt}\t{args.ns}\t{args.ns}\t{seed}\t{beta}"
+                )
 
     if args.quality_benchmark:
         for seed in args.seeds:
@@ -178,6 +192,7 @@ def main() -> None:
                     nx=9,
                     ny=160,
                     nt=160,
+                    beta=DEFAULT_BETA,
                     seed=seed,
                     sweeps=16000,
                     measurement_interval=1,
@@ -185,7 +200,9 @@ def main() -> None:
                     quality_max_r=48,
                 ),
             )
-            manifest_lines.append(f"{name}\t{path}\t160\t9\t160\t{seed}")
+            manifest_lines.append(
+                f"{name}\t{path}\t160\t9\t160\t{seed}\t{DEFAULT_BETA}"
+            )
 
     (args.output / "manifest.tsv").write_text(
         "\n".join(manifest_lines) + "\n", encoding="utf-8"
