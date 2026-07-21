@@ -1,6 +1,7 @@
 #include "core/compiled_theory.hpp"
 #include "core/temporal_dirichlet.hpp"
 #include "io/gauge_configuration.hpp"
+#include "io/input_parser.hpp"
 #include "observables/dirichlet_action.hpp"
 #include "partitioning/partition_table.hpp"
 #include "updates/gradient_flow.hpp"
@@ -14,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -583,6 +585,75 @@ void check_full_height_loop_and_periodic_regression() {
         "Dirichlet mode is disabled by default");
 }
 
+void check_observable_cadence() {
+  auto gauge = make_identity(2, 2, 1);
+  apply_temporal_dirichlet_boundaries<3, 2>(gauge);
+  HeatbathParams update_params;
+  update_params.temporal_dirichlet = true;
+  RNG rng(262144);
+
+  GaugeObservableParams split;
+  split.measurement_interval = 1;
+  split.dirichlet_suite_measurement_interval = 5;
+  split.measure_dirichlet_holonomy = true;
+  split.measure_dirichlet_plaquette_profiles = true;
+  for (size_t step = 1; step <= 10; ++step) {
+    measureGaugeObservables<3, 2>(gauge, update_params, split, step, 0.0,
+                                  0.0, rng);
+  }
+  const std::vector<size_t> every_step{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  const std::vector<size_t> suite_steps{5, 10};
+  check(split.dirichlet_holonomy_measurement_steps == every_step,
+        "holonomy cadence records steps 1 through 10");
+  check(split.dirichlet_holonomy_measurements.size() == 10,
+        "holonomy cadence produces ten measurements");
+  check(split.dirichlet_suite_measurement_steps == suite_steps,
+        "Dirichlet suite cadence records only steps 5 and 10");
+  check(split.dirichlet_plaquette_profile_measurements.size() == 2,
+        "Dirichlet suite cadence produces two profiles");
+
+  GaugeObservableParams inherited;
+  inherited.measurement_interval = 2;
+  inherited.measure_dirichlet_holonomy = true;
+  inherited.measure_dirichlet_plaquette_profiles = true;
+  for (size_t step = 1; step <= 10; ++step) {
+    measureGaugeObservables<3, 2>(gauge, update_params, inherited, step, 0.0,
+                                  0.0, rng);
+  }
+  const std::vector<size_t> inherited_steps{2, 4, 6, 8, 10};
+  check(inherited.dirichlet_holonomy_measurement_steps == inherited_steps &&
+            inherited.dirichlet_suite_measurement_steps == inherited_steps,
+        "zero suite interval preserves the legacy common cadence");
+}
+
+void check_observable_interval_parser() {
+  const std::string filename = "/tmp/klft_dirichlet_interval_test.yaml";
+  const auto write_input = [&](const std::string &suite_line) {
+    std::ofstream file(filename);
+    file << "GaugeObservableParams:\n"
+         << "  measurement_interval: 2\n"
+         << suite_line
+         << "  measure_dirichlet_plaquette_profiles: true\n"
+         << "  write_to_file: false\n";
+  };
+
+  GaugeObservableParams parsed;
+  write_input("  dirichlet_suite_measurement_interval: 6\n");
+  check(parseInputFile(filename, parsed) &&
+            parsed.dirichlet_suite_measurement_interval == 6,
+        "parser accepts an integer-multiple suite interval");
+
+  write_input("");
+  check(parseInputFile(filename, parsed) &&
+            parsed.dirichlet_suite_measurement_interval == 0,
+        "parser defaults a missing suite interval to legacy inheritance");
+
+  write_input("  dirichlet_suite_measurement_interval: 5\n");
+  check(!parseInputFile(filename, parsed),
+        "parser rejects a suite interval not divisible by the base interval");
+  std::remove(filename.c_str());
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -599,6 +670,8 @@ int main(int argc, char **argv) {
     check_symmetries_and_factorization();
     check_exact_nt1_mapping();
     check_full_height_loop_and_periodic_regression();
+    check_observable_cadence();
+    check_observable_interval_parser();
   }
   Kokkos::finalize();
   if (failures == 0) {

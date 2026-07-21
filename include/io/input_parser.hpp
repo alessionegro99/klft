@@ -432,6 +432,8 @@ inline bool parseInputFile(const std::string &filename,
 
   gaugeObservableParams.measurement_interval =
       gp["measurement_interval"].as<size_t>(0);
+  gaugeObservableParams.dirichlet_suite_measurement_interval =
+      gp["dirichlet_suite_measurement_interval"].as<size_t>(0);
   gaugeObservableParams.measure_plaquette =
       gp["measure_plaquette"].as<bool>(false);
   gaugeObservableParams.measure_plaquette_spatial =
@@ -550,6 +552,15 @@ inline bool parseInputFile(const std::string &filename,
   if (any_measurement_enabled && gaugeObservableParams.measurement_interval == 0) {
     printf("Error: measurement_interval must be > 0 when observables are "
            "enabled\n");
+    return false;
+  }
+  if (gaugeObservableParams.dirichlet_suite_measurement_interval != 0 &&
+      (gaugeObservableParams.measurement_interval == 0 ||
+       gaugeObservableParams.dirichlet_suite_measurement_interval %
+               gaugeObservableParams.measurement_interval !=
+           0)) {
+    printf("Error: dirichlet_suite_measurement_interval must be an integer "
+           "multiple of measurement_interval\n");
     return false;
   }
   if (gaugeObservableParams.wilson_loop_multihit < 1) {

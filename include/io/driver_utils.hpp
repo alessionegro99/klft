@@ -39,6 +39,7 @@ inline void write_sample_nested_child_offset(std::ofstream &file) {
 inline void write_common_observable_sample(std::ofstream &file) {
   file << "GaugeObservableParams:\n"
        << "  measurement_interval: 10\n"
+       << "  dirichlet_suite_measurement_interval: 0\n"
        << "  measure_plaquette: true\n"
        << "  measure_plaquette_spatial: false\n"
        << "  measure_plaquette_temporal: false\n"
