@@ -22,6 +22,14 @@ manifested SHA-256. The dependent qbig workflow records its job IDs in
 results must not be reported until those jobs complete and compact products
 are synchronized.
 
+The first remote build job, `259773`, failed before producing a binary because
+an explicit global `nvcc_wrapper` selected CUDA 9.2 headers from
+`/usr/local/cuda` alongside the loaded CUDA 11.5 and GCC 11.2 modules. Slurm
+canceled dependent jobs `259774`--`259779`. The retry uses the normal C++
+compiler with Kokkos's compiler launcher, keeps the sole project build at
+`/qbigwork2/negro/dirichlet/build/klft`, and lets all 32 one-GPU production
+tasks run concurrently when P100s are available.
+
 ## qbig environment
 
 On 2026-07-17, Slurm reported `lnode13` through `lnode17` idle, each with eight Pascal GPUs. Direct inspection of `lnode13` identified eight idle Tesla P100-PCIE-16GB GPUs. This is an availability snapshot, not a permanent allocation.

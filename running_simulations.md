@@ -2,8 +2,11 @@
 
 ## Step-3 Dirichlet slab parameter-space pilot
 
-- Status: prepared for dependent Slurm submission; job IDs are written
-  atomically to
+- Status: retry prepared after build job `259773` failed because forcing
+  `nvcc_wrapper` mixed the module CUDA 11.5 toolkit with `/usr/local/cuda`
+  (CUDA 9.2); Slurm canceled dependent jobs `259774`--`259779`. The corrected
+  workflow uses the normal C++ compiler with Kokkos's compiler launcher. Retry
+  job IDs are written to
   `/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`
 - Grid: eight ensembles and four independent hot-start chains per ensemble
   (32 chains): `(Nt,beta,Ns)=(1,2.1,96),(2,2.1,48),(3,2.1,48),`
@@ -20,12 +23,14 @@
 - Raw output: `/qbigwork2/negro/dirichlet/data/Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/`
 - Logs: `/qbigwork2/negro/dirichlet/logs/step3-*.out`
 - Slurm request: one typed Pascal GPU per build, timing, or production task;
-  production array `0-31%8`; no comma-separated node list
+  production array `0-31` with no concurrency cap, allowing Slurm to use all
+  available P100s across the eligible nodes; no comma-separated node list
 - Timing gate: 100 sweeps at `Nt=4,Ns=192,beta=7.2`; dependent production is
   released only when the projection is at most two hours for one chain and at
   most 12 total P100 GPU-hours
 - KLFT: commit `7eed1f7d9bb0948621a2d4020706d19c56406001`, fresh
-  commit-specific CUDA/OpenMP `KLFT_NDIM=3`, `KLFT_NC=2`, Pascal60 build;
+  CUDA/OpenMP `KLFT_NDIM=3`, `KLFT_NC=2`, Pascal60 build at the single project
+  path `/qbigwork2/negro/dirichlet/build/klft`;
   executable checksum is recorded by the build job and in every chain's
   metadata
 - Analysis: independent MSER-5 cuts (minimum 500 sweeps), Sokal-window

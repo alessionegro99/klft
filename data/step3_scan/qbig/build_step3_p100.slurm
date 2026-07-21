@@ -21,8 +21,7 @@ project="${remote_root}/project"
 campaign="${remote_root}/campaigns/step3_scan"
 source_dir=/hadron/negro/src/klft
 expected_commit=$(tr -d '[:space:]' < "${project}/data/step3_scan/klft_commit.txt")
-short_commit=${expected_commit:0:7}
-build=/hadron/negro/build/klft-p100-3D-su2-step3-${short_commit}
+build="${remote_root}/build/klft"
 provenance="${campaign}/build_provenance.txt"
 
 actual_commit=$(git -C "${source_dir}" rev-parse HEAD)
@@ -34,22 +33,26 @@ if [[ -n "$(git -C "${source_dir}" status --porcelain --untracked-files=no)" ]];
     echo "KLFT tracked worktree is dirty" >&2
     exit 1
 fi
-if [[ -e "${build}" || -e "${provenance}" ]]; then
-    echo "refusing to reuse Step-3 build or provenance" >&2
+if [[ -e "${provenance}" ]]; then
+    echo "refusing to overwrite Step-3 build provenance" >&2
     exit 1
 fi
 
-mkdir -p "${campaign}"
+mkdir -p "${campaign}" "$(dirname "${build}")"
 nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
-export CXX="${source_dir}/thirdparty/kokkos/kokkos/bin/nvcc_wrapper"
+unset CXX
+host_cxx=$(command -v c++)
 cmake -S "${source_dir}" -B "${build}" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_COMPILER="${host_cxx}" \
+    -DCUDAToolkit_ROOT="${CUDA_ROOT}" \
     -DKLFT_NDIM=3 \
     -DKLFT_NC=2 \
     -DKLFT_ENABLE_STATISTICAL_TESTS=ON \
     -DKokkos_ENABLE_CUDA=ON \
     -DKokkos_ENABLE_OPENMP=ON \
     -DKokkos_ARCH_PASCAL60=ON
+cmake --build "${build}" --target clean
 cmake --build "${build}" -j "${SLURM_CPUS_PER_TASK}"
 ctest --test-dir "${build}" --output-on-failure \
     -R '^temporal_dirichlet_(deterministic|statistical)$'
@@ -62,7 +65,7 @@ ctest --test-dir "${build}" --output-on-failure \
     printf 'node %s\n' "${SLURMD_NODENAME}"
     printf 'job_id %s\n' "${SLURM_JOB_ID}"
     cmake --version | head -1
-    "${CXX}" --version | head -1
+    "${host_cxx}" --version | head -1
     nvcc --version | tail -1
     gcc --version | head -1
     printf 'heatbath_sha256 '

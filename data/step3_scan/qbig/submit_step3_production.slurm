@@ -7,7 +7,7 @@
 #SBATCH --gres=gpu:pascal:1
 #SBATCH --mem=5G
 #SBATCH --time=02:15:00
-#SBATCH --array=0-31%8
+#SBATCH --array=0-31
 #SBATCH --output=/qbigwork2/negro/dirichlet/logs/step3-prod-%A_%a.out
 
 set -euo pipefail
@@ -23,8 +23,7 @@ campaign="${remote_root}/campaigns/step3_scan"
 manifest="${campaign}/manifest.tsv"
 source_dir=/hadron/negro/src/klft
 expected_commit=$(tr -d '[:space:]' < "${project}/data/step3_scan/klft_commit.txt")
-short_commit=${expected_commit:0:7}
-build=/hadron/negro/build/klft-p100-3D-su2-step3-${short_commit}
+build="${remote_root}/build/klft"
 
 [[ "$(awk -F '\t' '$1 == "gate" {print $2}' "${campaign}/timing_gate.tsv")" == PASS ]] || {
     echo "timing gate did not pass" >&2

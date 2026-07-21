@@ -279,12 +279,14 @@ composite sweep and plaquette profiles every five sweeps; all Wilson-loop and
 horizontal-Polyakov measurements are disabled.
 
 The qbig jobs are submitted as one dependency chain by
-`data/step3_scan/qbig/queue_all.sh`: fresh P100 build and tests, the
-100-sweep `Nt=4,Ns=192` timing gate, the `0-31%8` production array,
-per-ensemble diagnostics, numerical analysis, aggregation, and plotting. The
-timing stage exits nonzero if it projects more than two hours for the largest
-chain or more than 12 total GPU-hours, so production cannot start after a
-failed gate.
+`data/step3_scan/qbig/queue_all.sh`: a fresh P100 build and tests in the single
+project path `/qbigwork2/negro/dirichlet/build/klft`, the 100-sweep
+`Nt=4,Ns=192` timing gate, the uncapped `0-31` production array,
+per-ensemble diagnostics, numerical analysis, aggregation, and plotting.
+Slurm may therefore place all 32 one-GPU production tasks across the available
+P100 nodes. The timing stage exits nonzero if it projects more than two hours
+for the largest chain or more than 12 total GPU-hours, so production cannot
+start after a failed gate.
 
 `scripts/step3_analysis.py` selects MSER-5 cuts independently with a minimum
 500-sweep deletion, expresses every autocorrelation time in sweeps, and blocks
