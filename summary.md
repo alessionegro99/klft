@@ -1,5 +1,27 @@
 # Numerical validation summary
 
+## Step-3 implementation and queued workflow
+
+KLFT commit `7eed1f7d9bb0948621a2d4020706d19c56406001` adds a separate
+Dirichlet-suite cadence. A zero suite interval inherits the base measurement
+interval, preserving previous inputs; an explicit interval must be an integer
+multiple of the base interval. Deterministic tests verify that steps 1 through
+10 yield ten holonomy measurements and profiles only at steps 5 and 10, and
+also cover parsing and legacy inheritance. The full local 3D SU(2) CTest suite
+passes, including the statistical test. ASan/UBSan deterministic testing
+passes with leak detection disabled because LeakSanitizer cannot run under the
+workspace ptrace sandbox.
+
+The Step-3 campaign contains eight grid points and 32 unique hot-start chains,
+not 28: all eight explicitly listed ensembles are required to retain both the
+`Nt=1` matched-cadence reference and the `Ns=128` finite-volume comparison.
+Every input stores `L2=Nt+1`, measures holonomy at cadence one and profiles at
+cadence five, disables Wilson and horizontal-Polyakov observables, and has a
+manifested SHA-256. The dependent qbig workflow records its job IDs in
+`/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`; numerical
+results must not be reported until those jobs complete and compact products
+are synchronized.
+
 ## qbig environment
 
 On 2026-07-17, Slurm reported `lnode13` through `lnode17` idle, each with eight Pascal GPUs. Direct inspection of `lnode13` identified eight idle Tesla P100-PCIE-16GB GPUs. This is an availability snapshot, not a permanent allocation.

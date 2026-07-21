@@ -1,5 +1,39 @@
 # Running simulations
 
+## Step-3 Dirichlet slab parameter-space pilot
+
+- Status: prepared for dependent Slurm submission; job IDs are written
+  atomically to
+  `/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`
+- Grid: eight ensembles and four independent hot-start chains per ensemble
+  (32 chains): `(Nt,beta,Ns)=(1,2.1,96),(2,2.1,48),(3,2.1,48),`
+  `(2,3.0,64),(2,3.6,96),(3,5.4,144),(4,7.2,192),`
+  `(2,3.6,128)`
+- Histories: 10000 composite sweeps per chain; one heatbath plus five
+  overrelaxation sweeps; globally unique explicit seeds in `manifest.tsv`
+- Cadence: holonomy correlator, Fourier components, and summary every sweep;
+  spatial and temporal plaquette profiles every five sweeps
+- Disabled observables: boundary Wilson loops, generic temporal/planar Wilson
+  loops, horizontal Polyakov loops, PCM matching, and effective-action output
+- Inputs and immutable manifest: local `data/step3_scan/`; remote
+  `/qbigwork2/negro/dirichlet/campaigns/step3_scan/`
+- Raw output: `/qbigwork2/negro/dirichlet/data/Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/`
+- Logs: `/qbigwork2/negro/dirichlet/logs/step3-*.out`
+- Slurm request: one typed Pascal GPU per build, timing, or production task;
+  production array `0-31%8`; no comma-separated node list
+- Timing gate: 100 sweeps at `Nt=4,Ns=192,beta=7.2`; dependent production is
+  released only when the projection is at most two hours for one chain and at
+  most 12 total P100 GPU-hours
+- KLFT: commit `7eed1f7d9bb0948621a2d4020706d19c56406001`, fresh
+  commit-specific CUDA/OpenMP `KLFT_NDIM=3`, `KLFT_NC=2`, Pascal60 build;
+  executable checksum is recorded by the build job and in every chain's
+  metadata
+- Analysis: independent MSER-5 cuts (minimum 500 sweeps), Sokal-window
+  autocorrelations in sweep units, separate blocks longer than `2 tau_int`, at
+  least 30 blocks per chain, and a seeded 20000-sample hierarchical bootstrap
+- Compact output: `/qbigwork2/negro/dirichlet/analysis/step3_scan/`; raw
+  histories are not synchronized
+
 ## Exact-PCM beta calibration pilot
 
 - Status: completed and analyzed

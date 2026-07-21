@@ -57,6 +57,13 @@ For every campaign:
 6. Keep raw data on qbig and synchronize only compact analyzed data, metadata, tables, and plots into local `analysis/`. Dry-run synchronization first, use partial transfers, and never use `--delete` for scientific data.
 7. Summarize completed numerical checks and provenance in `summary.md`. Do not report a production result until the corresponding job and analysis records are reproducible from those two tracking files.
 
+For the Step-3 slab scan, holonomy correlators, Fourier components, and
+holonomy summaries use `measurement_interval: 1`; plaquette profiles use
+`dirichlet_suite_measurement_interval: 5`. Keep the suite interval an integer
+multiple of the base interval and report both cadences. Boundary Wilson loops,
+horizontal Polyakov loops, PCM matching, and effective-action reconstruction
+are disabled for this campaign.
+
 Follow the established gaugebreaking pattern: simulate remotely, analyze raw data where it resides, retain raw histories, and version compact reproducible products. Thermalization selection and uncertainty estimates must be quantitative; history plots are diagnostics, not substitutes for autocorrelation-aware analysis.
 
 ### Independent-chain resampling

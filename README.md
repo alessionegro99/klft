@@ -262,6 +262,47 @@ accepted only if the 68% interval satisfies `xi_2nd >= 5` and
 The completed pilot, selected beta, diagnostics, and compact products are
 documented in [`analysis/pcm_beta_pilot/`](analysis/pcm_beta_pilot/README.md).
 
+### Step-3 Dirichlet slab scan
+
+The preregistered parameter-space pilot is generated from the explicit
+eight-ensemble grid in `data/step3_scan/generate_inputs.py`:
+
+```bash
+uv run --frozen python data/step3_scan/generate_inputs.py
+```
+
+Generation is intentionally non-overwriting. The checked-in
+`data/step3_scan/manifest.tsv` contains 32 globally unique seeds, physical
+`Nt`, stored `L2=Nt+1`, tree-level `lambda^2=4Nt/beta`, both measurement
+cadences, and every input SHA-256. Holonomy measurements are taken every
+composite sweep and plaquette profiles every five sweeps; all Wilson-loop and
+horizontal-Polyakov measurements are disabled.
+
+The qbig jobs are submitted as one dependency chain by
+`data/step3_scan/qbig/queue_all.sh`: fresh P100 build and tests, the
+100-sweep `Nt=4,Ns=192` timing gate, the `0-31%8` production array,
+per-ensemble diagnostics, numerical analysis, aggregation, and plotting. The
+timing stage exits nonzero if it projects more than two hours for the largest
+chain or more than 12 total GPU-hours, so production cannot start after a
+failed gate.
+
+`scripts/step3_analysis.py` selects MSER-5 cuts independently with a minimum
+500-sweep deletion, expresses every autocorrelation time in sweeps, and blocks
+each chain separately with a five-sweep-aligned length strictly larger than
+twice the largest selected autocorrelation time. It requires at least 30
+complete blocks per chain and records whether the 50-block target is met. A
+seeded 20000-sample hierarchical bootstrap carries complete correlator vectors
+through `C_G`, its covariance, `xi_2nd`, and `Ns/xi_2nd`. Only correlated
+periodic-K0 fits can produce `xi_exp`; failure of any fit-quality or
+three-adjacent-range stability requirement yields JSON `null`.
+
+`scripts/step3_campaign_summary.py` applies the preregistered finite-volume
+criteria, fits constant-tree-coupling values as `q(Nt)=q0+c/Nt`, and writes
+CSV, JSON, and NPZ campaign tables. `scripts/plot_step3_scan.py` writes only
+single-plot 16:9 LaTeX PDFs using the shared plotting style. Raw histories stay
+on qbig; synchronize only compact products with
+`data/step3_scan/qbig/sync_step3_compact.sh`, beginning with `--dry-run`.
+
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in
 [`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).
