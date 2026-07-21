@@ -18,6 +18,7 @@ from step3_analysis import (
     scan_k0_fits,
     second_moment_samples,
     second_moment_squared_samples,
+    stable_three_length_groups,
 )
 
 
@@ -56,6 +57,19 @@ class Step3AnalysisTest(unittest.TestCase):
             length = choose_block_length_sweeps(tau)
             self.assertEqual(length % 5, 0)
             self.assertGreater(length, 2.0 * tau)
+
+    def test_common_plateau_requires_one_shared_three_length_group(self) -> None:
+        lengths = [10, 20, 30, 40, 50]
+        errors = np.asarray(
+            [[1.0, 2.0], [1.0, 2.0], [1.0, 1.0], [2.0, 1.0], [2.0, 1.0]],
+            dtype=np.float64,
+        )
+        groups, common = stable_three_length_groups(
+            lengths, errors, np.zeros_like(errors), minimum_length=10
+        )
+        self.assertEqual(groups[0], [[10, 20, 30]])
+        self.assertEqual(groups[1], [[30, 40, 50]])
+        self.assertEqual(common, [])
 
     def test_second_moment_length_uses_ensemble_structure_factors(self) -> None:
         ns = 96
@@ -147,6 +161,10 @@ class Step3AnalysisTest(unittest.TestCase):
             )
             self.assertTrue(
                 plateau["all_primary_and_secondary_plateaus_found"]
+            )
+            self.assertEqual(
+                plateau["selected_common_block_length_sweeps"],
+                plateau["common_plateau_group_sweeps"][-1],
             )
 
     def test_explicit_chain_directories_ignore_other_seeds(self) -> None:

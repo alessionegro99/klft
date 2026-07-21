@@ -382,6 +382,47 @@ def _blocking_labels(chains: Sequence[PostCutChain]) -> tuple[list[str], int]:
     return labels, n_primary
 
 
+def stable_three_length_groups(
+    lengths: Sequence[int],
+    errors: FloatArray,
+    error_uncertainties: FloatArray,
+    minimum_length: int,
+) -> tuple[list[list[list[int]]], list[list[int]]]:
+    """Return per-observable and common stable three-length groups."""
+    if errors.shape != error_uncertainties.shape:
+        raise ValueError("blocking error arrays have different shapes")
+    if errors.shape[0] != len(lengths):
+        raise ValueError("blocking lengths and error arrays differ")
+    groups_by_observable: list[list[list[int]]] = [
+        [] for _ in range(errors.shape[1])
+    ]
+    common_groups: list[list[int]] = []
+    for start in range(len(lengths) - 2):
+        group = list(lengths[start : start + 3])
+        if group[0] < minimum_length:
+            continue
+        stable_observables = np.ones(errors.shape[1], dtype=bool)
+        for left in range(start, start + 3):
+            for right in range(left + 1, start + 3):
+                scale = np.maximum(errors[left], errors[right])
+                tolerance = np.maximum(
+                    PLATEAU_RELATIVE_TOLERANCE * scale,
+                    PLATEAU_SIGMA_TOLERANCE
+                    * np.hypot(
+                        error_uncertainties[left],
+                        error_uncertainties[right],
+                    ),
+                )
+                stable_observables &= (
+                    np.abs(errors[left] - errors[right]) <= tolerance
+                ) | (scale == 0.0)
+        for observable_index in np.flatnonzero(stable_observables):
+            groups_by_observable[int(observable_index)].append(group)
+        if np.all(stable_observables):
+            common_groups.append(group)
+    return groups_by_observable, common_groups
+
+
 def blocking_error_plateau(
     chains: Sequence[PostCutChain], ns: int
 ) -> dict[str, object]:
@@ -454,43 +495,13 @@ def blocking_error_plateau(
         )
 
     tau_minimum = max(chain.block_length_sweeps for chain in chains)
+    groups_by_observable, common_groups = stable_three_length_groups(
+        lengths, errors, error_uncertainties, tau_minimum
+    )
     observable_results: dict[str, object] = {}
-    plateau_ends: list[int] = []
     for observable_index, label in enumerate(labels):
-        plateau_group: list[int] | None = None
-        for start in range(len(lengths) - 2):
-            group_lengths = lengths[start : start + 3]
-            if group_lengths[0] < tau_minimum:
-                continue
-            stable = True
-            for left in range(start, start + 3):
-                for right in range(left + 1, start + 3):
-                    scale = max(
-                        errors[left, observable_index],
-                        errors[right, observable_index],
-                    )
-                    if scale == 0.0:
-                        continue
-                    tolerance = max(
-                        PLATEAU_RELATIVE_TOLERANCE * scale,
-                        PLATEAU_SIGMA_TOLERANCE
-                        * math.hypot(
-                            error_uncertainties[left, observable_index],
-                            error_uncertainties[right, observable_index],
-                        ),
-                    )
-                    if (
-                        abs(
-                            errors[left, observable_index]
-                            - errors[right, observable_index]
-                        )
-                        > tolerance
-                    ):
-                        stable = False
-            if stable:
-                plateau_group = group_lengths
-                plateau_ends.append(group_lengths[-1])
-                break
+        groups = groups_by_observable[observable_index]
+        plateau_group = groups[0] if groups else None
         observable_results[label] = {
             "kind": "primary" if observable_index < n_primary else "secondary",
             "estimate": _strict_float_list(estimates[:, observable_index]),
@@ -502,11 +513,13 @@ def blocking_error_plateau(
                 effective_degrees_of_freedom[:, observable_index]
             ),
             "plateau_group_sweeps": plateau_group,
+            "all_plateau_groups_sweeps": groups,
             "plateau_found": plateau_group is not None,
         }
 
-    all_found = len(plateau_ends) == len(labels)
-    selected_length = max(plateau_ends) if all_found else None
+    common_group = common_groups[0] if common_groups else None
+    all_found = common_group is not None
+    selected_length = common_group[-1] if common_group is not None else None
     return {
         "method": (
             "whole post-cut histories; five-sweep elementary vectors; "
@@ -520,6 +533,8 @@ def blocking_error_plateau(
         "discarded_sweeps_per_replica": discarded_sweeps_per_chain,
         "plateau_relative_tolerance": PLATEAU_RELATIVE_TOLERANCE,
         "plateau_sigma_tolerance": PLATEAU_SIGMA_TOLERANCE,
+        "common_plateau_group_sweeps": common_group,
+        "all_common_plateau_groups_sweeps": common_groups,
         "observables": observable_results,
         "all_primary_and_secondary_plateaus_found": all_found,
         "selected_common_block_length_sweeps": selected_length,
@@ -872,6 +887,115 @@ def scan_k0_fits(
     )
 
 
+def k0_fit_blocking_error_plateau(
+    chains: Sequence[PostCutChain],
+    ns: int,
+    covariance: FloatArray,
+    selected_fit: dict[str, object],
+    primary_plateau: dict[str, object],
+) -> dict[str, object]:
+    """Check whole-history blocking plateaus for ``xi_exp`` and ``mass``."""
+    separations = chains[0].raw.correlator.keys[:, 0].astype(np.int64)
+    selected = (separations >= int(selected_fit["r_min"])) & (
+        separations <= int(selected_fit["r_max"])
+    )
+    scale = linalg.cholesky(covariance[np.ix_(selected, selected)], lower=True)
+    initial = np.asarray(
+        [selected_fit["amplitude"], selected_fit["mass"]], dtype=np.float64
+    )
+
+    def transform(mean: FloatArray) -> FloatArray:
+        fit = _correlated_k0_fit_with_scale(
+            separations[selected].astype(np.float64),
+            mean[selected],
+            scale,
+            ns,
+            initial,
+        )
+        mass = float(fit["mass"])
+        return np.asarray([1.0 / mass, mass], dtype=np.float64)
+
+    lengths = [
+        int(length)
+        for length in primary_plateau["candidate_block_lengths_sweeps"]
+    ]
+    estimates = np.empty((len(lengths), 2), dtype=np.float64)
+    errors = np.empty_like(estimates)
+    error_uncertainties = np.empty_like(estimates)
+    effective_degrees_of_freedom = np.empty_like(estimates)
+    blocks_per_chain: list[list[int]] = []
+    discarded_sweeps_per_chain: list[list[int]] = []
+    for length_index, length in enumerate(lengths):
+        blocks = [block_values(chain.correlator, length) for chain in chains]
+        estimate, error, degrees_of_freedom = fused_replica_jackknife(
+            blocks, transform
+        )
+        estimates[length_index] = estimate
+        errors[length_index] = error
+        effective_degrees_of_freedom[length_index] = degrees_of_freedom
+        error_uncertainties[length_index] = error / np.sqrt(
+            2.0 * degrees_of_freedom
+        )
+        blocks_per_chain.append([len(chain_blocks) for chain_blocks in blocks])
+        discarded_sweeps_per_chain.append(
+            [len(chain.correlator) % length for chain in chains]
+        )
+
+    groups_by_observable, common_groups = stable_three_length_groups(
+        lengths,
+        errors,
+        error_uncertainties,
+        int(primary_plateau["minimum_tau_block_length_sweeps"]),
+    )
+    selected_block_length = chains[0].block_length_sweeps
+    selected_group = next(
+        (group for group in common_groups if group[-1] == selected_block_length),
+        None,
+    )
+    labels = ("xi_exp", "mass")
+    observables = {
+        label: {
+            "estimate": _strict_float_list(estimates[:, index]),
+            "error": _strict_float_list(errors[:, index]),
+            "error_uncertainty": _strict_float_list(
+                error_uncertainties[:, index]
+            ),
+            "effective_degrees_of_freedom": _strict_float_list(
+                effective_degrees_of_freedom[:, index]
+            ),
+            "plateau_group_sweeps": (
+                groups_by_observable[index][0]
+                if groups_by_observable[index]
+                else None
+            ),
+            "all_plateau_groups_sweeps": groups_by_observable[index],
+        }
+        for index, label in enumerate(labels)
+    }
+    return {
+        "method": (
+            "whole post-cut correlator histories; separate complete blocks "
+            "per replica; fixed selected-fit covariance and range; "
+            "replica-stratified delete-one-block refits"
+        ),
+        "fit_range": {
+            "r_min": int(selected_fit["r_min"]),
+            "r_max": int(selected_fit["r_max"]),
+        },
+        "candidate_block_lengths_sweeps": lengths,
+        "minimum_tau_block_length_sweeps": int(
+            primary_plateau["minimum_tau_block_length_sweeps"]
+        ),
+        "complete_blocks_per_replica": blocks_per_chain,
+        "discarded_sweeps_per_replica": discarded_sweeps_per_chain,
+        "observables": observables,
+        "all_common_plateau_groups_sweeps": common_groups,
+        "selected_common_plateau_group_sweeps": selected_group,
+        "selected_block_length_sweeps": selected_block_length,
+        "selected_block_on_xi_exp_and_mass_plateau": selected_group is not None,
+    }
+
+
 def _strict_float_list(values: FloatArray) -> list[float]:
     """Convert a finite float64 array to strict JSON values."""
     array = np.asarray(values, dtype=np.float64)
@@ -959,6 +1083,33 @@ def analyse_ensemble(
         bootstrap_correlators,
         ns,
     )
+    fit_blocking_plateau: dict[str, object] | None = None
+    if xi_exp is not None:
+        selected_fit = next(
+            entry for entry in fit_scan if bool(entry.get("selected", False))
+        )
+        try:
+            fit_blocking_plateau = k0_fit_blocking_error_plateau(
+                chains,
+                ns,
+                correlator_covariance,
+                selected_fit,
+                plateau,
+            )
+        except (ValueError, RuntimeError, linalg.LinAlgError) as error:
+            fit_blocking_plateau = {
+                "error": str(error),
+                "selected_block_on_xi_exp_and_mass_plateau": False,
+            }
+        blocking_pass = bool(
+            fit_blocking_plateau[
+                "selected_block_on_xi_exp_and_mass_plateau"
+            ]
+        )
+        selected_fit["blocking_error_plateau_pass"] = blocking_pass
+        if not blocking_pass:
+            xi_exp = None
+            xi_exp_error = None
 
     covariance_output.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
@@ -1015,6 +1166,7 @@ def analyse_ensemble(
             else xi_exp_error / (xi_exp * xi_exp)
         ),
         "K0_correlated_fit_scan": fit_scan,
+        "xi_exp_blocking_error_plateau": fit_blocking_plateau,
         "plaquette_profile": {
             "kind_t": chains[0].raw.profile.keys.tolist(),
             "mean": _strict_float_list(profile_mean),
