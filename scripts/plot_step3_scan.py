@@ -29,6 +29,15 @@ from step3_campaign_summary import load_results  # noqa: E402
 pu.setup_mpl()
 
 
+def xi_interval_error(result: dict[str, object]) -> np.ndarray:
+    """Return asymmetric 68% errors around the central ``xi_2nd``."""
+    xi = float(result["xi_2nd"])
+    interval = np.asarray(
+        result["xi_2nd_68_percent_interval"], dtype=np.float64
+    )
+    return np.asarray([[xi - interval[0]], [interval[1] - xi]])
+
+
 def ensemble_label(result: dict[str, object]) -> str:
     """Return a concise physics label for one ensemble."""
     return (
@@ -47,7 +56,7 @@ def plot_nt2_lengths(
         axis.errorbar(
             [float(result["beta"])],
             [float(result["xi_2nd"])],
-            [float(result["xi_2nd_error"])],
+            xi_interval_error(result),
             label=rf"$N_s={int(result['Ns'])}$",
             **pu.data(palette),
         )
@@ -77,11 +86,15 @@ def plot_fixed_beta(
     )
     nt = np.asarray([result["physical_Nt"] for result in selected], dtype=np.float64)
     xi = np.asarray([result["xi_2nd"] for result in selected], dtype=np.float64)
-    error = np.asarray(
-        [result["xi_2nd_error"] for result in selected], dtype=np.float64
+    interval = np.asarray(
+        [result["xi_2nd_68_percent_interval"] for result in selected],
+        dtype=np.float64,
     )
+    error = np.vstack((xi - interval[:, 0], interval[:, 1] - xi))
     figure, axis = plt.subplots(figsize=FIGURE_SIZE)
-    axis.errorbar(nt, xi / nt, error / nt, **pu.data(1, linestyle="-"))
+    axis.errorbar(
+        nt, xi / nt, error / nt[None, :], **pu.data(1, linestyle="-")
+    )
     pu.style_axes(
         axis,
         xlabel=r"$N_t$",

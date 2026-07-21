@@ -671,14 +671,23 @@ def prepare_chains(
     return chains, diagnostics
 
 
-def second_moment_samples(samples: FloatArray, ns: int) -> FloatArray:
-    """Return xi_2nd for bootstrap means containing the four summary fields."""
+def second_moment_squared_samples(samples: FloatArray, ns: int) -> FloatArray:
+    """Return signed bootstrap estimates of ``xi_2nd**2``."""
     c_zero = samples[:, 2]
     c_minimum = samples[:, 3]
+    if np.any(c_minimum <= 0.0):
+        raise ValueError("Ctilde_pmin is nonpositive in a bootstrap sample")
     ratio = c_zero / c_minimum - 1.0
-    if np.any(c_minimum <= 0.0) or np.any(ratio <= 0.0):
-        raise ValueError("xi_2nd is unresolved in at least one bootstrap sample")
-    return np.sqrt(ratio) / (2.0 * np.sin(np.pi / ns))
+    return ratio / (2.0 * np.sin(np.pi / ns)) ** 2
+
+
+def second_moment_samples(samples: FloatArray, ns: int) -> FloatArray:
+    """Return ``xi_2nd``, with unresolved bootstrap samples marked NaN."""
+    squared = second_moment_squared_samples(samples, ns)
+    result = np.full_like(squared, np.nan)
+    positive = squared > 0.0
+    result[positive] = np.sqrt(squared[positive])
+    return result
 
 
 def finite_volume_k0(
@@ -910,14 +919,32 @@ def analyse_ensemble(
     if correlator[0] != 1.0 or correlator_error[0] > 1.0e-14:
         raise ValueError("bootstrap did not preserve exact C_G(0)=1")
 
+    xi_squared_samples = second_moment_squared_samples(mean_samples, ns)
     xi_samples = second_moment_samples(mean_samples, ns)
+    xi_valid = np.isfinite(xi_samples)
+    xi_valid_fraction = float(np.mean(xi_valid))
     xi = math.sqrt(mean_vector[2] / mean_vector[3] - 1.0) / (
         2.0 * math.sin(math.pi / ns)
     )
+    xi_squared_interval = np.quantile(xi_squared_samples, [0.16, 0.84])
+    if xi_squared_interval[0] <= 0.0:
+        raise ValueError("xi_2nd is unresolved at 68 percent confidence")
+    xi_interval = np.sqrt(xi_squared_interval)
     ratio_samples = ns / xi_samples
     ratio = ns / xi
-    xi_interval = np.quantile(xi_samples, [0.16, 0.84])
-    ratio_interval = np.quantile(ratio_samples, [0.16, 0.84])
+    ratio_interval = np.asarray(
+        [ns / xi_interval[1], ns / xi_interval[0]], dtype=np.float64
+    )
+    xi_error = (
+        float(np.std(xi_samples, ddof=1))
+        if np.all(xi_valid)
+        else None
+    )
+    ratio_error = (
+        float(np.std(ratio_samples, ddof=1))
+        if np.all(xi_valid)
+        else None
+    )
 
     profile_mean, profile_samples, profile_covariance = hierarchical_bootstrap(
         [chain.profile_blocks for chain in chains],
@@ -943,6 +970,7 @@ def analyse_ensemble(
         profile_mean=profile_mean,
         profile_covariance=profile_covariance,
         xi_2nd_bootstrap=xi_samples,
+        xi_2nd_squared_bootstrap=xi_squared_samples,
         Ns_over_xi_2nd_bootstrap=ratio_samples,
     )
     return {
@@ -967,10 +995,14 @@ def analyse_ensemble(
         "Ctilde_0": float(mean_vector[2]),
         "Ctilde_pmin": float(mean_vector[3]),
         "xi_2nd": xi,
-        "xi_2nd_error": float(np.std(xi_samples, ddof=1)),
+        "xi_2nd_error": xi_error,
+        "xi_2nd_bootstrap_valid_fraction": xi_valid_fraction,
+        "xi_2nd_squared_68_percent_interval": _strict_float_list(
+            xi_squared_interval
+        ),
         "xi_2nd_68_percent_interval": _strict_float_list(xi_interval),
         "Ns_over_xi_2nd": ratio,
-        "Ns_over_xi_2nd_error": float(np.std(ratio_samples, ddof=1)),
+        "Ns_over_xi_2nd_error": ratio_error,
         "Ns_over_xi_2nd_68_percent_interval": _strict_float_list(
             ratio_interval
         ),

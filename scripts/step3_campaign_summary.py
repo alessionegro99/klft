@@ -296,7 +296,13 @@ def write_tables(
         ),
         xi_2nd=np.asarray([row["xi_2nd"] for row in rows], dtype=np.float64),
         xi_2nd_error=np.asarray(
-            [row["xi_2nd_error"] for row in rows], dtype=np.float64
+            [
+                np.nan
+                if row["xi_2nd_error"] is None
+                else row["xi_2nd_error"]
+                for row in rows
+            ],
+            dtype=np.float64,
         ),
         xi_exp=np.asarray(
             [np.nan if row["xi_exp"] is None else row["xi_exp"] for row in rows],

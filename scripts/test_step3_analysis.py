@@ -17,6 +17,7 @@ from step3_analysis import (
     prepare_chains,
     scan_k0_fits,
     second_moment_samples,
+    second_moment_squared_samples,
 )
 
 
@@ -64,6 +65,18 @@ class Step3AnalysisTest(unittest.TestCase):
         samples[:, 2] = 1.0 + ratio
         samples[:, 3] = 1.0
         np.testing.assert_allclose(second_moment_samples(samples, ns), expected)
+
+    def test_second_moment_keeps_unresolved_squared_samples(self) -> None:
+        ns = 48
+        samples = np.zeros((2, 4), dtype=np.float64)
+        samples[:, 3] = 1.0
+        samples[:, 2] = [1.01, 0.99]
+        squared = second_moment_squared_samples(samples, ns)
+        self.assertGreater(squared[0], 0.0)
+        self.assertLess(squared[1], 0.0)
+        xi = second_moment_samples(samples, ns)
+        self.assertTrue(np.isfinite(xi[0]))
+        self.assertTrue(np.isnan(xi[1]))
 
     def test_fused_jackknife_blocks_replicas_separately(self) -> None:
         blocks = [
