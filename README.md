@@ -315,6 +315,10 @@ single-plot 16:9 LaTeX PDFs using the shared plotting style. Raw histories stay
 on qbig; synchronize only compact products with
 `data/step3_scan/qbig/sync_step3_compact.sh`, beginning with `--dry-run`.
 
+The completed scan, numerical decisions, tables, and direct links to every
+scan-level and plaquette-profile PDF are documented in
+[`analysis/step3_scan/`](analysis/step3_scan/README.md).
+
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in
 [`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).

@@ -59,8 +59,37 @@ unconditional percentile interval, and sets the symmetric `xi_2nd` and
 the fit-derived blocking audit, and its obsolete task 2 was cancelled. Final
 analysis array `259877` also refits every delete-one-block correlator vector at
 each candidate block length; `xi_exp` and `mass` are reported only if the
-selected block ends a shared three-length error plateau. No campaign-level
-numerical conclusions are reported yet.
+selected block ends a shared three-length error plateau. Final analysis array
+`259877_[0-7]`, aggregation job `259886`, and plotting job `259887` completed
+with exit code zero and no Slurm dependencies.
+
+The measured plane is:
+
+| beta | `Nt` | `Ns` | `xi_2nd` | `xi_exp` |
+|---:|---:|---:|---:|---:|
+| 2.1 | 1 | 96 | 10.622(215) | 10.394(18) |
+| 2.1 | 2 | 48 | 1.201(114) | 1.190(31) |
+| 2.1 | 3 | 48 | 0.580, 68% interval [0.276, 0.777] | 0.617(31) |
+| 3.0 | 2 | 64 | 4.066(81) | 4.087(10) |
+| 3.6 | 2 | 96 | 9.744(227) | -- |
+| 3.6 | 2 | 128 | 9.561(301) | -- |
+| 5.4 | 3 | 144 | 16.581(631) | -- |
+| 7.2 | 4 | 192 | 25.177(1.044) | -- |
+
+At fixed `Nt=2`, beta 3.0 and 3.6 bracket `xi/a` near five. At fixed beta
+2.1, `xi_2nd/Nt` falls sharply from 10.622(215) at the exact-PCM endpoint to
+0.601(57) and central value 0.193 at `Nt=2,3`. Along
+`lambda_tree^2=20/9`, `xi_2nd/Nt` is 4.872(114), 5.527(210), and 6.294(261).
+The preliminary fit `q(Nt)=q0+c/Nt` gives `q0=7.383(432)`,
+`c=-5.056(970)`, and `p=0.288`.
+
+The `Ns=96` anchor passes the volume-ratio and `xi_2nd` consistency tests, but
+the full-correlator comparison with `Ns=128` gives `chi2=106.78` for 48
+resolved modes and `p=2.33e-6`. It is therefore rejected. Add a four-chain
+`Nt=2`, beta 3.6, `Ns=160` check before production; do not yet add the
+optional `(Nt,beta)=(6,10.8)` point. Compact results and single-page 16:9
+LaTeX PDFs are documented in `analysis/step3_scan/`; raw histories remain on
+qbig.
 
 ## qbig environment
 

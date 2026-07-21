@@ -2,8 +2,10 @@
 
 ## Step-3 Dirichlet slab parameter-space pilot
 
-- Status: all 32 production chains completed; final compact analysis array
-  `259877_[0-7]` is running without a Slurm dependency. Build jobs `259773`
+- Status: completed, analyzed, plotted, and compact products synchronized.
+  Final analysis array `259877_[0-7]`, aggregation job `259886`, and plotting
+  job `259887` all completed with exit code zero and no Slurm dependency.
+  Build jobs `259773`
   and `259782` failed before producing an executable. Corrected build job
   `259790` completed on `lnode13` in 3:29, including both Dirichlet CTests.
   It removes the stale CUDA 9.2 include path added by the node login shell and
@@ -57,11 +59,16 @@
   Final array `259877_[0-7]` also refits every delete-one-block sample and
   reports non-null `xi_exp` and `mass` only when the selected block ends a
   shared three-length error plateau for both.
+- Final analysis: array `259877_[0-7]` completed in 0:32--32:07. All eight
+  compact JSON/NPZ pairs pass metadata, exact `C_G(0)`, covariance,
+  20000-sample, blocking, and fit-gate checks. Aggregation job `259886`
+  completed in 15 seconds and plotting job `259887` in 38 seconds.
 - Scheduling: stages are submitted only after their inputs have been
   inspected. `queue_all.sh STAGE` submits one stage with no `afterok`
   dependency and appends the job ID with dependency `none`.
-- Compact output: `/qbigwork2/negro/dirichlet/analysis/step3_scan/`; raw
-  histories are not synchronized
+- Compact output: `/qbigwork2/negro/dirichlet/analysis/step3_scan/` and local
+  `analysis/step3_scan/` (7.5 MiB). The dry-run and compact-only transfer
+  completed on 2026-07-21; raw histories were not synchronized.
 
 ## Exact-PCM beta calibration pilot
 
