@@ -124,6 +124,22 @@ class Step3AnalysisTest(unittest.TestCase):
                 plateau["all_primary_and_secondary_plateaus_found"]
             )
 
+    def test_explicit_chain_directories_ignore_other_seeds(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            selected = []
+            for chain_index in range(4):
+                directory = root / f"seed_{100 + chain_index}"
+                self._write_chain(directory, chain_index)
+                selected.append(directory)
+            (root / "seed_999").mkdir()
+            with self.assertRaisesRegex(ValueError, "expected four"):
+                load_ensemble(root)
+            chains = load_ensemble(root, selected)
+            self.assertEqual(
+                [chain.directory for chain in chains], selected
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

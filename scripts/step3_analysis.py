@@ -95,15 +95,25 @@ def load_chain(directory: Path) -> ChainData:
     return ChainData(directory, summary, correlator, profile)
 
 
-def load_ensemble(directory: Path) -> list[ChainData]:
-    """Load exactly four independent ``seed_*`` directories."""
-    chain_directories = sorted(
-        (path for path in directory.glob("seed_*") if path.is_dir()),
-        key=lambda path: int(path.name.removeprefix("seed_")),
-    )
-    if len(chain_directories) != 4:
+def load_ensemble(
+    directory: Path, chain_directories: Sequence[Path] | None = None
+) -> list[ChainData]:
+    """Load exactly four independent chains from one ensemble directory."""
+    if chain_directories is None:
+        selected_directories = sorted(
+            (path for path in directory.glob("seed_*") if path.is_dir()),
+            key=lambda path: int(path.name.removeprefix("seed_")),
+        )
+    else:
+        selected_directories = list(chain_directories)
+        if len(set(selected_directories)) != len(selected_directories):
+            raise ValueError(f"{directory}: duplicate chain directory")
+        ensemble = directory.resolve()
+        if any(path.resolve().parent != ensemble for path in selected_directories):
+            raise ValueError(f"{directory}: chain outside ensemble directory")
+    if len(selected_directories) != 4:
         raise ValueError(f"{directory}: expected four seed directories")
-    chains = [load_chain(path) for path in chain_directories]
+    chains = [load_chain(path) for path in selected_directories]
     require_matching_grids([chain.correlator for chain in chains])
     require_matching_grids([chain.profile for chain in chains])
     return chains
@@ -974,6 +984,7 @@ def _load_prescribed_cuts(path: Path, chains: Sequence[ChainData]) -> list[int]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ensemble-dir", type=Path, required=True)
+    parser.add_argument("--chain-directory", type=Path, action="append")
     parser.add_argument("--nt", type=int, required=True)
     parser.add_argument("--ns", type=int, required=True)
     parser.add_argument("--beta", type=float, required=True)
@@ -989,7 +1000,7 @@ def main() -> None:
     if args.nt < 1 or args.ns < 2 or args.beta <= 0.0 or args.minimum_cut < 0:
         raise ValueError("invalid ensemble parameters")
 
-    raw_chains = load_ensemble(args.ensemble_dir)
+    raw_chains = load_ensemble(args.ensemble_dir, args.chain_directory)
     prescribed = (
         _load_prescribed_cuts(args.thermalization_diagnostics, raw_chains)
         if args.thermalization_diagnostics is not None

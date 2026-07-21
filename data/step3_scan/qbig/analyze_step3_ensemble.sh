@@ -34,12 +34,14 @@ mapfile -t manifest_runs < <(
     echo "${ensemble}: expected four manifest runs" >&2
     exit 1
 }
+chain_arguments=()
 for manifest_run in "${manifest_runs[@]}"; do
     [[ "${manifest_run%/seed_*}" == "${ensemble}" ]] || {
         echo "${manifest_run}: manifest ensemble mismatch" >&2
         exit 1
     }
     directory="${remote_root}/data/${manifest_run}"
+    chain_arguments+=(--chain-directory "${directory}")
     [[ -d "${directory}" ]] || {
         echo "missing manifest run ${directory}" >&2
         exit 1
@@ -62,6 +64,7 @@ mkdir -p "${analysis}"
 cd "${project}"
 common=(
     --ensemble-dir "${data}"
+    "${chain_arguments[@]}"
     --nt "${physical_nt}"
     --ns "${ns}"
     --beta "${beta}"

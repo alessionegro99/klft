@@ -27,6 +27,7 @@ class Step3GenerateInputsTest(unittest.TestCase):
             ROOT / "data" / "step3_scan" / "qbig" / "analyze_step3_ensemble.sh"
         ).read_text(encoding="utf-8")
         self.assertIn("mapfile -t manifest_runs", wrapper)
+        self.assertIn("--chain-directory", wrapper)
         self.assertNotIn('for directory in "${data}"/seed_*', wrapper)
 
     def test_grid_geometry_cadence_and_hashes(self) -> None:
