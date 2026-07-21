@@ -12,4 +12,5 @@ data/dirichlet_thesis/runs/
 
 # Compact, versioned products of the qbig Dirichlet analysis.
 !analysis/dirichlet_thesis/**/covariance.npz
+!analysis/pcm_beta_pilot/**/covariance.npz
 analysis/dirichlet_thesis/**/analysis.log
