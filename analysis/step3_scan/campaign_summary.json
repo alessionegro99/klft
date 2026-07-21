@@ -1,0 +1,157 @@
+{
+  "finite_volume_anchor": {
+    "anchor_Ns": 96,
+    "check_Ns": 128,
+    "anchor_68_percent_lower_Ns_over_xi_2nd": 9.632440349377811,
+    "volume_ratio_pass": true,
+    "xi_2nd_difference_z": 0.4851128948299716,
+    "xi_2nd_relative_difference": 0.019141628619423534,
+    "xi_2nd_consistency_pass": true,
+    "common_positive_R": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48
+    ],
+    "full_correlator_test": {
+      "chi2": 106.77774621226607,
+      "dof": 48,
+      "covariance_rank": 48,
+      "p_value": 2.330476944627668e-06
+    },
+    "full_correlator_pass": false,
+    "anchor_accepted": false,
+    "required_additional_ensemble": {
+      "physical_Nt": 2,
+      "beta": 3.6,
+      "Ns": 160,
+      "chains": 4
+    }
+  },
+  "constant_lambda_continuum_scaling": {
+    "lambda_squared_tree": 2.2222222222222223,
+    "xi_2nd_over_Nt": {
+      "model": "q(Nt) = q0 + c/Nt",
+      "Nt": [
+        2,
+        3,
+        4
+      ],
+      "q": [
+        4.871762032888798,
+        5.526862599481743,
+        6.2941690823996845
+      ],
+      "q_error": [
+        0.11357801418453614,
+        0.2104836623197409,
+        0.2609256409660144
+      ],
+      "q0": 7.382973069247685,
+      "q0_error": 0.43223396563024696,
+      "c": -5.055598559020325,
+      "c_error": 0.9696779373409762,
+      "chi2": 1.1309771140479938,
+      "dof": 1,
+      "p_value": 0.28756701465414247,
+      "interpretation": "preliminary scaling evidence only"
+    },
+    "xi_exp_over_Nt": null,
+    "m_Nt": null
+  },
+  "production_recommendations": {
+    "target_rule": "round 10 xi_2nd upward to a multiple of 16",
+    "recommended_spatial_sizes": [
+      {
+        "physical_Nt": 1,
+        "beta": 2.1,
+        "pilot_Ns": 96,
+        "recommended_production_Ns": 112
+      },
+      {
+        "physical_Nt": 2,
+        "beta": 2.1,
+        "pilot_Ns": 48,
+        "recommended_production_Ns": 16
+      },
+      {
+        "physical_Nt": 2,
+        "beta": 3.0,
+        "pilot_Ns": 64,
+        "recommended_production_Ns": 48
+      },
+      {
+        "physical_Nt": 2,
+        "beta": 3.6,
+        "pilot_Ns": 96,
+        "recommended_production_Ns": 112
+      },
+      {
+        "physical_Nt": 3,
+        "beta": 2.1,
+        "pilot_Ns": 48,
+        "recommended_production_Ns": 16
+      },
+      {
+        "physical_Nt": 3,
+        "beta": 5.4,
+        "pilot_Ns": 144,
+        "recommended_production_Ns": 176
+      },
+      {
+        "physical_Nt": 4,
+        "beta": 7.2,
+        "pilot_Ns": 192,
+        "recommended_production_Ns": 256
+      }
+    ],
+    "Nt2_xi_approximately_5_bracketed": true,
+    "additional_Nt2_coupling": null,
+    "constant_lambda_Nt6": null
+  },
+  "interpretation": "pilot results provide preliminary scaling evidence only"
+}
