@@ -22,6 +22,14 @@ SPEC.loader.exec_module(step3)
 
 
 class Step3GenerateInputsTest(unittest.TestCase):
+    def test_qbig_stage_submission_has_no_dependencies(self) -> None:
+        submission = (
+            ROOT / "data" / "step3_scan" / "qbig" / "queue_all.sh"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("--dependency", submission)
+        self.assertNotIn("afterok", submission)
+        self.assertIn('printf \'%s\\t%s\\tnone\\n\'', submission)
+
     def test_qbig_analysis_uses_only_manifested_replicas(self) -> None:
         wrapper = (
             ROOT / "data" / "step3_scan" / "qbig" / "analyze_step3_ensemble.sh"
