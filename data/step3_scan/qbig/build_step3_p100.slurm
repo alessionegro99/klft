@@ -16,6 +16,21 @@ export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
 
+# The P100 nodes append CUDA 9.2's /usr/local include directory to CPATH.
+# Remove only that stale entry so nvcc and headers both come from CUDA 11.5.
+clean_cpath=
+IFS=: read -r -a cpath_entries <<< "${CPATH:-}"
+for entry in "${cpath_entries[@]}"; do
+    [[ "${entry}" == /usr/local/cuda/include ]] && continue
+    [[ -z "${clean_cpath}" ]] || clean_cpath+=:
+    clean_cpath+="${entry}"
+done
+export CPATH="${clean_cpath}"
+[[ ":${CPATH}:" != *:/usr/local/cuda/include:* ]] || {
+    echo "stale CUDA include remains in CPATH" >&2
+    exit 1
+}
+
 remote_root=/qbigwork2/negro/dirichlet
 project="${remote_root}/project"
 campaign="${remote_root}/campaigns/step3_scan"

@@ -2,11 +2,13 @@
 
 ## Step-3 Dirichlet slab parameter-space pilot
 
-- Status: retry prepared after build job `259773` failed because forcing
-  `nvcc_wrapper` mixed the module CUDA 11.5 toolkit with `/usr/local/cuda`
-  (CUDA 9.2); Slurm canceled dependent jobs `259774`--`259779`. The corrected
-  workflow uses the normal C++ compiler with Kokkos's compiler launcher. Retry
-  job IDs are written to
+- Status: second retry prepared. Build jobs `259773` and `259782` failed before
+  producing an executable, and Slurm canceled their dependent chains. The
+  first forced `nvcc_wrapper`; the second exposed the underlying node setup:
+  P100 login shells append CUDA 9.2's `/usr/local/cuda/include` to `CPATH` even
+  after loading CUDA 11.5. The build now removes only that stale entry and
+  asserts it is absent before using the normal C++ compiler with Kokkos's
+  compiler launcher. Retry job IDs are written to
   `/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`
 - Grid: eight ensembles and four independent hot-start chains per ensemble
   (32 chains): `(Nt,beta,Ns)=(1,2.1,96),(2,2.1,48),(3,2.1,48),`

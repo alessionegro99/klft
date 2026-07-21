@@ -22,11 +22,13 @@ manifested SHA-256. The dependent qbig workflow records its job IDs in
 results must not be reported until those jobs complete and compact products
 are synchronized.
 
-The first remote build job, `259773`, failed before producing a binary because
-an explicit global `nvcc_wrapper` selected CUDA 9.2 headers from
-`/usr/local/cuda` alongside the loaded CUDA 11.5 and GCC 11.2 modules. Slurm
-canceled dependent jobs `259774`--`259779`. The retry uses the normal C++
-compiler with Kokkos's compiler launcher, keeps the sole project build at
+Remote build jobs `259773` and `259782` failed before producing a binary, so
+Slurm canceled both dependent chains. The first forced `nvcc_wrapper`; the
+second identified the underlying node configuration: P100 login shells append
+CUDA 9.2's `/usr/local/cuda/include` to `CPATH` after the correct CUDA 11.5
+module paths. The build now removes only that stale entry and asserts it is
+absent before configuration. It uses the normal C++ compiler with Kokkos's
+compiler launcher, keeps the sole project build at
 `/qbigwork2/negro/dirichlet/build/klft`, and lets all 32 one-GPU production
 tasks run concurrently when P100s are available.
 
