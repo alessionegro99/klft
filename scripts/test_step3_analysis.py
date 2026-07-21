@@ -4,18 +4,51 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+import tempfile
 
 import numpy as np
 
 from step3_analysis import (
     choose_block_length_sweeps,
     finite_volume_k0,
+    load_ensemble,
+    prepare_chains,
     scan_k0_fits,
     second_moment_samples,
 )
 
 
 class Step3AnalysisTest(unittest.TestCase):
+    @staticmethod
+    def _write_chain(directory: Path, seed: int) -> None:
+        rng = np.random.default_rng(seed)
+        summary = ["# step ReTrG ImTrG Ctilde_0 Ctilde_pmin xi_2nd_config"]
+        correlator = ["# step R C_G C_double m_eff_log"]
+        profile = ["# step kind t ReTrU_over_Nc"]
+        for step in range(1, 2001):
+            noise = rng.normal(scale=0.01)
+            summary.append(f"{step} {noise} 0 1.16 1 0")
+            for separation, mean in enumerate((1.0, 0.5, 0.25, 0.12, 0.06)):
+                value = 1.0 if separation == 0 else mean + rng.normal(scale=0.002)
+                correlator.append(f"{step} {separation} {value} {value} 0")
+            if step % 5 == 0:
+                for kind, coordinate in (
+                    (0, 0.0), (0, 1.0), (0, 2.0), (1, 0.5), (1, 1.5)
+                ):
+                    value = 0.7 + rng.normal(scale=0.002)
+                    profile.append(f"{step} {kind} {coordinate} {value}")
+        directory.mkdir(parents=True)
+        (directory / "holonomy_summary.out").write_text(
+            "\n".join(summary) + "\n", encoding="utf-8"
+        )
+        (directory / "holonomy_correlator.out").write_text(
+            "\n".join(correlator) + "\n", encoding="utf-8"
+        )
+        (directory / "plaquette_profile.out").write_text(
+            "\n".join(profile) + "\n", encoding="utf-8"
+        )
+
     def test_block_length_is_aligned_and_strictly_longer_than_two_tau(self) -> None:
         for tau in (0.5, 2.5, 7.1, 20.0):
             length = choose_block_length_sweeps(tau)
@@ -54,6 +87,22 @@ class Step3AnalysisTest(unittest.TestCase):
         self.assertIsNotNone(xi_error)
         self.assertAlmostEqual(float(xi), 5.0, delta=0.05)
         self.assertTrue(any(entry.get("selected", False) for entry in scan))
+
+    def test_end_to_end_grid_keeps_chains_and_profile_cadence_separate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for chain_index in range(4):
+                self._write_chain(root / f"seed_{100 + chain_index}", chain_index)
+            raw = load_ensemble(root)
+            chains, diagnostics = prepare_chains(raw, minimum_cut=100)
+            self.assertEqual(len(chains), 4)
+            self.assertEqual(len(diagnostics["chains"]), 4)
+            for chain in chains:
+                self.assertEqual(chain.cut % 5, 0)
+                self.assertEqual(
+                    len(chain.summary), 5 * len(chain.profile)
+                )
+                self.assertGreaterEqual(len(chain.primary_blocks), 30)
 
 
 if __name__ == "__main__":
