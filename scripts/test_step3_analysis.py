@@ -75,7 +75,18 @@ class Step3AnalysisTest(unittest.TestCase):
         )
         np.testing.assert_allclose(estimate, [6.5])
         np.testing.assert_allclose(error, [np.sqrt(5.0 / 24.0)])
-        self.assertEqual(degrees_of_freedom, 6)
+        np.testing.assert_allclose(degrees_of_freedom, [6.0])
+
+    def test_fused_jackknife_uses_effective_degrees_of_freedom(self) -> None:
+        blocks = [
+            np.arange(4, dtype=np.float64)[:, None],
+            (2.0 * np.arange(4, dtype=np.float64))[:, None],
+        ]
+        _, error, degrees_of_freedom = fused_replica_jackknife(
+            blocks, lambda mean: mean
+        )
+        np.testing.assert_allclose(error, [np.sqrt(25.0 / 48.0)])
+        np.testing.assert_allclose(degrees_of_freedom, [75.0 / 17.0])
 
     def test_correlated_k0_scan_accepts_three_stable_adjacent_ranges(self) -> None:
         rng = np.random.default_rng(20260721)
@@ -118,7 +129,8 @@ class Step3AnalysisTest(unittest.TestCase):
                 self.assertGreaterEqual(len(chain.primary_blocks), 30)
             plateau = diagnostics["blocking_error_plateau"]
             self.assertEqual(
-                plateau["candidate_block_lengths_sweeps"], [5, 10, 20, 40]
+                plateau["candidate_block_lengths_sweeps"],
+                [5, 10, 15, 20, 30, 40],
             )
             self.assertTrue(
                 plateau["all_primary_and_secondary_plateaus_found"]

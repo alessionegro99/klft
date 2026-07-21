@@ -40,6 +40,7 @@ MINIMUM_BLOCKS = 30
 TARGET_BLOCKS = 50
 PLATEAU_RELATIVE_TOLERANCE = 0.05
 PLATEAU_SIGMA_TOLERANCE = 2.0
+BLOCKING_CANDIDATE_UNITS = (1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64)
 
 
 @dataclass(frozen=True)
@@ -302,7 +303,7 @@ def _reblock_chain(chain: PostCutChain, block_length_sweeps: int) -> PostCutChai
 def fused_replica_jackknife(
     per_chain_blocks: Sequence[FloatArray],
     transform: Callable[[FloatArray], FloatArray],
-) -> tuple[FloatArray, FloatArray, int]:
+) -> tuple[FloatArray, FloatArray, FloatArray]:
     """Return a delete-one-block error for an equal-weight replica mean.
 
     Each deletion changes only one already-blocked chain mean. The independent
@@ -326,7 +327,8 @@ def fused_replica_jackknife(
     chain_sum = np.sum(chain_means, axis=0)
     estimate = np.asarray(transform(chain_sum / n_chains), dtype=np.float64)
     variance = np.zeros_like(estimate)
-    degrees_of_freedom = 0
+    variance_df_denominator = np.zeros_like(estimate)
+    nominal_degrees_of_freedom = 0
     for chain_index, blocks in enumerate(per_chain_blocks):
         n_blocks = len(blocks)
         deleted_chain_means = (
@@ -342,16 +344,29 @@ def fused_replica_jackknife(
             dtype=np.float64,
         )
         centered = samples - np.mean(samples, axis=0)
-        variance += (n_blocks - 1) / n_blocks * np.sum(
+        contribution = (n_blocks - 1) / n_blocks * np.sum(
             centered * centered, axis=0
         )
-        degrees_of_freedom += n_blocks - 1
+        variance += contribution
+        variance_df_denominator += contribution * contribution / (
+            n_blocks - 1
+        )
+        nominal_degrees_of_freedom += n_blocks - 1
     if not np.all(np.isfinite(estimate)) or not np.all(np.isfinite(variance)):
         raise ValueError("non-finite fused blocking estimate")
     error = np.sqrt(np.maximum(variance, 0.0))
+    effective_degrees_of_freedom = np.full_like(
+        variance, float(nominal_degrees_of_freedom)
+    )
+    np.divide(
+        variance * variance,
+        variance_df_denominator,
+        out=effective_degrees_of_freedom,
+        where=variance_df_denominator > 0.0,
+    )
     roundoff = 1.0e-12 * np.maximum(np.abs(estimate), 1.0)
     error[error <= roundoff] = 0.0
-    return estimate, error, degrees_of_freedom
+    return estimate, error, effective_degrees_of_freedom
 
 
 def _blocking_labels(chains: Sequence[PostCutChain]) -> tuple[list[str], int]:
@@ -372,12 +387,14 @@ def blocking_error_plateau(
 ) -> dict[str, object]:
     """Check primary and secondary error plateaus over whole histories.
 
-    Candidate block lengths double from the five-sweep common measurement
-    grid. At every length, chains are blocked separately and fused only through
-    equal-weight replica means. The standard-error uncertainty
-    ``sigma/sqrt(2 dof)`` is the large-sample variance-estimator result used in
-    the blocking analysis of Flyvbjerg and Petersen, J. Chem. Phys. 91, 461
-    (1989), DOI 10.1063/1.457480.
+    Candidate block lengths use a fixed five-sweep-aligned grid. At every
+    length, chains are blocked separately and fused only through equal-weight
+    replica means. The standard-error uncertainty ``sigma/sqrt(2 dof)`` is the
+    large-sample variance-estimator result used in the blocking analysis of
+    Flyvbjerg and Petersen, J. Chem. Phys. 91, 461 (1989), DOI
+    10.1063/1.457480. Unequal replica contributions use Satterthwaite effective
+    degrees of freedom, Biometrics Bulletin 2, 110 (1946), DOI
+    10.2307/3002019.
     """
     if not chains:
         raise ValueError("blocking plateau needs at least one chain")
@@ -393,11 +410,11 @@ def blocking_error_plateau(
         )
 
     minimum_units = min(len(series) for series in suite_series)
-    candidate_units: list[int] = []
-    units = 1
-    while minimum_units // units >= MINIMUM_BLOCKS:
-        candidate_units.append(units)
-        units *= 2
+    candidate_units = [
+        units
+        for units in BLOCKING_CANDIDATE_UNITS
+        if minimum_units // units >= MINIMUM_BLOCKS
+    ]
     if len(candidate_units) < 3:
         raise ValueError("too few blocking lengths for a three-point plateau")
 
@@ -411,6 +428,7 @@ def blocking_error_plateau(
     lengths = [PROFILE_CADENCE * units for units in candidate_units]
     errors = np.empty((len(lengths), len(labels)), dtype=np.float64)
     error_uncertainties = np.empty_like(errors)
+    effective_degrees_of_freedom = np.empty_like(errors)
     estimates = np.empty_like(errors)
     blocks_per_chain: list[list[int]] = []
     discarded_sweeps_per_chain: list[list[int]] = []
@@ -423,7 +441,8 @@ def blocking_error_plateau(
             raise ValueError("blocking transform/label size mismatch")
         estimates[length_index] = estimate
         errors[length_index] = error
-        error_uncertainties[length_index] = error / math.sqrt(
+        effective_degrees_of_freedom[length_index] = degrees_of_freedom
+        error_uncertainties[length_index] = error / np.sqrt(
             2.0 * degrees_of_freedom
         )
         blocks_per_chain.append([len(chain_blocks) for chain_blocks in blocks])
@@ -478,6 +497,9 @@ def blocking_error_plateau(
             "error": _strict_float_list(errors[:, observable_index]),
             "error_uncertainty": _strict_float_list(
                 error_uncertainties[:, observable_index]
+            ),
+            "effective_degrees_of_freedom": _strict_float_list(
+                effective_degrees_of_freedom[:, observable_index]
             ),
             "plateau_group_sweeps": plateau_group,
             "plateau_found": plateau_group is not None,
