@@ -10,6 +10,7 @@ import tempfile
 import numpy as np
 
 from step3_analysis import (
+    fused_replica_jackknife,
     choose_block_length_sweeps,
     finite_volume_k0,
     load_ensemble,
@@ -64,6 +65,18 @@ class Step3AnalysisTest(unittest.TestCase):
         samples[:, 3] = 1.0
         np.testing.assert_allclose(second_moment_samples(samples, ns), expected)
 
+    def test_fused_jackknife_blocks_replicas_separately(self) -> None:
+        blocks = [
+            np.arange(4, dtype=np.float64)[:, None],
+            np.arange(10, 14, dtype=np.float64)[:, None],
+        ]
+        estimate, error, degrees_of_freedom = fused_replica_jackknife(
+            blocks, lambda mean: mean
+        )
+        np.testing.assert_allclose(estimate, [6.5])
+        np.testing.assert_allclose(error, [np.sqrt(5.0 / 24.0)])
+        self.assertEqual(degrees_of_freedom, 6)
+
     def test_correlated_k0_scan_accepts_three_stable_adjacent_ranges(self) -> None:
         rng = np.random.default_rng(20260721)
         ns = 32
@@ -94,7 +107,7 @@ class Step3AnalysisTest(unittest.TestCase):
             for chain_index in range(4):
                 self._write_chain(root / f"seed_{100 + chain_index}", chain_index)
             raw = load_ensemble(root)
-            chains, diagnostics = prepare_chains(raw, minimum_cut=100)
+            chains, diagnostics = prepare_chains(raw, minimum_cut=100, ns=8)
             self.assertEqual(len(chains), 4)
             self.assertEqual(len(diagnostics["chains"]), 4)
             for chain in chains:
@@ -103,6 +116,13 @@ class Step3AnalysisTest(unittest.TestCase):
                     len(chain.summary), 5 * len(chain.profile)
                 )
                 self.assertGreaterEqual(len(chain.primary_blocks), 30)
+            plateau = diagnostics["blocking_error_plateau"]
+            self.assertEqual(
+                plateau["candidate_block_lengths_sweeps"], [5, 10, 20, 40]
+            )
+            self.assertTrue(
+                plateau["all_primary_and_secondary_plateaus_found"]
+            )
 
 
 if __name__ == "__main__":

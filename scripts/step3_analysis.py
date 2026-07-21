@@ -12,11 +12,11 @@ Theories* (2024/2025 MSc thesis). No raw histories are concatenated.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import math
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -38,6 +38,8 @@ IntArray = NDArray[np.int64]
 PROFILE_CADENCE = 5
 MINIMUM_BLOCKS = 30
 TARGET_BLOCKS = 50
+PLATEAU_RELATIVE_TOLERANCE = 0.05
+PLATEAU_SIGMA_TOLERANCE = 2.0
 
 
 @dataclass(frozen=True)
@@ -263,6 +265,235 @@ def _post_cut(chain: ChainData, cut: int) -> PostCutChain:
     )
 
 
+def _reblock_chain(chain: PostCutChain, block_length_sweeps: int) -> PostCutChain:
+    """Return one chain reblocked without crossing replica boundaries."""
+    if block_length_sweeps % PROFILE_CADENCE != 0:
+        raise ValueError("block length must be a multiple of profile cadence")
+    combined = np.concatenate((chain.summary, chain.correlator), axis=1)
+    primary_blocks = block_values(combined, block_length_sweeps)
+    profile_blocks = block_values(
+        chain.profile, block_length_sweeps // PROFILE_CADENCE
+    )
+    if len(primary_blocks) != len(profile_blocks):
+        raise ValueError(f"{chain.raw.directory}: inconsistent reblocked grids")
+    if len(primary_blocks) < MINIMUM_BLOCKS:
+        raise ValueError(
+            f"{chain.raw.directory}: only {len(primary_blocks)} complete blocks; "
+            f"need at least {MINIMUM_BLOCKS}"
+        )
+    return replace(
+        chain,
+        block_length_sweeps=block_length_sweeps,
+        primary_blocks=primary_blocks,
+        profile_blocks=profile_blocks,
+    )
+
+
+def fused_replica_jackknife(
+    per_chain_blocks: Sequence[FloatArray],
+    transform: Callable[[FloatArray], FloatArray],
+) -> tuple[FloatArray, FloatArray, int]:
+    """Return a delete-one-block error for an equal-weight replica mean.
+
+    Each deletion changes only one already-blocked chain mean. The independent
+    replica contributions are then summed, so no block crosses a chain
+    boundary. This is the replica-stratified form of the delete-one-block
+    jackknife used for the blocking curves.
+    """
+    if len(per_chain_blocks) < 2:
+        raise ValueError("fused blocking needs at least two replicas")
+    if any(len(blocks) < 3 for blocks in per_chain_blocks):
+        raise ValueError("every replica needs at least three complete blocks")
+    vector_shape = per_chain_blocks[0].shape[1:]
+    if any(blocks.shape[1:] != vector_shape for blocks in per_chain_blocks):
+        raise ValueError("replica block vectors have inconsistent shapes")
+
+    chain_means = np.asarray(
+        [np.mean(blocks, axis=0) for blocks in per_chain_blocks],
+        dtype=np.float64,
+    )
+    n_chains = len(chain_means)
+    chain_sum = np.sum(chain_means, axis=0)
+    estimate = np.asarray(transform(chain_sum / n_chains), dtype=np.float64)
+    variance = np.zeros_like(estimate)
+    degrees_of_freedom = 0
+    for chain_index, blocks in enumerate(per_chain_blocks):
+        n_blocks = len(blocks)
+        deleted_chain_means = (
+            np.sum(blocks, axis=0)[None, :] - blocks
+        ) / (n_blocks - 1)
+        deleted_fused_means = (
+            chain_sum[None, :]
+            - chain_means[chain_index][None, :]
+            + deleted_chain_means
+        ) / n_chains
+        samples = np.asarray(
+            [transform(mean) for mean in deleted_fused_means],
+            dtype=np.float64,
+        )
+        centered = samples - np.mean(samples, axis=0)
+        variance += (n_blocks - 1) / n_blocks * np.sum(
+            centered * centered, axis=0
+        )
+        degrees_of_freedom += n_blocks - 1
+    if not np.all(np.isfinite(estimate)) or not np.all(np.isfinite(variance)):
+        raise ValueError("non-finite fused blocking estimate")
+    error = np.sqrt(np.maximum(variance, 0.0))
+    roundoff = 1.0e-12 * np.maximum(np.abs(estimate), 1.0)
+    error[error <= roundoff] = 0.0
+    return estimate, error, degrees_of_freedom
+
+
+def _blocking_labels(chains: Sequence[PostCutChain]) -> tuple[list[str], int]:
+    """Return primary/secondary labels and the number of primary entries."""
+    separations = chains[0].raw.correlator.keys[:, 0].astype(np.int64)
+    labels = ["Tr_G_real", "Tr_G_imag", "Ctilde_0", "Ctilde_pmin"]
+    labels.extend(f"C_G_R{separation}" for separation in separations)
+    labels.extend(
+        f"plaquette_{profile_label(key)}" for key in chains[0].raw.profile.keys
+    )
+    n_primary = len(labels)
+    labels.extend(("xi_2nd", "Ns_over_xi_2nd"))
+    return labels, n_primary
+
+
+def blocking_error_plateau(
+    chains: Sequence[PostCutChain], ns: int
+) -> dict[str, object]:
+    """Check primary and secondary error plateaus over whole histories.
+
+    Candidate block lengths double from the five-sweep common measurement
+    grid. At every length, chains are blocked separately and fused only through
+    equal-weight replica means. The standard-error uncertainty
+    ``sigma/sqrt(2 dof)`` is the large-sample variance-estimator result used in
+    the blocking analysis of Flyvbjerg and Petersen, J. Chem. Phys. 91, 461
+    (1989), DOI 10.1063/1.457480.
+    """
+    if not chains:
+        raise ValueError("blocking plateau needs at least one chain")
+    labels, n_primary = _blocking_labels(chains)
+    suite_series = []
+    for chain in chains:
+        holonomy = np.concatenate((chain.summary, chain.correlator), axis=1)
+        holonomy_five_sweep = block_values(holonomy, PROFILE_CADENCE)
+        if len(holonomy_five_sweep) != len(chain.profile):
+            raise ValueError(f"{chain.raw.directory}: fused 1/5 grids differ")
+        suite_series.append(
+            np.concatenate((holonomy_five_sweep, chain.profile), axis=1)
+        )
+
+    minimum_units = min(len(series) for series in suite_series)
+    candidate_units: list[int] = []
+    units = 1
+    while minimum_units // units >= MINIMUM_BLOCKS:
+        candidate_units.append(units)
+        units *= 2
+    if len(candidate_units) < 3:
+        raise ValueError("too few blocking lengths for a three-point plateau")
+
+    def transform(mean: FloatArray) -> FloatArray:
+        ratio = mean[2] / mean[3] - 1.0
+        if mean[3] <= 0.0 or ratio <= 0.0:
+            raise ValueError("xi_2nd is unresolved in fused blocking")
+        xi = math.sqrt(ratio) / (2.0 * math.sin(math.pi / ns))
+        return np.concatenate((mean, np.asarray([xi, ns / xi])))
+
+    lengths = [PROFILE_CADENCE * units for units in candidate_units]
+    errors = np.empty((len(lengths), len(labels)), dtype=np.float64)
+    error_uncertainties = np.empty_like(errors)
+    estimates = np.empty_like(errors)
+    blocks_per_chain: list[list[int]] = []
+    discarded_sweeps_per_chain: list[list[int]] = []
+    for length_index, units in enumerate(candidate_units):
+        blocks = [block_values(series, units) for series in suite_series]
+        estimate, error, degrees_of_freedom = fused_replica_jackknife(
+            blocks, transform
+        )
+        if len(estimate) != len(labels):
+            raise ValueError("blocking transform/label size mismatch")
+        estimates[length_index] = estimate
+        errors[length_index] = error
+        error_uncertainties[length_index] = error / math.sqrt(
+            2.0 * degrees_of_freedom
+        )
+        blocks_per_chain.append([len(chain_blocks) for chain_blocks in blocks])
+        discarded_sweeps_per_chain.append(
+            [
+                PROFILE_CADENCE * (len(series) % units)
+                for series in suite_series
+            ]
+        )
+
+    tau_minimum = max(chain.block_length_sweeps for chain in chains)
+    observable_results: dict[str, object] = {}
+    plateau_ends: list[int] = []
+    for observable_index, label in enumerate(labels):
+        plateau_group: list[int] | None = None
+        for start in range(len(lengths) - 2):
+            group_lengths = lengths[start : start + 3]
+            if group_lengths[0] < tau_minimum:
+                continue
+            stable = True
+            for left in range(start, start + 3):
+                for right in range(left + 1, start + 3):
+                    scale = max(
+                        errors[left, observable_index],
+                        errors[right, observable_index],
+                    )
+                    if scale == 0.0:
+                        continue
+                    tolerance = max(
+                        PLATEAU_RELATIVE_TOLERANCE * scale,
+                        PLATEAU_SIGMA_TOLERANCE
+                        * math.hypot(
+                            error_uncertainties[left, observable_index],
+                            error_uncertainties[right, observable_index],
+                        ),
+                    )
+                    if (
+                        abs(
+                            errors[left, observable_index]
+                            - errors[right, observable_index]
+                        )
+                        > tolerance
+                    ):
+                        stable = False
+            if stable:
+                plateau_group = group_lengths
+                plateau_ends.append(group_lengths[-1])
+                break
+        observable_results[label] = {
+            "kind": "primary" if observable_index < n_primary else "secondary",
+            "estimate": _strict_float_list(estimates[:, observable_index]),
+            "error": _strict_float_list(errors[:, observable_index]),
+            "error_uncertainty": _strict_float_list(
+                error_uncertainties[:, observable_index]
+            ),
+            "plateau_group_sweeps": plateau_group,
+            "plateau_found": plateau_group is not None,
+        }
+
+    all_found = len(plateau_ends) == len(labels)
+    selected_length = max(plateau_ends) if all_found else None
+    return {
+        "method": (
+            "whole post-cut histories; five-sweep elementary vectors; "
+            "separate complete blocks per replica; replica-stratified "
+            "delete-one-block jackknife; three-length error plateau"
+        ),
+        "candidate_block_lengths_sweeps": lengths,
+        "minimum_tau_block_length_sweeps": tau_minimum,
+        "minimum_complete_blocks_per_replica": MINIMUM_BLOCKS,
+        "complete_blocks_per_replica": blocks_per_chain,
+        "discarded_sweeps_per_replica": discarded_sweeps_per_chain,
+        "plateau_relative_tolerance": PLATEAU_RELATIVE_TOLERANCE,
+        "plateau_sigma_tolerance": PLATEAU_SIGMA_TOLERANCE,
+        "observables": observable_results,
+        "all_primary_and_secondary_plateaus_found": all_found,
+        "selected_common_block_length_sweeps": selected_length,
+    }
+
+
 def _split_diagnostics(chain: PostCutChain) -> dict[str, object]:
     """Return selected and worst-vector split-history checks."""
     core = {
@@ -322,10 +553,10 @@ def _pairwise_block_diagnostic(
 
 
 def prepare_chains(
-    raw_chains: Sequence[ChainData], minimum_cut: int,
+    raw_chains: Sequence[ChainData], minimum_cut: int, ns: int,
     prescribed_cuts: Sequence[int] | None = None,
 ) -> tuple[list[PostCutChain], dict[str, object]]:
-    """Select per-chain cuts, estimate tau, and form independent blocks."""
+    """Select cuts and blocks using tau and fused-replica error plateaus."""
     candidates = [
         candidate_thermalization_cut(chain, minimum_cut) for chain in raw_chains
     ]
@@ -340,7 +571,18 @@ def prepare_chains(
             raise ValueError("a prescribed cut is below its MSER-5 minimum")
         if any(cut % PROFILE_CADENCE != 0 for cut in cuts):
             raise ValueError("every prescribed cut must be a multiple of five")
-    chains = [_post_cut(chain, cut) for chain, cut in zip(raw_chains, cuts, strict=True)]
+    chains = [
+        _post_cut(chain, cut)
+        for chain, cut in zip(raw_chains, cuts, strict=True)
+    ]
+    blocking_plateau = blocking_error_plateau(chains, ns)
+    selected_block_length = blocking_plateau[
+        "selected_common_block_length_sweeps"
+    ]
+    if selected_block_length is not None:
+        chains = [
+            _reblock_chain(chain, int(selected_block_length)) for chain in chains
+        ]
     separations = raw_chains[0].correlator.keys[:, 0].astype(np.int64)
     labels = ["Tr_G_real", "Tr_G_imag", "Ctilde_0", "Ctilde_pmin"] + [
         f"C_G_R{separation}" for separation in separations
@@ -380,7 +622,8 @@ def prepare_chains(
     diagnostics = {
         "method": (
             "per-chain MSER-5 with a 500-sweep minimum; Sokal-window tau_int; "
-            "separate complete within-chain blocks longer than 2 tau_int"
+            "whole-history fused-replica error plateaus; separate complete "
+            "within-chain blocks longer than 2 tau_int"
         ),
         "minimum_cut_sweeps": minimum_cut,
         "profile_cadence_sweeps": PROFILE_CADENCE,
@@ -391,6 +634,7 @@ def prepare_chains(
             "plaquette_profiles": profile_between,
             "maximum": maximum_between,
         },
+        "blocking_error_plateau": blocking_plateau,
     }
     return chains, diagnostics
 
@@ -609,6 +853,12 @@ def analyse_ensemble(
     """Produce the full Step-3 result for one four-chain ensemble."""
     if bootstrap_samples < 2:
         raise ValueError("at least two bootstrap samples are required")
+    plateau = diagnostics["blocking_error_plateau"]
+    if not bool(plateau["all_primary_and_secondary_plateaus_found"]):
+        raise ValueError(
+            "full analysis requires blocking-error plateaus for every "
+            "primary and secondary observable"
+        )
     separations = chains[0].raw.correlator.keys[:, 0].astype(np.int64)
     if not np.array_equal(separations, np.arange(ns // 2 + 1)):
         raise ValueError("correlator grid must be R=0,...,floor(Ns/2)")
@@ -745,7 +995,9 @@ def main() -> None:
         if args.thermalization_diagnostics is not None
         else None
     )
-    chains, diagnostics = prepare_chains(raw_chains, args.minimum_cut, prescribed)
+    chains, diagnostics = prepare_chains(
+        raw_chains, args.minimum_cut, args.ns, prescribed
+    )
     if args.diagnostics_only:
         result = diagnostics
     else:
