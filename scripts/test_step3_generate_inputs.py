@@ -22,6 +22,13 @@ SPEC.loader.exec_module(step3)
 
 
 class Step3GenerateInputsTest(unittest.TestCase):
+    def test_qbig_analysis_uses_only_manifested_replicas(self) -> None:
+        wrapper = (
+            ROOT / "data" / "step3_scan" / "qbig" / "analyze_step3_ensemble.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn("mapfile -t manifest_runs", wrapper)
+        self.assertNotIn('for directory in "${data}"/seed_*', wrapper)
+
     def test_grid_geometry_cadence_and_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "step3"

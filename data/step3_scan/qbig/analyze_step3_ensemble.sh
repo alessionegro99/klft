@@ -26,10 +26,24 @@ ensemble=${run%/seed_*}
 data="${remote_root}/data/${ensemble}"
 analysis="${remote_root}/analysis/step3_scan/${ensemble}"
 
-chain_count=0
-for directory in "${data}"/seed_*; do
-    [[ -d "${directory}" ]] || continue
-    ((chain_count+=1))
+mapfile -t manifest_runs < <(
+    awk -F '\t' -v first="$((4 * ensemble_index + 2))" \
+        'NR >= first && NR < first + 4 {print $2}' "${manifest}"
+)
+[[ "${#manifest_runs[@]}" -eq 4 ]] || {
+    echo "${ensemble}: expected four manifest runs" >&2
+    exit 1
+}
+for manifest_run in "${manifest_runs[@]}"; do
+    [[ "${manifest_run%/seed_*}" == "${ensemble}" ]] || {
+        echo "${manifest_run}: manifest ensemble mismatch" >&2
+        exit 1
+    }
+    directory="${remote_root}/data/${manifest_run}"
+    [[ -d "${directory}" ]] || {
+        echo "missing manifest run ${directory}" >&2
+        exit 1
+    }
     for file in holonomy_summary.out holonomy_correlator.out \
                 plaquette_profile.out run_metadata.txt; do
         [[ -f "${directory}/${file}" ]] || {
@@ -43,10 +57,6 @@ for directory in "${data}"/seed_*; do
         exit 1
     }
 done
-[[ "${chain_count}" -eq 4 ]] || {
-    echo "${ensemble}: expected four complete chains" >&2
-    exit 1
-}
 
 mkdir -p "${analysis}"
 cd "${project}"
