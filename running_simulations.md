@@ -2,14 +2,12 @@
 
 ## Step-3 Dirichlet slab parameter-space pilot
 
-- Status: second retry prepared. Build jobs `259773` and `259782` failed before
-  producing an executable, and Slurm canceled their dependent chains. The
-  first forced `nvcc_wrapper`; the second exposed the underlying node setup:
-  P100 login shells append CUDA 9.2's `/usr/local/cuda/include` to `CPATH` even
-  after loading CUDA 11.5. The build now removes only that stale entry and
-  asserts it is absent before using the normal C++ compiler with Kokkos's
-  compiler launcher. Retry job IDs are written to
-  `/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`
+- Status: all 32 production chains completed; final compact analysis array
+  `259877_[0-7]` is running without a Slurm dependency. Build jobs `259773`
+  and `259782` failed before producing an executable. Corrected build job
+  `259790` completed on `lnode13` in 3:29, including both Dirichlet CTests.
+  It removes the stale CUDA 9.2 include path added by the node login shell and
+  otherwise uses the CUDA 11.5/GCC 11.2 environment.
 - Grid: eight ensembles and four independent hot-start chains per ensemble
   (32 chains): `(Nt,beta,Ns)=(1,2.1,96),(2,2.1,48),(3,2.1,48),`
   `(2,3.0,64),(2,3.6,96),(3,5.4,144),(4,7.2,192),`
@@ -27,19 +25,41 @@
 - Slurm request: one typed Pascal GPU per build, timing, or production task;
   production array `0-31` with no concurrency cap, allowing Slurm to use all
   available P100s across the eligible nodes; no comma-separated node list
-- Timing gate: 100 sweeps at `Nt=4,Ns=192,beta=7.2`; dependent production is
-  released only when the projection is at most two hours for one chain and at
-  most 12 total P100 GPU-hours
+- Timing gate: dependency-free job `259793` ran 100 sweeps at
+  `Nt=4,Ns=192,beta=7.2` in 7.538261 seconds. It projected 0.20939614 hours
+  for the largest chain and 1.70332127 total P100 GPU-hours, passing the
+  two-hour and 12-GPU-hour limits.
 - KLFT: commit `7eed1f7d9bb0948621a2d4020706d19c56406001`, fresh
   CUDA/OpenMP `KLFT_NDIM=3`, `KLFT_NC=2`, Pascal60 build at the single project
-  path `/qbigwork2/negro/dirichlet/build/klft`;
-  executable checksum is recorded by the build job and in every chain's
-  metadata
+  path `/qbigwork2/negro/dirichlet/build/klft`; heatbath SHA-256
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`
+- Production: dependency-free array `259794_[0-31]`; all 32 tasks began at
+  2026-07-21 16:06:18 across `lnode13`--`lnode16`, used one scheduler-assigned
+  P100 each, and completed with exit code zero in 1:05--13:04.
 - Analysis: independent MSER-5 cuts (minimum 500 sweeps), Sokal-window
   autocorrelations in sweep units, whole-history blocking-error curves for all
   primary and secondary observables, replica-stratified fusion only after
   separate blocking, a common error-plateau block longer than `2 tau_int`, at
   least 30 blocks per chain, and a seeded 20000-sample hierarchical bootstrap
+- Blocking diagnostics: dependency-free array `259869_[0-7]` completed.
+  Every primary correlator/profile component and both secondary observables
+  share one three-length plateau. Selected common block lengths are 60,
+  20, 20, 20, 120, 160, 240, and 60 sweeps in manifest ensemble order. The
+  corresponding per-chain block counts are 158, 475, 475, 475, 79, 59, 39,
+  and 158; only `Nt=4,Ns=192` misses the 50-block target, while retaining 39
+  blocks above the required floor of 30.
+- Analysis retries: array `259850` produced seven results but task 2 stopped
+  because 1965 of 20000 bootstrap estimates had negative `xi_2nd^2`. The
+  final code preserves those signed squared estimates, reports the 0.90175
+  valid fraction and unconditional percentile interval, and does not quote a
+  symmetric error from a truncated sample. Array `259860` was superseded when
+  the fit-derived plateau audit was added; its obsolete task 2 was cancelled.
+  Final array `259877_[0-7]` also refits every delete-one-block sample and
+  reports non-null `xi_exp` and `mass` only when the selected block ends a
+  shared three-length error plateau for both.
+- Scheduling: stages are submitted only after their inputs have been
+  inspected. `queue_all.sh STAGE` submits one stage with no `afterok`
+  dependency and appends the job ID with dependency `none`.
 - Compact output: `/qbigwork2/negro/dirichlet/analysis/step3_scan/`; raw
   histories are not synchronized
 

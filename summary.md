@@ -1,6 +1,6 @@
 # Numerical validation summary
 
-## Step-3 implementation and queued workflow
+## Step-3 implementation and execution
 
 KLFT commit `7eed1f7d9bb0948621a2d4020706d19c56406001` adds a separate
 Dirichlet-suite cadence. A zero suite interval inherits the base measurement
@@ -17,10 +17,9 @@ not 28: all eight explicitly listed ensembles are required to retain both the
 `Nt=1` matched-cadence reference and the `Ns=128` finite-volume comparison.
 Every input stores `L2=Nt+1`, measures holonomy at cadence one and profiles at
 cadence five, disables Wilson and horizontal-Polyakov observables, and has a
-manifested SHA-256. The dependent qbig workflow records its job IDs in
-`/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`; numerical
-results must not be reported until those jobs complete and compact products
-are synchronized.
+manifested SHA-256. qbig stages are submitted and inspected explicitly without
+Slurm dependencies; their job IDs are appended to
+`/qbigwork2/negro/dirichlet/campaigns/step3_scan/queued_jobs.tsv`.
 
 Remote build jobs `259773` and `259782` failed before producing a binary, so
 Slurm canceled both dependent chains. The first forced `nvcc_wrapper`; the
@@ -30,7 +29,13 @@ module paths. The build now removes only that stale entry and asserts it is
 absent before configuration. It uses the normal C++ compiler with Kokkos's
 compiler launcher, keeps the sole project build at
 `/qbigwork2/negro/dirichlet/build/klft`, and lets all 32 one-GPU production
-tasks run concurrently when P100s are available.
+tasks run concurrently when P100s are available. Corrected build job `259790`
+completed both Dirichlet CTests. Its sole project heatbath executable has
+SHA-256 `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`.
+Timing job `259793` measured 7.538261 seconds per 100 largest-grid sweeps and
+projected 0.20939614 hours for one largest chain and 1.70332127 total P100
+GPU-hours. All 32 tasks in production array `259794` started simultaneously
+across `lnode13`--`lnode16` and completed with exit code zero.
 
 The Step-3 analysis additionally scans blocking-error curves over each full
 post-cut history for every primary component and for the secondary `xi_2nd`
@@ -38,7 +43,24 @@ and `Ns/xi_2nd`. At each candidate length, every replica is blocked separately
 and incomplete tails are dropped separately; only the resulting replica means
 are fused. A replica-stratified delete-one-block jackknife must show a
 quantitative three-length error plateau above the autocorrelation bound before
-the final common block length is accepted.
+the final common block length is accepted. Final diagnostic array `259869`
+found one shared plateau for every checked primary and secondary observable.
+Common block lengths range from 20 to 240 sweeps and leave 39--475 complete
+blocks per replica; the largest `Nt=4,Ns=192` ensemble passes the 30-block
+requirement with 39 blocks but misses the 50-block target.
+
+For `Nt=3,Ns=48,beta=2.1`, 1965 of 20000 hierarchical bootstrap samples have
+negative `xi_2nd^2`. The 16th percentile remains positive, so the length is
+resolved at 68% confidence, but a symmetric standard deviation cannot be
+computed without truncation. The compact result therefore retains signed
+`xi_2nd^2` samples, records a valid fraction of 0.90175, reports the
+unconditional percentile interval, and sets the symmetric `xi_2nd` and
+`Ns/xi_2nd` errors to JSON `null`. Array `259860` was superseded after adding
+the fit-derived blocking audit, and its obsolete task 2 was cancelled. Final
+analysis array `259877` also refits every delete-one-block correlator vector at
+each candidate block length; `xi_exp` and `mass` are reported only if the
+selected block ends a shared three-length error plateau. No campaign-level
+numerical conclusions are reported yet.
 
 ## qbig environment
 

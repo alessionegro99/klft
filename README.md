@@ -278,15 +278,14 @@ cadences, and every input SHA-256. Holonomy measurements are taken every
 composite sweep and plaquette profiles every five sweeps; all Wilson-loop and
 horizontal-Polyakov measurements are disabled.
 
-The qbig jobs are submitted as one dependency chain by
-`data/step3_scan/qbig/queue_all.sh`: a fresh P100 build and tests in the single
-project path `/qbigwork2/negro/dirichlet/build/klft`, the 100-sweep
-`Nt=4,Ns=192` timing gate, the uncapped `0-31` production array,
-per-ensemble diagnostics, numerical analysis, aggregation, and plotting.
-Slurm may therefore place all 32 one-GPU production tasks across the available
-P100 nodes. The timing stage exits nonzero if it projects more than two hours
-for the largest chain or more than 12 total GPU-hours, so production cannot
-start after a failed gate.
+The qbig stages are submitted explicitly, without Slurm dependencies, by
+`data/step3_scan/qbig/queue_all.sh STAGE`. Inspect each completed stage before
+submitting the next. The stages are `build`, `timing`, `production`,
+`diagnostics`, `analysis`, `aggregate`, and `plots`. The production script uses
+an uncapped `0-31` array, so Slurm may place all 32 one-GPU tasks across the
+available P100 nodes. It also requires a passing timing gate. The timing stage
+exits nonzero if it projects more than two hours for the largest chain or more
+than 12 total GPU-hours.
 
 `scripts/step3_analysis.py` selects MSER-5 cuts independently with a minimum
 500-sweep deletion, expresses every autocorrelation time in sweeps, and blocks
@@ -299,8 +298,15 @@ strictly larger than twice the largest selected autocorrelation time. It
 requires at least 30 complete blocks per chain and records whether the 50-block
 target is met. A seeded 20000-sample hierarchical bootstrap carries complete
 correlator vectors through `C_G`, its covariance, `xi_2nd`, and `Ns/xi_2nd`.
-Only correlated periodic-K0 fits can produce `xi_exp`; failure of any
-fit-quality or three-adjacent-range stability requirement yields JSON `null`.
+Signed bootstrap estimates of `xi_2nd^2` are retained. If some resamples cross
+the physical boundary, the output records their fraction and the unconditional
+68% percentile interval, while symmetric errors that would require truncating
+those samples are JSON `null`.
+Only correlated periodic-K0 fits can produce `xi_exp`. After a fit range passes
+the fit-quality and adjacent-range checks, every replica is separately blocked
+again and all delete-one-block correlator vectors are refitted. `xi_exp` and
+`mass` are reported only when the selected common block ends a three-length
+error plateau shared by both; otherwise `xi_exp` is JSON `null`.
 
 `scripts/step3_campaign_summary.py` applies the preregistered finite-volume
 criteria, fits constant-tree-coupling values as `q(Nt)=q0+c/Nt`, and writes
