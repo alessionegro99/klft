@@ -6,6 +6,46 @@ On 2026-07-17, Slurm reported `lnode13` through `lnode17` idle, each with eight 
 
 The fresh qbig production build uses KLFT commit `2871b8abc9c28917c2049243d3483d6dada4276a`, CUDA 11.5.0, GCC 11.2.0, Kokkos CUDA/OpenMP, `Kokkos_ARCH_PASCAL60=ON`, `KLFT_NDIM=3`, and `KLFT_NC=2`. Its heatbath SHA-256 is `5e7ad09405829c2a7831b666de16bb0e195391c6b020b4df901134cd632cdaa4`.
 
+## Exact-PCM beta calibration
+
+At physical `Nt=1`, KLFT's Dirichlet slab is exactly the two-dimensional SU(2)
+PCM; no separate O(4) or PCM simulator was used. Twelve hot-start chains at
+`Ns=96` and beta 1.9, 2.0, 2.1 completed on qbig job `259744`. Each coupling
+has four independent 10000-measurement histories, and `C_G(0)=1` holds for
+every saved measurement.
+
+Each run was thermalized and analyzed independently. The retained cut is 500
+for each chain, selected after per-chain MSER-5, autocorrelation, and
+split-history checks. Post-cut `tau_int[Tr G]` ranges from 1.55 to 1.72 at beta
+1.9, 2.14 to 2.50 at beta 2.0, and 3.68 to 4.00 at beta 2.1. Chain-specific
+block sizes are 4, 5--6, and 8, leaving at least 1187 complete blocks in every
+run. The largest full-vector pairwise chain discrepancy is 3.17 standard
+deviations.
+
+A 20000-sample hierarchical bootstrap first resamples complete correlator
+block vectors within a run and then resamples the four independent runs. It
+therefore preserves covariance across `R` and never creates a block crossing a
+run boundary. The results are:
+
+| beta | `xi_2nd/a` | 68% interval | `Ns/xi_2nd` | 68% interval |
+|---:|---:|---:|---:|---:|
+| 1.9 | 6.014(126) | [5.887, 6.139] | 15.963(336) | [15.638, 16.307] |
+| 2.0 | 7.609(179) | [7.429, 7.788] | 12.616(298) | [12.327, 12.922] |
+| 2.1 | 10.388(125) | [10.262, 10.512] | 9.242(112) | [9.132, 9.355] |
+
+All three pass `xi_2nd/a >= 5` and `Ns/xi_2nd >= 8`, including when the 68%
+interval is required to remain inside the window. Beta 2.1 is therefore the
+selected strongest tested coupling for the next finite-thickness pilot. The
+outer bootstrap has only four independent run units, so its uncertainty is
+less precisely determined than the large within-run block counts suggest; a
+production determination should add chains rather than merely lengthening
+these four.
+
+Numerical JSON, covariance matrices, the CSV table, and one-page 16:9 LaTeX
+PDFs are in `analysis/pcm_beta_pilot/`. They were produced on qbig and only the
+compact 0.5 MiB result set was synchronized locally. Raw histories remain on
+qbig.
+
 ## P100 smoke validation
 
 Slurm job `259715` completed on `lnode13` with exit code 0. The deterministic suite passed. The small statistical suite reported hot/cold plaquette agreement, spatial and temporal reflection-profile differences of 0.67 and 2.04 standard deviations, the global-orientation group-averaging relation at 0.40 standard deviations, and long-slab central plaquette recovery at 0.20 standard deviations.
@@ -29,3 +69,10 @@ The gauge-invariant boundary benchmark reproduces thesis Table 4.7: `W_b(64,1)=0
 The second-moment lengths are 78.40(17), 33.07(13), and 10.27(11). At Nt=2 the length exceeds `Ns=64`, so this ensemble cannot yield a controlled mass gap. Every correlated periodic-K0 fit range tested is rejected; uncorrelated fits can look acceptable but are not used for inference because they discard strong cross-distance covariance.
 
 Final analysis job `259734` and plotting jobs `259737` and `259738` completed with exit code 0. Compact JSON, covariance matrices, CSV, and PDFs are in `analysis/dirichlet_thesis/`; the numerical products synchronized after those jobs matched the qbig copies byte for byte. Raw histories remain only on qbig. On 2026-07-20 the PDFs were regenerated locally from the unchanged compact JSON/NPZ files to enforce one 16:9 LaTeX plot per page and the shared plotting palette. qbig was unreachable at port 22 during this presentation-only update, so the new PDFs have not yet been reproduced byte for byte on qbig.
+
+The initial thesis-reproduction uncertainties in the preceding paragraphs use
+the older pooled-block analysis. It blocks each chain before pooling, so no
+block crosses a run boundary, but it does not perform the run-level
+hierarchical resampling now required by this project. Treat those uncertainties
+as provisional and recompute them with the chain-aware method before quoting
+them in research output.

@@ -2,23 +2,25 @@
 
 ## Exact-PCM beta calibration pilot
 
-- Status: timing job `259743_0` submitted; production submission pending timing
-  output check
+- Status: completed and analyzed
 - Purpose: choose a coupling in the exact physical-`Nt=1` SU(2) PCM limit with
   `xi_2nd/a >= 5` and `Ns/xi_2nd >= 8`, before repeating the finite-thickness
   thesis scan
 - Ensembles: physical `Nt=1`, `Ns=96`, beta = 1.9, 2.0, 2.1, hot starts
 - Seeds at each coupling: 32091, 90517, 177013, 515029
-- Planned history per chain: 10000 sweeps, five overrelaxation sweeps per
+- History per chain: 10000 sweeps, five overrelaxation sweeps per
   heatbath sweep, measurement interval 1
 - Observables: the normalized single-trace holonomy correlator and its
   zero/minimum-momentum summary; at `Nt=1` these are exactly the SU(2) PCM spin
   correlator and structure factors
 - Timing check: Slurm job `259743_0`, beta 1.9, seed 700019, 100 sweeps with
-  otherwise identical geometry and measurements
+  otherwise identical geometry and measurements; it completed on `lnode13`
+  with 100 measurements, exact `C_G(0)=1`, and 1.45 seconds in heatbath
 - Slurm request: one typed Pascal GPU per task on `lnode13`--`lnode17`, three
-  CPU cores, 4 GiB; one timing task followed by a 12-task array only after the
-  timing output is inspected
+  CPU cores, 4 GiB
+- Production: array `259744_[0-11]` completed on `lnode13` and `lnode14` with
+  exit code zero in 1:56--2:40 per task. Every chain has exactly 10000 summary
+  rows and exact `C_G(0)=1` at every measurement.
 - Remote data: `/qbigwork2/negro/dirichlet/data/Nt_1_Ns_96_b_<beta>/seed_<seed>`
 - Inputs and manifest: `/qbigwork2/negro/dirichlet/campaigns/pcm_beta_pilot/`
 - Logs: `/qbigwork2/negro/dirichlet/logs/pcm-beta-<job>_<task>.out`
@@ -30,6 +32,32 @@
   each chain; block and bootstrap only within each chain; combine runs with a
   hierarchical bootstrap carrying the full `R` vector. Raw histories are never
   concatenated before resampling.
+- Thermalization: diagnostic array `259756_[0-2]` completed. MSER-5 candidates
+  were at most 65 measurements; the conservative minimum cut of 500 was
+  retained independently for every chain. The largest post-cut split-history
+  discrepancy is 2.54 standard deviations.
+- Analysis: initial array `259759_[0-2]` failed because a scalar/array shape
+  check incorrectly rejected exact `C_G(0)` data. Commit `ddafade` fixed the
+  check; retry `259762_[0-2]` completed in 41--59 seconds. The 20000-sample
+  hierarchical bootstrap uses seed 20260720.
+- Blocking: beta 1.9 uses four blocks sizes of 4 (2375 blocks per chain); beta
+  2.0 uses sizes 5, 5, 6, 5 (1900, 1900, 1583, 1900 blocks); beta 2.1 uses size
+  8 (1187 blocks per chain). These are all longer than twice the corresponding
+  maximum selected `tau_int`.
+- Plotting: jobs `259765` and `259766` failed respectively because the remote
+  `statanalysis-Bonn` checkout and the current shared plot helper were absent.
+  The dependency was pinned at commit
+  `db0086259f1d33a443090ae2bb5f4c0a6ae1373d`; job `259767` completed, and job
+  `259768` completed the final presentation-only clarification. Both PDFs are
+  one 1152-by-648-point page.
+- Compact outputs: `/qbigwork2/negro/dirichlet/analysis/pcm_beta_pilot/` and
+  local `analysis/pcm_beta_pilot/`. The synchronized products total about
+  0.5 MiB; the roughly 323 MiB of raw histories remain only on qbig.
+- Result: beta 1.9, 2.0, and 2.1 give respectively
+  `xi_2nd = 6.014(126), 7.609(179), 10.388(125)` and
+  `Ns/xi_2nd = 15.963(336), 12.616(298), 9.242(112)`. All pass the
+  uncertainty-aware target; beta 2.1 is the selected strongest tested
+  coupling.
 
 ## qbig P100 validation
 

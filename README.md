@@ -259,6 +259,9 @@ hierarchical bootstrap of full correlator vectors. A coupling is conservatively
 accepted only if the 68% interval satisfies `xi_2nd >= 5` and
 `Ns/xi_2nd >= 8`.
 
+The completed pilot, selected beta, diagnostics, and compact products are
+documented in [`analysis/pcm_beta_pilot/`](analysis/pcm_beta_pilot/README.md).
+
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in
 [`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).

@@ -1,0 +1,104 @@
+{
+  "method": "MSER-5 candidate plus post-cut Sokal-window diagnostics",
+  "n_chains": 4,
+  "n_measurements_per_chain": [
+    10000,
+    10000,
+    10000,
+    10000
+  ],
+  "minimum_cut": 500,
+  "recommended_per_chain_cuts": [
+    500,
+    500,
+    500,
+    500
+  ],
+  "chains": [
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_1_Ns_96_b_2p1/seed_32091",
+      "n_measurements": 10000,
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 0,
+        "C_G_R1": 10
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 3.9974275073320378,
+        "Ctilde_0": 1.9081869070308262,
+        "C_G_R1": 1.3028091757986147
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.9918747603747922,
+        "Ctilde_0": 0.8774991668174805,
+        "C_G_R1": 1.8536640393165285
+      }
+    },
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_1_Ns_96_b_2p1/seed_90517",
+      "n_measurements": 10000,
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 5,
+        "C_G_R1": 10
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 3.9603666907712847,
+        "Ctilde_0": 1.873931819746369,
+        "C_G_R1": 1.2101259908349693
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.8491895212708036,
+        "Ctilde_0": 1.3582006331651117,
+        "C_G_R1": 1.0367087891335274
+      }
+    },
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_1_Ns_96_b_2p1/seed_177013",
+      "n_measurements": 10000,
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 5,
+        "C_G_R1": 5
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 3.6800010353669306,
+        "Ctilde_0": 2.0019340845735756,
+        "C_G_R1": 1.1609221857700123
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.5870699661756026,
+        "Ctilde_0": 0.2766833898629485,
+        "C_G_R1": 0.5683509831396185
+      }
+    },
+    {
+      "chain": "/qbigwork2/negro/dirichlet/data/Nt_1_Ns_96_b_2p1/seed_515029",
+      "n_measurements": 10000,
+      "mser5_cut": {
+        "mean_TrG": 0,
+        "Ctilde_0": 5,
+        "C_G_R1": 10
+      },
+      "candidate_cut": 500,
+      "post_cut_tau_int": {
+        "mean_TrG": 3.7228733946509767,
+        "Ctilde_0": 2.083178018171184,
+        "C_G_R1": 1.1795052441932972
+      },
+      "post_cut_split_z": {
+        "mean_TrG": 0.3880941716624929,
+        "Ctilde_0": 0.08270544117555877,
+        "C_G_R1": 1.6833423167729207
+      }
+    }
+  ],
+  "post_cut_max_pairwise_chain_z": {
+    "mean_TrG": 1.7216817047510362,
+    "Ctilde_0": 0.9632081660971721,
+    "C_G_R1": 1.1540097468833959
+  }
+}
