@@ -36,7 +36,9 @@
   executable checksum is recorded by the build job and in every chain's
   metadata
 - Analysis: independent MSER-5 cuts (minimum 500 sweeps), Sokal-window
-  autocorrelations in sweep units, separate blocks longer than `2 tau_int`, at
+  autocorrelations in sweep units, whole-history blocking-error curves for all
+  primary and secondary observables, replica-stratified fusion only after
+  separate blocking, a common error-plateau block longer than `2 tau_int`, at
   least 30 blocks per chain, and a seeded 20000-sample hierarchical bootstrap
 - Compact output: `/qbigwork2/negro/dirichlet/analysis/step3_scan/`; raw
   histories are not synchronized

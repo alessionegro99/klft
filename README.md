@@ -290,13 +290,17 @@ start after a failed gate.
 
 `scripts/step3_analysis.py` selects MSER-5 cuts independently with a minimum
 500-sweep deletion, expresses every autocorrelation time in sweeps, and blocks
-each chain separately with a five-sweep-aligned length strictly larger than
-twice the largest selected autocorrelation time. It requires at least 30
-complete blocks per chain and records whether the 50-block target is met. A
-seeded 20000-sample hierarchical bootstrap carries complete correlator vectors
-through `C_G`, its covariance, `xi_2nd`, and `Ns/xi_2nd`. Only correlated
-periodic-K0 fits can produce `xi_exp`; failure of any fit-quality or
-three-adjacent-range stability requirement yields JSON `null`.
+each chain separately over its whole post-cut history. It scans five-sweep
+aligned block lengths for a three-length error plateau for every primary
+observable and for the secondary `xi_2nd` and `Ns/xi_2nd`; replicas are fused
+only after separate blocking with a replica-stratified delete-one-block
+jackknife. The final common block length must lie on those plateaus and remain
+strictly larger than twice the largest selected autocorrelation time. It
+requires at least 30 complete blocks per chain and records whether the 50-block
+target is met. A seeded 20000-sample hierarchical bootstrap carries complete
+correlator vectors through `C_G`, its covariance, `xi_2nd`, and `Ns/xi_2nd`.
+Only correlated periodic-K0 fits can produce `xi_exp`; failure of any
+fit-quality or three-adjacent-range stability requirement yields JSON `null`.
 
 `scripts/step3_campaign_summary.py` applies the preregistered finite-volume
 criteria, fits constant-tree-coupling values as `q(Nt)=q0+c/Nt`, and writes

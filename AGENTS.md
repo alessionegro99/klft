@@ -81,6 +81,12 @@ hierarchical bootstrap when a joint covariance across correlator separations is
 required. Report every chain's cut, `tau_int`, block length, and retained block
 count. All quoted uncertainties must follow this chain-aware procedure.
 
+For Step-3, also scan the blocking error over the whole post-cut history for
+every primary and secondary observable. Block each replica separately at every
+candidate size and fuse only replica-level blocked estimates; no block may
+cross a replica boundary. Require and record a quantitative error plateau in
+addition to the `tau_int` lower bound before accepting the final block length.
+
 ## Commit & Pull Request Guidelines
 
 Use short imperative subjects, such as `Add Dirichlet plaquette profile`. Pull requests should describe the physics and data impact, list exact validation commands, identify input-data provenance, and include plots when numerical outputs change. Keep generated data, dependency edits, and analysis-code changes in separate commits. Commit and push KLFT changes in the KLFT repository; commit project inputs, analysis, metadata, and compact results here.

@@ -32,6 +32,14 @@ compiler launcher, keeps the sole project build at
 `/qbigwork2/negro/dirichlet/build/klft`, and lets all 32 one-GPU production
 tasks run concurrently when P100s are available.
 
+The Step-3 analysis additionally scans blocking-error curves over each full
+post-cut history for every primary component and for the secondary `xi_2nd`
+and `Ns/xi_2nd`. At each candidate length, every replica is blocked separately
+and incomplete tails are dropped separately; only the resulting replica means
+are fused. A replica-stratified delete-one-block jackknife must show a
+quantitative three-length error plateau above the autocorrelation bound before
+the final common block length is accepted.
+
 ## qbig environment
 
 On 2026-07-17, Slurm reported `lnode13` through `lnode17` idle, each with eight Pascal GPUs. Direct inspection of `lnode13` identified eight idle Tesla P100-PCIE-16GB GPUs. This is an availability snapshot, not a permanent allocation.
