@@ -252,7 +252,9 @@ def write_tables(
     """Write portable CSV and NPZ campaign tables."""
     rows = []
     for _, result in results:
-        chains = result["thermalization_and_blocking"]["chains"]
+        diagnostics = result["thermalization_and_blocking"]
+        chains = diagnostics["chains"]
+        plateau = diagnostics["blocking_error_plateau"]
         rows.append(
             {
                 "purpose": result["purpose"],
@@ -265,8 +267,20 @@ def write_tables(
                 "xi_2nd_error": result["xi_2nd_error"],
                 "Ns_over_xi_2nd": result["Ns_over_xi_2nd"],
                 "Ns_over_xi_2nd_error": result["Ns_over_xi_2nd_error"],
+                "xi_2nd_bootstrap_valid_fraction": result[
+                    "xi_2nd_bootstrap_valid_fraction"
+                ],
                 "xi_exp": result["xi_exp"],
                 "xi_exp_error": result["xi_exp_error"],
+                "blocking_plateau_all_found": plateau[
+                    "all_primary_and_secondary_plateaus_found"
+                ],
+                "blocking_common_length_sweeps": plateau[
+                    "selected_common_block_length_sweeps"
+                ],
+                "blocking_tau_minimum_sweeps": plateau[
+                    "minimum_tau_block_length_sweeps"
+                ],
                 "thermalization_cuts_sweeps": ";".join(
                     str(chain["thermalization_cut_sweeps"]) for chain in chains
                 ),
@@ -303,6 +317,14 @@ def write_tables(
                 for row in rows
             ],
             dtype=np.float64,
+        ),
+        xi_2nd_bootstrap_valid_fraction=np.asarray(
+            [row["xi_2nd_bootstrap_valid_fraction"] for row in rows],
+            dtype=np.float64,
+        ),
+        blocking_common_length_sweeps=np.asarray(
+            [row["blocking_common_length_sweeps"] for row in rows],
+            dtype=np.int64,
         ),
         xi_exp=np.asarray(
             [np.nan if row["xi_exp"] is None else row["xi_exp"] for row in rows],
