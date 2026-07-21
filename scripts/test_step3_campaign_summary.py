@@ -33,6 +33,7 @@ class Step3CampaignSummaryTest(unittest.TestCase):
             "xi_2nd_bootstrap_valid_fraction": 0.9,
             "xi_exp": None,
             "xi_exp_error": None,
+            "xi_exp_blocking_error_plateau": None,
             "thermalization_and_blocking": {
                 "chains": [
                     {
@@ -57,6 +58,7 @@ class Step3CampaignSummaryTest(unittest.TestCase):
                 row = next(csv.DictReader(stream))
             self.assertEqual(row["blocking_plateau_all_found"], "True")
             self.assertEqual(row["blocking_common_length_sweeps"], "20")
+            self.assertEqual(row["xi_exp_mass_blocking_plateau_pass"], "")
             table = np.load(output / "campaign_summary.npz")
             self.assertTrue(np.isnan(table["xi_2nd_error"][0]))
             self.assertEqual(table["blocking_common_length_sweeps"][0], 20)

@@ -255,6 +255,7 @@ def write_tables(
         diagnostics = result["thermalization_and_blocking"]
         chains = diagnostics["chains"]
         plateau = diagnostics["blocking_error_plateau"]
+        fit_plateau = result["xi_exp_blocking_error_plateau"]
         rows.append(
             {
                 "purpose": result["purpose"],
@@ -272,6 +273,13 @@ def write_tables(
                 ],
                 "xi_exp": result["xi_exp"],
                 "xi_exp_error": result["xi_exp_error"],
+                "xi_exp_mass_blocking_plateau_pass": (
+                    None
+                    if fit_plateau is None
+                    else fit_plateau[
+                        "selected_block_on_xi_exp_and_mass_plateau"
+                    ]
+                ),
                 "blocking_plateau_all_found": plateau[
                     "all_primary_and_secondary_plateaus_found"
                 ],
