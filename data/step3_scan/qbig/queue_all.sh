@@ -11,8 +11,21 @@ mkdir -p /qbigwork2/negro/dirichlet/logs
     exit 1
 }
 
-build_job=$(sbatch --parsable "${scripts}/build_step3_p100.slurm")
-build_job=${build_job%%;*}
+if [[ "$#" -eq 0 ]]; then
+    build_job=$(sbatch --parsable "${scripts}/build_step3_p100.slurm")
+    build_job=${build_job%%;*}
+elif [[ "$#" -eq 2 && "$1" == --completed-build && "$2" =~ ^[0-9]+$ ]]; then
+    build_job="$2"
+    build_state=$(sacct -X -n -j "${build_job}" --format=State |
+        awk 'NF {print $1; exit}')
+    [[ "${build_state}" == COMPLETED ]] || {
+        echo "build job ${build_job} is ${build_state:-unknown}, not COMPLETED" >&2
+        exit 1
+    }
+else
+    echo "usage: $0 [--completed-build JOB_ID]" >&2
+    exit 2
+fi
 timing_job=$(sbatch --parsable --dependency="afterok:${build_job}" \
     "${scripts}/submit_step3_timing.slurm")
 timing_job=${timing_job%%;*}
