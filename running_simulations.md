@@ -2,8 +2,10 @@
 
 ## Step-3 `Ns=160` finite-volume extension
 
-- Status: inputs and dependency-free Slurm scripts prepared locally; smoke and
-  production jobs not yet submitted
+- Status: smoke job `274106` completed with exit code zero. Dependency-free
+  production array `274107_[0-3]` was submitted on 2026-07-23; all four tasks
+  started immediately at 13:11:37 and were still running after 1:13 on four
+  separately allocated P100s (`CUDA_VISIBLE_DEVICES=0,1,2,3`) on `lnode13`.
 - Purpose: decide whether the `Nt=2`, beta 3.6 correlator is stable between
   `Ns=128` and 160 before extending the constant-coupling continuum line
 - Ensemble: physical `Nt=2`, stored `L2=3`, `Ns=160`, beta 3.6,
@@ -13,12 +15,20 @@
   overrelaxation sweeps
 - Cadence: holonomy observables every sweep; plaquette profiles every five
   sweeps; Wilson-loop and horizontal-Polyakov output disabled
-- Inputs and manifest: local `data/step3_fv160/`; planned remote campaign
+- Inputs and manifest: local `data/step3_fv160/`; remote campaign
   `/qbigwork2/negro/dirichlet/campaigns/step3_fv160/`
-- Planned raw output:
+- Raw output:
   `/qbigwork2/negro/dirichlet/data/Nt_2_Ns_160_b_3p6/seed_<seed>/`
 - Slurm request: one typed Pascal GPU per task; dependency-free four-task array
-  with no concurrency cap
+  with no concurrency cap. `scontrol` reports `Dependency=(null)` for every
+  task. Logs are `/qbigwork2/negro/dirichlet/logs/s3fv-prod-274107_<task>.out`.
+- Smoke validation: 100-sweep job `274106` ran on `lnode13` and completed in
+  16 seconds, with 3.91 seconds in the KLFT executable. It produced exactly
+  100 holonomy-summary rows, 8100 correlator rows, and 100 profile rows at
+  steps `5,10,...,100`; all measured `C_G(0)` values equal one and every
+  disabled Wilson/Polyakov output is absent. The kernel timing projects about
+  6.5 minutes per 10000-sweep chain. The log is
+  `/qbigwork2/negro/dirichlet/logs/s3fv-smoke-274106.out`.
 - KLFT: reuse the sole verified P100 build at
   `/qbigwork2/negro/dirichlet/build/klft`, commit
   `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
