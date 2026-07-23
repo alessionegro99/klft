@@ -2,8 +2,12 @@
 
 ## Step-3 corrected constant-coupling volumes
 
-- Status: immutable inputs and dependency-free timing/production scripts
-  prepared locally; qbig jobs not yet submitted
+- Status: timing job `274307` completed with exit code zero. Dependency-free
+  production array `274308_[0-7]` was submitted on 2026-07-23 and all eight
+  tasks started together at 15:38:45 on `lnode13`. At the 2:05 check all
+  tasks remained `RUNNING`, each with one distinct scheduler-assigned P100
+  (`CUDA_VISIBLE_DEVICES=0,...,7`), and every task reported
+  `Dependency=(null)`.
 - Purpose: replace the pilot constant-coupling `Nt=3,4` points with spatial
   sizes satisfying the measured target `Ns/xi_2nd` near 10 before extending
   the line to `Nt=6`
@@ -16,16 +20,27 @@
   overrelaxation sweeps
 - Cadence: holonomy observables every sweep; plaquette profiles every five
   sweeps; Wilson-loop and horizontal-Polyakov output disabled
-- Inputs and manifest: local `data/step3_corrected_volumes/`; planned remote
-  campaign `/qbigwork2/negro/dirichlet/campaigns/step3_corrected_volumes/`
-- Planned raw output:
+- Inputs and manifest: local `data/step3_corrected_volumes/`; remote campaign
+  `/qbigwork2/negro/dirichlet/campaigns/step3_corrected_volumes/`
+- Raw output:
   `/qbigwork2/negro/dirichlet/data/Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/`
-- Slurm request: a dependency-free 100-sweep timing job at `Nt=4,Ns=256`,
-  followed only after inspection by a dependency-free eight-task array with
-  no concurrency cap; one typed Pascal GPU per task
-- Timing gate: stop before production if the largest projected chain exceeds
-  two hours or the conservative eight-largest-chain upper bound exceeds 12
-  total P100 GPU-hours
+- Logs: timing
+  `/qbigwork2/negro/dirichlet/logs/s3cv-timing-274307.out`; production
+  `/qbigwork2/negro/dirichlet/logs/s3cv-prod-274308_<task>.out`
+- Slurm request: the 100-sweep timing job and the eight-task production array
+  were submitted separately without dependencies. Production has no array
+  concurrency cap and requests one typed Pascal GPU per task.
+- Timing gate: the largest `Nt=4,Ns=256` case took 16.247056 seconds for 100
+  sweeps, projecting 0.90261422 hours per 20000-sweep largest chain and a
+  conservative 7.22091376 total P100 GPU-hours. This passes the two-hour
+  per-chain and 12-GPU-hour total limits.
+- Timing validation: exactly 100 holonomy summaries, 12900 correlator rows,
+  and 180 profile rows at steps `5,10,...,100`; every measured `C_G(0)` is
+  one and all disabled Wilson/Polyakov outputs are absent.
+- Live production validation: all eight inputs and metadata have the intended
+  physical/stored extents, seeds, and cadences; output is growing in every run.
+  All live `C_G(0)` values are one, profile steps are multiples of five, and
+  disabled Wilson/Polyakov files are absent.
 - KLFT: reuse the sole verified P100 build at
   `/qbigwork2/negro/dirichlet/build/klft`, commit
   `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
