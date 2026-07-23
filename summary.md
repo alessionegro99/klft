@@ -73,23 +73,36 @@ The measured plane is:
 | 3.0 | 2 | 64 | 4.066(81) | 4.087(10) |
 | 3.6 | 2 | 96 | 9.744(227) | -- |
 | 3.6 | 2 | 128 | 9.561(301) | -- |
+| 3.6 | 2 | 160 | 9.529(486) | -- |
 | 5.4 | 3 | 144 | 16.581(631) | -- |
 | 7.2 | 4 | 192 | 25.177(1.044) | -- |
 
 At fixed `Nt=2`, beta 3.0 and 3.6 bracket `xi/a` near five. At fixed beta
 2.1, `xi_2nd/Nt` falls sharply from 10.622(215) at the exact-PCM endpoint to
 0.601(57) and central value 0.193 at `Nt=2,3`. Along
-`lambda_tree^2=20/9`, `xi_2nd/Nt` is 4.872(114), 5.527(210), and 6.294(261).
-The preliminary fit `q(Nt)=q0+c/Nt` gives `q0=7.383(432)`,
-`c=-5.056(970)`, and `p=0.288`.
+`lambda_tree^2=20/9`, using the volume-checked `Ns=128` value at `Nt=2`,
+`xi_2nd/Nt` is 4.780(151), 5.527(210), and 6.294(261). The revised
+preliminary fit `q(Nt)=q0+c/Nt` gives `q0=7.525(453)`,
+`c=-5.540(1.075)`, and `p=0.344`.
 
 The `Ns=96` anchor passes the volume-ratio and `xi_2nd` consistency tests, but
 the full-correlator comparison with `Ns=128` gives `chi2=106.78` for 48
-resolved modes and `p=2.33e-6`. It is therefore rejected. Add a four-chain
-`Nt=2`, beta 3.6, `Ns=160` check before production; do not yet add the
-optional `(Nt,beta)=(6,10.8)` point. Compact results and single-page 16:9
-LaTeX PDFs are documented in `analysis/step3_scan/`; raw histories remain on
-qbig.
+resolved modes and `p=2.33e-6`, so it remains rejected. The follow-up
+`Ns=160` ensemble gives `xi_2nd=9.529(486)`. Against `Ns=128`, the length
+differs by only 0.056 combined standard deviations and 0.34%, while the full
+64-mode correlator test gives `chi2=48.54` and `p=0.924`. The 68% lower
+`Ns/xi_2nd` interval at `Ns=128` is 12.988. All criteria therefore pass and
+`Ns=128` is accepted.
+
+For the `Ns=160` analysis, independent MSER-5 cuts are 500 sweeps, every
+primary and secondary observable shares the 30/40/60-sweep blocking-error
+plateau, and the selected 60-sweep blocks leave 158 complete blocks per chain.
+Diagnostics job `274303`, analysis job `274304`, summary job `274305`, and
+plotting job `274306` completed with exit code zero and no dependencies. The
+optional `(Nt,beta)=(6,10.8)` point now passes the preregistered finite-volume
+and preliminary-scaling gates but has not been submitted. Compact results and
+single-page 16:9 LaTeX PDFs are documented in `analysis/step3_fv160/`; raw
+histories remain on qbig.
 
 ## qbig environment
 

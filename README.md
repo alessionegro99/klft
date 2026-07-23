@@ -319,6 +319,12 @@ The completed scan, numerical decisions, tables, and direct links to every
 scan-level and plaquette-profile PDF are documented in
 [`analysis/step3_scan/`](analysis/step3_scan/README.md).
 
+The follow-up `Nt=2`, beta 3.6, `Ns=160` analysis confirms that `Ns=128` is
+stable under the preregistered length and full-correlator tests. Its compact
+diagnostics, revised constant-coupling scaling fit, and four single-page PDFs
+are documented in
+[`analysis/step3_fv160/`](analysis/step3_fv160/README.md).
+
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in
 [`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).

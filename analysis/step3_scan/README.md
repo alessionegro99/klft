@@ -48,6 +48,14 @@ and adjacent-range-stability requirements.
   plateau. Every chain retains at least 30 complete blocks; the `Nt=4` point
   retains 39 and therefore misses only the target of 50.
 
+## Follow-up resolution
+
+The required `Nt=2`, beta 3.6, `Ns=160` ensemble has now been completed. Its
+comparison with `Ns=128` passes the volume-ratio, `xi_2nd`, and full-correlator
+criteria (`chi2=48.54` for 64 modes, `p=0.924`), so `Ns=128` is accepted.
+The compact follow-up analysis and revised scaling fit are in
+[`../step3_fv160/`](../step3_fv160/README.md).
+
 ## Plots and tables
 
 - [`xi_2nd_vs_beta_Nt_2.pdf`](plots/xi_2nd_vs_beta_Nt_2.pdf): fixed-`Nt=2`

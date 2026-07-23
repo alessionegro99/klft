@@ -2,10 +2,10 @@
 
 ## Step-3 `Ns=160` finite-volume extension
 
-- Status: smoke job `274106` completed with exit code zero. Dependency-free
-  production array `274107_[0-3]` was submitted on 2026-07-23; all four tasks
-  started immediately at 13:11:37 and were still running after 1:13 on four
-  separately allocated P100s (`CUDA_VISIBLE_DEVICES=0,1,2,3`) on `lnode13`.
+- Status: completed, analyzed, plotted, and compact products synchronized.
+  Smoke job `274106`, production array `274107_[0-3]`, diagnostics job
+  `274303`, analysis job `274304`, summary job `274305`, and plotting job
+  `274306` all completed with exit code zero and no Slurm dependency.
 - Purpose: decide whether the `Nt=2`, beta 3.6 correlator is stable between
   `Ns=128` and 160 before extending the constant-coupling continuum line
 - Ensemble: physical `Nt=2`, stored `L2=3`, `Ns=160`, beta 3.6,
@@ -22,6 +22,8 @@
 - Slurm request: one typed Pascal GPU per task; dependency-free four-task array
   with no concurrency cap. `scontrol` reports `Dependency=(null)` for every
   task. Logs are `/qbigwork2/negro/dirichlet/logs/s3fv-prod-274107_<task>.out`.
+- Production: all four tasks started simultaneously on separately allocated
+  P100s on `lnode13` and completed in 6:14--6:22.
 - Smoke validation: 100-sweep job `274106` ran on `lnode13` and completed in
   16 seconds, with 3.91 seconds in the KLFT executable. It produced exactly
   100 holonomy-summary rows, 8100 correlator rows, and 100 profile rows at
@@ -33,9 +35,21 @@
   `/qbigwork2/negro/dirichlet/build/klft`, commit
   `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
   `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`
-- Decision after analysis: compare `Ns=128` with 160 using the same
-  uncertainty-aware length and full-correlator criteria; do not submit
-  `Nt=6` before this gate passes
+- Analysis: project commit `af5fe72`, per-chain MSER-5 cut 500 sweeps,
+  common whole-history blocking plateau 30/40/60 sweeps, selected block length
+  60 sweeps, and 158 complete blocks per chain. A seeded 20000-sample
+  hierarchical bootstrap gives `xi_2nd=9.529(486)` and
+  `Ns/xi_2nd=16.792(877)`; `xi_exp` is null because no correlated periodic-K0
+  fit passes every preregistered gate.
+- Finite-volume decision: `Ns=128` versus 160 differs by 0.056 combined
+  standard deviations and 0.34%. The 64-mode full-correlator comparison gives
+  `chi2=48.54`, `p=0.924`; all criteria pass and `Ns=128` is accepted.
+  The revised preliminary constant-coupling fit gives `q0=7.525(453)`,
+  `c=-5.540(1.075)`, and `p=0.344`. The optional `(Nt,beta)=(6,10.8)` point
+  may now be considered but has not been submitted.
+- Compact output: remote and local `analysis/step3_fv160/` (about 1.4 MB).
+  Dry-run and compact-only synchronization completed; raw histories were not
+  synchronized.
 
 ## Step-3 Dirichlet slab parameter-space pilot
 
