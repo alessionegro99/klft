@@ -1,5 +1,36 @@
 # Running simulations
 
+## Step-3 corrected constant-coupling volumes
+
+- Status: immutable inputs and dependency-free timing/production scripts
+  prepared locally; qbig jobs not yet submitted
+- Purpose: replace the pilot constant-coupling `Nt=3,4` points with spatial
+  sizes satisfying the measured target `Ns/xi_2nd` near 10 before extending
+  the line to `Nt=6`
+- Ensembles: `(physical Nt,beta,Ns)=(3,5.4,176),(4,7.2,256)`, with stored
+  temporal extents `L2=4,5` and `lambda_tree^2=20/9`
+- Seeds: 1139865066, 1786727755, 1777987394, 1986906165 at `Nt=3`; 32943504,
+  1111774376, 350847387, 1543348040 at `Nt=4`; all are independent hot starts
+  and distinct from earlier Step-3 campaigns
+- Histories: 20000 composite sweeps per chain; one heatbath plus five
+  overrelaxation sweeps
+- Cadence: holonomy observables every sweep; plaquette profiles every five
+  sweeps; Wilson-loop and horizontal-Polyakov output disabled
+- Inputs and manifest: local `data/step3_corrected_volumes/`; planned remote
+  campaign `/qbigwork2/negro/dirichlet/campaigns/step3_corrected_volumes/`
+- Planned raw output:
+  `/qbigwork2/negro/dirichlet/data/Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/`
+- Slurm request: a dependency-free 100-sweep timing job at `Nt=4,Ns=256`,
+  followed only after inspection by a dependency-free eight-task array with
+  no concurrency cap; one typed Pascal GPU per task
+- Timing gate: stop before production if the largest projected chain exceeds
+  two hours or the conservative eight-largest-chain upper bound exceeds 12
+  total P100 GPU-hours
+- KLFT: reuse the sole verified P100 build at
+  `/qbigwork2/negro/dirichlet/build/klft`, commit
+  `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`
+
 ## Step-3 `Ns=160` finite-volume extension
 
 - Status: completed, analyzed, plotted, and compact products synchronized.
