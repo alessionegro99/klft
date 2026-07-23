@@ -1,5 +1,32 @@
 # Running simulations
 
+## Step-3 `Ns=160` finite-volume extension
+
+- Status: inputs and dependency-free Slurm scripts prepared locally; smoke and
+  production jobs not yet submitted
+- Purpose: decide whether the `Nt=2`, beta 3.6 correlator is stable between
+  `Ns=128` and 160 before extending the constant-coupling continuum line
+- Ensemble: physical `Nt=2`, stored `L2=3`, `Ns=160`, beta 3.6,
+  `lambda_tree^2=20/9`
+- Seeds: 98728066, 856366050, 397310628, 411907572; four independent hot starts
+- Histories: 10000 composite sweeps per chain; one heatbath plus five
+  overrelaxation sweeps
+- Cadence: holonomy observables every sweep; plaquette profiles every five
+  sweeps; Wilson-loop and horizontal-Polyakov output disabled
+- Inputs and manifest: local `data/step3_fv160/`; planned remote campaign
+  `/qbigwork2/negro/dirichlet/campaigns/step3_fv160/`
+- Planned raw output:
+  `/qbigwork2/negro/dirichlet/data/Nt_2_Ns_160_b_3p6/seed_<seed>/`
+- Slurm request: one typed Pascal GPU per task; dependency-free four-task array
+  with no concurrency cap
+- KLFT: reuse the sole verified P100 build at
+  `/qbigwork2/negro/dirichlet/build/klft`, commit
+  `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`
+- Decision after analysis: compare `Ns=128` with 160 using the same
+  uncertainty-aware length and full-correlator criteria; do not submit
+  `Nt=6` before this gate passes
+
 ## Step-3 Dirichlet slab parameter-space pilot
 
 - Status: completed, analyzed, plotted, and compact products synchronized.

@@ -1,0 +1,5 @@
+array_index	run	input	purpose	physical_Nt	stored_L2	Ns	beta	lambda_squared_tree	chain_index	seed	sweeps	measurement_interval	dirichlet_suite_measurement_interval	input_sha256
+0	Nt_2_Ns_160_b_3p6/seed_98728066	Nt_2_Ns_160_b_3p6/seed_98728066/input.yaml	anchor_finite_volume_ns160	2	3	160	3.6	2.222222222222	0	98728066	10000	1	5	dc982e6bd3ea9c6db46cbcba72691216683ab091ab665136ab173f7f07663573
+1	Nt_2_Ns_160_b_3p6/seed_856366050	Nt_2_Ns_160_b_3p6/seed_856366050/input.yaml	anchor_finite_volume_ns160	2	3	160	3.6	2.222222222222	1	856366050	10000	1	5	cc7bd68a17d7d69f91e630d75450ed9e274adb93c2180c68957b7959bffe15d8
+2	Nt_2_Ns_160_b_3p6/seed_397310628	Nt_2_Ns_160_b_3p6/seed_397310628/input.yaml	anchor_finite_volume_ns160	2	3	160	3.6	2.222222222222	2	397310628	10000	1	5	3c41d2b8fb33576b6dd2be6f9e8e3b08c71a87169a542b30dff4a9c8c8ebd0f3
+3	Nt_2_Ns_160_b_3p6/seed_411907572	Nt_2_Ns_160_b_3p6/seed_411907572/input.yaml	anchor_finite_volume_ns160	2	3	160	3.6	2.222222222222	3	411907572	10000	1	5	3667813a783d145b02e707178fc2ba1c363b60d50a182d1023b77298f89182a1
