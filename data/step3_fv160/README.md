@@ -22,3 +22,23 @@ uv run --frozen python data/step3_fv160/generate_inputs.py \
 On qbig, submit `qbig/queue_stage.sh smoke`, validate its output, and then
 submit `qbig/queue_stage.sh production`. Both stages are dependency-free.
 Raw histories remain below `/qbigwork2/negro/dirichlet/data/`.
+
+## Analysis
+
+Submit `diagnostics`, inspect the per-chain cuts and blocking plateau, and only
+then submit `analysis`, `summary`, and `plots`, one stage at a time:
+
+```bash
+qbig/queue_stage.sh diagnostics
+qbig/queue_stage.sh analysis
+qbig/queue_stage.sh summary
+qbig/queue_stage.sh plots
+```
+
+Every stage records dependency `none`. The ensemble analysis uses the same
+MSER-5, per-replica whole-history blocking plateau, 20000-sample hierarchical
+bootstrap, and correlated periodic-K0 gates as the original Step-3 scan. The
+summary applies the preregistered volume criteria to `Ns=128` versus `Ns=160`
+and revises the constant-coupling scaling fit only if all criteria pass. Raw
+histories stay on qbig; `qbig/sync_compact.sh` transfers only compact analysis
+products and single-plot 16:9 PDFs.

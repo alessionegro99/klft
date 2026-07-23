@@ -63,46 +63,60 @@ def generalized_chi_square(
     }
 
 
-def finite_volume_decision(
-    anchor_path: Path,
-    anchor: dict[str, object],
-    check_path: Path,
-    check: dict[str, object],
+def finite_volume_comparison(
+    smaller_path: Path,
+    smaller: dict[str, object],
+    larger_path: Path,
+    larger: dict[str, object],
 ) -> dict[str, object]:
-    """Apply all preregistered ``Ns=96`` anchor acceptance criteria."""
-    anchor_npz = np.load(anchor_path.with_name("covariance.npz"))
-    check_npz = np.load(check_path.with_name("covariance.npz"))
-    anchor_r = anchor_npz["R"].astype(np.int64)
-    check_r = check_npz["R"].astype(np.int64)
-    common_r = np.intersect1d(anchor_r, check_r)
+    """Apply the preregistered criteria to two increasing spatial volumes."""
+    if int(smaller["physical_Nt"]) != int(larger["physical_Nt"]):
+        raise ValueError("finite-volume ensembles have different Nt")
+    if not np.isclose(float(smaller["beta"]), float(larger["beta"])):
+        raise ValueError("finite-volume ensembles have different beta")
+    if int(smaller["Ns"]) >= int(larger["Ns"]):
+        raise ValueError("finite-volume comparison requires increasing Ns")
+    if smaller["xi_2nd_error"] is None or larger["xi_2nd_error"] is None:
+        raise ValueError("finite-volume comparison needs resolved xi_2nd errors")
+
+    smaller_npz = np.load(smaller_path.with_name("covariance.npz"))
+    larger_npz = np.load(larger_path.with_name("covariance.npz"))
+    smaller_r = smaller_npz["R"].astype(np.int64)
+    larger_r = larger_npz["R"].astype(np.int64)
+    common_r = np.intersect1d(smaller_r, larger_r)
     common_r = common_r[common_r > 0]
-    anchor_indices = np.searchsorted(anchor_r, common_r)
-    check_indices = np.searchsorted(check_r, common_r)
+    smaller_indices = np.searchsorted(smaller_r, common_r)
+    larger_indices = np.searchsorted(larger_r, common_r)
     difference = (
-        anchor_npz["C_G"][anchor_indices] - check_npz["C_G"][check_indices]
+        smaller_npz["C_G"][smaller_indices]
+        - larger_npz["C_G"][larger_indices]
     )
-    covariance = anchor_npz["C_G_covariance"][
-        np.ix_(anchor_indices, anchor_indices)
-    ] + check_npz["C_G_covariance"][np.ix_(check_indices, check_indices)]
+    covariance = smaller_npz["C_G_covariance"][
+        np.ix_(smaller_indices, smaller_indices)
+    ] + larger_npz["C_G_covariance"][
+        np.ix_(larger_indices, larger_indices)
+    ]
     correlator_test = generalized_chi_square(difference, covariance)
 
-    xi_anchor = float(anchor["xi_2nd"])
-    xi_check = float(check["xi_2nd"])
-    error_anchor = float(anchor["xi_2nd_error"])
-    error_check = float(check["xi_2nd_error"])
-    difference_z = abs(xi_anchor - xi_check) / math.hypot(
-        error_anchor, error_check
+    xi_smaller = float(smaller["xi_2nd"])
+    xi_larger = float(larger["xi_2nd"])
+    error_smaller = float(smaller["xi_2nd_error"])
+    error_larger = float(larger["xi_2nd_error"])
+    difference_z = abs(xi_smaller - xi_larger) / math.hypot(
+        error_smaller, error_larger
     )
-    relative_difference = abs(xi_anchor - xi_check) / xi_check
-    volume_lower = float(anchor["Ns_over_xi_2nd_68_percent_interval"][0])
+    relative_difference = abs(xi_smaller - xi_larger) / xi_larger
+    volume_lower = float(smaller["Ns_over_xi_2nd_68_percent_interval"][0])
     volume_pass = volume_lower >= 8.0
     xi_pass = difference_z < 2.0 and relative_difference < 0.05
     correlator_pass = float(correlator_test["p_value"]) >= 0.05
     accepted = volume_pass and xi_pass and correlator_pass
     return {
-        "anchor_Ns": int(anchor["Ns"]),
-        "check_Ns": int(check["Ns"]),
-        "anchor_68_percent_lower_Ns_over_xi_2nd": volume_lower,
+        "physical_Nt": int(smaller["physical_Nt"]),
+        "beta": float(smaller["beta"]),
+        "smaller_Ns": int(smaller["Ns"]),
+        "larger_Ns": int(larger["Ns"]),
+        "smaller_68_percent_lower_Ns_over_xi_2nd": volume_lower,
         "volume_ratio_pass": volume_pass,
         "xi_2nd_difference_z": difference_z,
         "xi_2nd_relative_difference": relative_difference,
@@ -110,6 +124,36 @@ def finite_volume_decision(
         "common_positive_R": common_r.tolist(),
         "full_correlator_test": correlator_test,
         "full_correlator_pass": correlator_pass,
+        "smaller_volume_accepted": accepted,
+    }
+
+
+def finite_volume_decision(
+    anchor_path: Path,
+    anchor: dict[str, object],
+    check_path: Path,
+    check: dict[str, object],
+) -> dict[str, object]:
+    """Apply all preregistered ``Ns=96`` anchor acceptance criteria."""
+    comparison = finite_volume_comparison(
+        anchor_path, anchor, check_path, check
+    )
+    accepted = bool(comparison["smaller_volume_accepted"])
+    return {
+        "anchor_Ns": comparison["smaller_Ns"],
+        "check_Ns": comparison["larger_Ns"],
+        "anchor_68_percent_lower_Ns_over_xi_2nd": comparison[
+            "smaller_68_percent_lower_Ns_over_xi_2nd"
+        ],
+        "volume_ratio_pass": comparison["volume_ratio_pass"],
+        "xi_2nd_difference_z": comparison["xi_2nd_difference_z"],
+        "xi_2nd_relative_difference": comparison[
+            "xi_2nd_relative_difference"
+        ],
+        "xi_2nd_consistency_pass": comparison["xi_2nd_consistency_pass"],
+        "common_positive_R": comparison["common_positive_R"],
+        "full_correlator_test": comparison["full_correlator_test"],
+        "full_correlator_pass": comparison["full_correlator_pass"],
         "anchor_accepted": accepted,
         "required_additional_ensemble": (
             None

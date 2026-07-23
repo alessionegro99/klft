@@ -2,14 +2,18 @@
 set -euo pipefail
 
 if [[ "$#" -ne 1 ]]; then
-    echo "usage: $0 smoke|production" >&2
+    echo "usage: $0 smoke|production|diagnostics|analysis|summary|plots" >&2
     exit 2
 fi
 case "$1" in
     smoke) script=submit_smoke.slurm ;;
     production) script=submit_production.slurm ;;
+    diagnostics) script=submit_diagnostics.slurm ;;
+    analysis) script=submit_analysis.slurm ;;
+    summary) script=submit_summary.slurm ;;
+    plots) script=submit_plots.slurm ;;
     *)
-        echo "usage: $0 smoke|production" >&2
+        echo "usage: $0 smoke|production|diagnostics|analysis|summary|plots" >&2
         exit 2
         ;;
 esac
