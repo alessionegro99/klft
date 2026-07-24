@@ -33,3 +33,25 @@ Both stages are dependency-free. The production array has eight tasks with no
 concurrency cap and requests one typed Pascal GPU per task. The timing gate
 stops before production if the measured projection exceeds two hours for one
 chain or 12 total P100 GPU-hours. Raw histories remain on qbig.
+
+After production has completed, run the statistical stages explicitly and
+inspect each one before starting the next:
+
+```bash
+qbig/queue_stage.sh diagnostics
+qbig/queue_stage.sh analysis
+qbig/queue_stage.sh summary
+qbig/queue_stage.sh plots
+```
+
+These stages also have no scheduler dependencies. Diagnostics and full
+analysis operate on the raw histories on qbig. They use separate-chain MSER-5
+cuts, Sokal-window autocorrelations in sweep units, whole-history blocking
+plateaus for every primary and secondary observable, and a 20,000-sample
+hierarchical bootstrap. Synchronize only compact products, first with a dry
+run:
+
+```bash
+qbig/sync_compact.sh --dry-run
+qbig/sync_compact.sh
+```

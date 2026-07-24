@@ -94,6 +94,12 @@ class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
         production = (qbig / "submit_production.slurm").read_text(
             encoding="utf-8"
         )
+        diagnostics = (qbig / "submit_diagnostics.slurm").read_text(
+            encoding="utf-8"
+        )
+        analysis = (qbig / "submit_analysis.slurm").read_text(
+            encoding="utf-8"
+        )
         self.assertNotIn("--dependency", queue)
         self.assertNotIn("afterok", queue)
         self.assertIn("#SBATCH --array=0-7\n", production)
@@ -104,6 +110,12 @@ class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
             self.assertIn('build="${remote_root}/build/klft"', script)
         self.assertIn("maximum <= 2.0 && total <= 12.0", timing)
         self.assertIn("timing gate did not pass", production)
+        for script in (diagnostics, analysis):
+            self.assertNotIn("--dependency", script)
+            self.assertIn("#SBATCH --array=0-1\n", script)
+        self.assertIn("blocking_error_plateau", (
+            ROOT / "scripts" / "step3_analysis.py"
+        ).read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
