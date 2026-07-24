@@ -325,6 +325,12 @@ diagnostics, revised constant-coupling scaling fit, and four single-page PDFs
 are documented in
 [`analysis/step3_fv160/`](analysis/step3_fv160/README.md).
 
+The corrected constant-coupling repeats at `(Nt,beta,Ns)=(3,5.4,176)` and
+`(4,7.2,256)` satisfy the target volume ratios, expose significant
+full-correlator finite-volume effects in the pilot sizes, and update the
+preliminary scaling fit. Compact results and five single-page PDFs are in
+[`analysis/step3_corrected_volumes/`](analysis/step3_corrected_volumes/README.md).
+
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in
 [`analysis/dirichlet_thesis/`](analysis/dirichlet_thesis/README.md).

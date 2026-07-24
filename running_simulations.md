@@ -2,12 +2,11 @@
 
 ## Step-3 corrected constant-coupling volumes
 
-- Status: timing job `274307` completed with exit code zero. Dependency-free
-  production array `274308_[0-7]` was submitted on 2026-07-23 and all eight
-  tasks started together at 15:38:45 on `lnode13`. At the 2:05 check all
-  tasks remained `RUNNING`, each with one distinct scheduler-assigned P100
-  (`CUDA_VISIBLE_DEVICES=0,...,7`), and every task reported
-  `Dependency=(null)`.
+- Status: completed, analyzed, plotted, and compact products synchronized.
+  Timing job `274307`, production array `274308_[0-7]`, diagnostics array
+  `282238_[0-1]`, analysis array `282240_[0-1]`, summary job `282242`, and
+  plotting job `282243` all completed with exit code zero. Every stage was
+  submitted explicitly with `Dependency=(null)`.
 - Purpose: replace the pilot constant-coupling `Nt=3,4` points with spatial
   sizes satisfying the measured target `Ns/xi_2nd` near 10 before extending
   the line to `Nt=6`
@@ -41,6 +40,30 @@
   physical/stored extents, seeds, and cadences; output is growing in every run.
   All live `C_G(0)` values are one, profile steps are multiples of five, and
   disabled Wilson/Polyakov files are absent.
+- Completed production validation: all eight post-run count, `C_G(0)`, profile
+  cadence, metadata, and disabled-output checks passed. The `Nt=3` tasks ran
+  for 15:13--16:13 and the `Nt=4` tasks for 55:09--56:03.
+- Analysis: every chain uses an independently selected 500-sweep MSER-5 cut.
+  At `Nt=3`, the shared whole-history blocking plateau is 80/120/160 sweeps;
+  160-sweep blocks leave 121 complete blocks per chain. At `Nt=4`, the plateau
+  is 160/240/320 sweeps; 320-sweep blocks leave 60 blocks per chain. The final
+  seeded hierarchical bootstrap kept the preregistered 20000 samples.
+- Results: `xi_2nd=16.855(534)` and `Ns/xi_2nd=10.442(334)` at `Nt=3`;
+  `xi_2nd=24.383(1.126)` and `Ns/xi_2nd=10.499(496)` at `Nt=4`. Both 68%
+  lower volume-ratio bounds exceed eight. `xi_exp` is null at both points
+  because no correlated periodic-`K0` fit passes every gate.
+- Volume comparison: pilot versus corrected full-correlator tests give
+  `chi2/dof=146.32/72`, `p=5.44e-7` at `Nt=3` and
+  `chi2/dof=311.13/96`, `p=1.59e-24` at `Nt=4`; the pilot volumes are rejected
+  for full-correlator work. The corrected scaling fit gives
+  `q0=7.356(448)`, `c=-5.160(1.076)`, and `p=0.882`.
+- Compact output: remote and local `analysis/step3_corrected_volumes/` (about
+  3 MB). Dry-run and compact-only synchronization completed on 2026-07-24;
+  raw histories were not synchronized. Analysis workflow commit `bda1a32`.
+- Bootstrap decision for subsequent new analyses: use 1000 resamples by
+  default; increase only a final calculation whose fit-success gate or
+  interval is numerically borderline. Existing 20000-sample results remain
+  unchanged.
 - KLFT: reuse the sole verified P100 build at
   `/qbigwork2/negro/dirichlet/build/klft`, commit
   `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256

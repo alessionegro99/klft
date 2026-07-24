@@ -75,7 +75,9 @@ The measured plane is:
 | 3.6 | 2 | 128 | 9.561(301) | -- |
 | 3.6 | 2 | 160 | 9.529(486) | -- |
 | 5.4 | 3 | 144 | 16.581(631) | -- |
+| 5.4 | 3 | 176 | 16.855(534) | -- |
 | 7.2 | 4 | 192 | 25.177(1.044) | -- |
+| 7.2 | 4 | 256 | 24.383(1.126) | -- |
 
 At fixed `Nt=2`, beta 3.0 and 3.6 bracket `xi/a` near five. At fixed beta
 2.1, `xi_2nd/Nt` falls sharply from 10.622(215) at the exact-PCM endpoint to
@@ -103,6 +105,40 @@ optional `(Nt,beta)=(6,10.8)` point now passes the preregistered finite-volume
 and preliminary-scaling gates but has not been submitted. Compact results and
 single-page 16:9 LaTeX PDFs are documented in `analysis/step3_fv160/`; raw
 histories remain on qbig.
+
+## Step-3 corrected constant-coupling volumes
+
+The corrected `(Nt,beta,Ns)=(3,5.4,176),(4,7.2,256)` campaign used four
+independent 20000-sweep hot-start chains per ensemble with the same one/five
+measurement cadences. Production array `274308_[0-7]`, diagnostics array
+`282238_[0-1]`, analysis array `282240_[0-1]`, summary job `282242`, and plot
+job `282243` all completed with exit code zero and no Slurm dependency.
+
+Independent MSER-5 cuts are 500 sweeps throughout. At `Nt=3`, every primary
+and secondary observable shares the 80/120/160-sweep blocking-error plateau;
+160-sweep blocks leave 121 complete blocks per chain. At `Nt=4`, the common
+plateau is 160/240/320 sweeps and 320-sweep blocks leave 60 blocks per chain.
+The maximum monitored autocorrelation times are 22.05 and 53.44 sweeps,
+respectively, so both selected blocks exceed twice the autocorrelation scale.
+The largest split-history/between-chain discrepancies are 2.85/2.26 standard
+deviations at `Nt=3` and 2.86/2.56 at `Nt=4`.
+
+A seeded 20000-sample hierarchical bootstrap gives
+`xi_2nd=16.855(534)`, `Ns/xi_2nd=10.442(334)` at `Nt=3` and
+`xi_2nd=24.383(1.126)`, `Ns/xi_2nd=10.499(496)` at `Nt=4`. The 68% lower
+volume-ratio bounds are 10.120 and 10.055. No exponential fit passes all
+correlated periodic-`K0`, range-stability, bootstrap-refit, and blocking
+plateau gates, so both `xi_exp` values are null.
+
+Although the pilot and corrected `xi_2nd` values differ by only 0.332 and
+0.517 combined standard deviations, their full correlators are incompatible:
+`chi2/dof=146.32/72`, `p=5.44e-7` at `Nt=3` and
+`chi2/dof=311.13/96`, `p=1.59e-24` at `Nt=4`. The pilot volumes are therefore
+not suitable for full-correlator conclusions. With the corrected points,
+`xi_2nd/Nt=4.780(151),5.618(178),6.096(282)` for `Nt=2,3,4`. The preliminary
+fit `q(Nt)=q0+c/Nt` gives `q0=7.356(448)`, `c=-5.160(1.076)`, and `p=0.882`.
+Compact products and five one-page 16:9 PDFs are in
+`analysis/step3_corrected_volumes/`; raw histories remain on qbig.
 
 ## qbig environment
 
