@@ -17,6 +17,7 @@ namespace klft {
 struct GaugeObservableParams {
   size_t measurement_interval;
   size_t dirichlet_suite_measurement_interval;
+  size_t boundary_wilson_measurement_interval;
   bool measure_plaquette;
   bool measure_plaquette_spatial;
   bool measure_plaquette_temporal;
@@ -50,6 +51,7 @@ struct GaugeObservableParams {
   std::vector<size_t> measurement_steps;
   std::vector<size_t> dirichlet_holonomy_measurement_steps;
   std::vector<size_t> dirichlet_suite_measurement_steps;
+  std::vector<size_t> boundary_wilson_measurement_steps;
   std::vector<real_t> measurement_acceptance_rates;
   std::vector<real_t> measurement_times;
 
@@ -97,6 +99,7 @@ struct GaugeObservableParams {
 
   GaugeObservableParams()
       : measurement_interval(0), dirichlet_suite_measurement_interval(0),
+        boundary_wilson_measurement_interval(0),
         measure_plaquette(false),
         measure_plaquette_spatial(false), measure_plaquette_temporal(false),
         measure_wilson_loop_temporal(false), measure_wilson_loop_mu_nu(false),
@@ -133,7 +136,6 @@ anyDirichletMeasurementEnabled(const GaugeObservableParams &params) {
 inline bool
 anyDirichletSuiteMeasurementEnabled(const GaugeObservableParams &params) {
   return params.measure_dirichlet_plaquette_profiles ||
-         params.measure_boundary_wilson_loops ||
          params.measure_dirichlet_bulk_polyakov;
 }
 
@@ -159,6 +161,13 @@ void measureGaugeObservables(
   const bool measure_dirichlet_suite =
       anyDirichletSuiteMeasurementEnabled(params) &&
       step % dirichlet_suite_interval == 0;
+  const size_t boundary_wilson_interval =
+      params.boundary_wilson_measurement_interval == 0
+          ? dirichlet_suite_interval
+          : params.boundary_wilson_measurement_interval;
+  const bool measure_boundary_wilson =
+      params.measure_boundary_wilson_loops &&
+      step % boundary_wilson_interval == 0;
 
   if (anyPlaquetteMeasurementEnabled(params)) {
     const auto plaquettes = GaugePlaquettes<rank, Nc>(g_in);
@@ -251,11 +260,12 @@ void measureGaugeObservables(
         params.dirichlet_plaquette_profile_measurements.push_back(
             MeasureDirichletPlaquetteProfiles<2>(g_in));
       }
-      if (measure_dirichlet_suite && params.measure_boundary_wilson_loops) {
+      if (measure_boundary_wilson) {
         params.boundary_wilson_loop_measurements.push_back(
             MeasureBoundaryWilsonLoops<2>(
                 g_in, params.measure_boundary_wilson_all_heights,
                 params.boundary_wilson_max_r));
+        params.boundary_wilson_measurement_steps.push_back(step);
       }
       if (measure_dirichlet_suite && params.measure_dirichlet_bulk_polyakov) {
         params.dirichlet_bulk_polyakov_measurements.push_back(
@@ -697,7 +707,7 @@ inline bool flushBoundaryWilsonLoops(std::ofstream &file,
                                      const GaugeObservableParams &params,
                                      const bool HEADER = true) {
   if (!file.is_open() || !params.measure_boundary_wilson_loops ||
-      params.dirichlet_suite_measurement_steps.size() !=
+      params.boundary_wilson_measurement_steps.size() !=
           params.boundary_wilson_loop_measurements.size()) {
     printf("Error: invalid boundary Wilson-loop output state\n");
     return false;
@@ -706,10 +716,10 @@ inline bool flushBoundaryWilsonLoops(std::ofstream &file,
     file << "# step R H W_b\n";
   }
   file << std::setprecision(12);
-  for (size_t i = 0; i < params.dirichlet_suite_measurement_steps.size();
+  for (size_t i = 0; i < params.boundary_wilson_measurement_steps.size();
        ++i) {
     for (const auto &loop : params.boundary_wilson_loop_measurements[i].loops) {
-      file << params.dirichlet_suite_measurement_steps[i] << " " << loop[0]
+      file << params.boundary_wilson_measurement_steps[i] << " " << loop[0]
            << " " << loop[1] << " " << loop[2] << "\n";
     }
   }
@@ -783,6 +793,7 @@ inline void clearAllGaugeObservables(GaugeObservableParams &params) {
   params.measurement_steps.clear();
   params.dirichlet_holonomy_measurement_steps.clear();
   params.dirichlet_suite_measurement_steps.clear();
+  params.boundary_wilson_measurement_steps.clear();
   params.measurement_acceptance_rates.clear();
   params.measurement_times.clear();
 
@@ -882,7 +893,7 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
         params.dirichlet_plaquette_profile_filename);
   }
   if (params.measure_boundary_wilson_loops &&
-      !params.dirichlet_suite_measurement_steps.empty()) {
+      !params.boundary_wilson_measurement_steps.empty()) {
     can_open_all &=
         canOpenObservableOutputFile(params.boundary_wilson_loop_filename);
   }
@@ -989,7 +1000,7 @@ inline bool appendLatestGaugeObservables(const GaugeObservableParams &params) {
         file, params.dirichlet_plaquette_profile_filename);
   }
   if (params.measure_boundary_wilson_loops &&
-      !params.dirichlet_suite_measurement_steps.empty()) {
+      !params.boundary_wilson_measurement_steps.empty()) {
     std::ofstream file(params.boundary_wilson_loop_filename, std::ios::app);
     ok &= flushBoundaryWilsonLoops(
         file, params, fileNeedsHeader(params.boundary_wilson_loop_filename));

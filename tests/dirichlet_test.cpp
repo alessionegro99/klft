@@ -595,8 +595,10 @@ void check_observable_cadence() {
   GaugeObservableParams split;
   split.measurement_interval = 1;
   split.dirichlet_suite_measurement_interval = 5;
+  split.boundary_wilson_measurement_interval = 10;
   split.measure_dirichlet_holonomy = true;
   split.measure_dirichlet_plaquette_profiles = true;
+  split.measure_boundary_wilson_loops = true;
   for (size_t step = 1; step <= 10; ++step) {
     measureGaugeObservables<3, 2>(gauge, update_params, split, step, 0.0,
                                   0.0, rng);
@@ -611,6 +613,10 @@ void check_observable_cadence() {
         "Dirichlet suite cadence records only steps 5 and 10");
   check(split.dirichlet_plaquette_profile_measurements.size() == 2,
         "Dirichlet suite cadence produces two profiles");
+  check(split.boundary_wilson_measurement_steps ==
+            std::vector<size_t>{10} &&
+        split.boundary_wilson_loop_measurements.size() == 1,
+        "boundary Wilson cadence is independent of the profile cadence");
 
   GaugeObservableParams inherited;
   inherited.measurement_interval = 2;
@@ -643,6 +649,12 @@ void check_observable_interval_parser() {
             parsed.dirichlet_suite_measurement_interval == 6,
         "parser accepts an integer-multiple suite interval");
 
+  write_input("  dirichlet_suite_measurement_interval: 6\n"
+              "  boundary_wilson_measurement_interval: 8\n");
+  check(parseInputFile(filename, parsed) &&
+            parsed.boundary_wilson_measurement_interval == 8,
+        "parser accepts an independent boundary-Wilson interval");
+
   write_input("");
   check(parseInputFile(filename, parsed) &&
             parsed.dirichlet_suite_measurement_interval == 0,
@@ -651,6 +663,9 @@ void check_observable_interval_parser() {
   write_input("  dirichlet_suite_measurement_interval: 5\n");
   check(!parseInputFile(filename, parsed),
         "parser rejects a suite interval not divisible by the base interval");
+  write_input("  boundary_wilson_measurement_interval: 7\n");
+  check(!parseInputFile(filename, parsed),
+        "parser rejects a boundary interval not divisible by the base interval");
   std::remove(filename.c_str());
 }
 

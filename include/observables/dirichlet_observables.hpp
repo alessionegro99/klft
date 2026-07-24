@@ -353,24 +353,77 @@ BoundaryWilsonLoopMeasurement MeasureBoundaryWilsonLoops(
   const auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                         gauge.field);
   const real_t volume = static_cast<real_t>(nx) * static_cast<real_t>(ny);
-  BoundaryWilsonLoopMeasurement result;
-  result.loops.reserve(heights.size() * static_cast<size_t>(max_r + 1));
-  for (const index_t height : heights) {
-    for (index_t separation = 0; separation <= max_r; ++separation) {
-      real_t sum = 0.0;
-      for (index_t x = 0; x < nx; ++x) {
-        for (index_t y = 0; y < ny; ++y) {
-          for (index_t direction = 0; direction < 2; ++direction) {
-            const SUN<Nc> loop =
-                dirichlet_observable_detail::boundary_wilson_at<Nc>(
-                    host, x, y, direction, separation, height, dimensions);
-            sum += trace(loop).real() / static_cast<real_t>(Nc);
+  std::vector<real_t> sums(
+      heights.size() * static_cast<size_t>(max_r + 1), 0.0);
+
+  // For a fixed origin, direction, and height, extend the lower and upper
+  // spatial transporters by one link when R increases. This evaluates all
+  // rectangles in O(R_max), instead of rebuilding each perimeter in
+  // O(R_max^2). The temporal transporters are short (at most Nt links).
+  for (index_t x = 0; x < nx; ++x) {
+    for (index_t y = 0; y < ny; ++y) {
+      for (index_t direction = 0; direction < 2; ++direction) {
+        for (size_t height_index = 0; height_index < heights.size();
+             ++height_index) {
+          const index_t height = heights[height_index];
+          SUN<Nc> left_vertical = identitySUN<Nc>();
+          for (index_t h = 0; h < height; ++h) {
+            left_vertical *= host(x, y, h, temporal_direction<3>());
+          }
+
+          SUN<Nc> lower = identitySUN<Nc>();
+          SUN<Nc> upper_reverse = identitySUN<Nc>();
+          for (index_t separation = 0; separation <= max_r; ++separation) {
+            IndexArray<3> endpoint{x, y, 0};
+            endpoint[direction] = dirichlet_observable_detail::wrap_spatial(
+                endpoint[direction] + separation,
+                dimensions[direction]);
+            SUN<Nc> right_vertical = identitySUN<Nc>();
+            for (index_t h = 0; h < height; ++h) {
+              endpoint[temporal_direction<3>()] = h;
+              right_vertical *=
+                  host(endpoint[0], endpoint[1], endpoint[2],
+                       temporal_direction<3>());
+            }
+            const SUN<Nc> loop = lower * right_vertical * upper_reverse *
+                                 conj(left_vertical);
+            sums[height_index * static_cast<size_t>(max_r + 1) +
+                 static_cast<size_t>(separation)] +=
+                trace(loop).real() / static_cast<real_t>(Nc);
+
+            if (separation == max_r) {
+              continue;
+            }
+            IndexArray<3> lower_link{x, y, 0};
+            lower_link[direction] =
+                dirichlet_observable_detail::wrap_spatial(
+                lower_link[direction] + separation,
+                dimensions[direction]);
+            lower *= host(lower_link[0], lower_link[1], lower_link[2],
+                          direction);
+            auto upper_link = lower_link;
+            upper_link[temporal_direction<3>()] = height;
+            upper_reverse =
+                conj(host(upper_link[0], upper_link[1], upper_link[2],
+                          direction)) *
+                upper_reverse;
           }
         }
       }
+    }
+  }
+
+  BoundaryWilsonLoopMeasurement result;
+  result.loops.reserve(heights.size() * static_cast<size_t>(max_r + 1));
+  for (size_t height_index = 0; height_index < heights.size();
+       ++height_index) {
+    const index_t height = heights[height_index];
+    for (index_t separation = 0; separation <= max_r; ++separation) {
       result.loops.push_back(Kokkos::Array<real_t, 3>{
           static_cast<real_t>(separation), static_cast<real_t>(height),
-          sum / (2.0 * volume)});
+          sums[height_index * static_cast<size_t>(max_r + 1) +
+               static_cast<size_t>(separation)] /
+              (2.0 * volume)});
     }
   }
   return result;
