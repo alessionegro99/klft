@@ -25,3 +25,11 @@ if(KLFT_NDIM STREQUAL "3" AND KLFT_NC STREQUAL "2")
   endif()
 
 endif()
+
+if(KLFT_NDIM STREQUAL "4" AND KLFT_NC STREQUAL "3")
+  add_executable(orbifold_test orbifold_test.cpp)
+  target_link_libraries(orbifold_test PRIVATE klft)
+  add_test(NAME orbifold_deterministic COMMAND orbifold_test)
+  set_tests_properties(orbifold_deterministic PROPERTIES
+    LABELS "orbifold;fast")
+endif()
