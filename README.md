@@ -1,131 +1,111 @@
-# klft
+# KLFT
 
-A library for lattice field theory simulation accelerated using Kokkos
+KLFT is a C++17 lattice-gauge simulation library built on
+[Kokkos](https://kokkos.org/) with YAML-configured Metropolis and heatbath
+drivers. The spacetime dimension and gauge group are selected at configure
+time; lattice parameters, updates, measurements, and output files are selected
+at run time.
 
-## Temporal Dirichlet slabs
+## Quick start
 
-Temporal Dirichlet mode currently targets a three-dimensional SU(2) pure
-Wilson build. For physical slab thickness `Nt`, set the stored temporal extent
-to `L2: Nt + 1` and enable `temporal_dirichlet: true` in the heatbath or
-Metropolis section. Spatial links in directions 0 and 1 at stored slices 0 and
-`Nt` are fixed to the identity; every direction-2 link remains dynamical.
-
-KLFT retains its periodic neighbor tables. The direction-2 link based at
-`t=Nt` belongs to an exactly factorized wrapping PCM and is excluded from the
-physical holonomy. The physical product is
-`G(x)=U_2(x,0)...U_2(x,Nt-1)`. Dedicated Dirichlet measurements provide the
-normalized `(1/2) Re Tr[G(x)G(y)^dagger]` correlator, slice plaquettes, and
-boundary-anchored Wilson loops. Existing aggregate plaquette measurements
-still include the factorized wrapping sector.
-
-Use `configuration_output` to save a versioned restart and
-`start: "restart"` with `configuration_input` to restore it. Restart loading
-validates the fixed links and fails instead of repairing an invalid boundary.
-The default `temporal_dirichlet: false` path is unchanged.
-
-# Installation
-
-use git to clone the repository
+KLFT requires CMake 3.21 or newer, a C++17 compiler, and Git. Kokkos and
+yaml-cpp are submodules.
 
 ```bash
-git clone https://github.com/aniketsen/klft.git /path/to/klft
-cd /path/to/klft
+git clone --recurse-submodules https://github.com/alessionegro99/klft.git
+cd klft
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DKLFT_NDIM=4 -DKLFT_NC=3 -DKokkos_ENABLE_OPENMP=ON
+cmake --build build -j
+ctest --test-dir build --output-on-failure
 ```
 
-setup `kokkos` and `yaml-cpp` 
+For an existing clone, initialize dependencies with:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-build the library
+Choose the Kokkos backend and architecture for the target machine; see the
+[Kokkos CMake options](https://kokkos.org/kokkos-core-wiki/get-started/configuration-guide.html).
+The checked-in presets target specific Zen 3, P100, or A100 machines, so inspect
+`CMakePresets.json` before using one.
 
-```bash
-mkdir /path/to/build
-cd /path/to/build
+## Compile-time configuration
 
-cmake [Kokkos options] /path/to/klft
+One build directory represents one theory. Use separate build directories for
+different dimensions, groups, or backends.
 
-make -j<number of threads>
-```
+| CMake option | Values | Default |
+| --- | --- | --- |
+| `KLFT_NDIM` | `2`, `3`, or `4` spacetime dimensions | `4` |
+| `KLFT_NC` | `1` = U(1), `2` = SU(2), `3` = SU(3) | `3` |
+| `BUILD_TESTING` | register deterministic CTest checks | `ON` |
+| `KLFT_ENABLE_STATISTICAL_TESTS` | register the slow 3D SU(2) Dirichlet integration check | `OFF` |
 
-### Kokkos options
-
-The most important Kokkos options are:
-
-`-DKokkos_ENABLE_CUDA=ON` to enable CUDA support
-
-`-DKokkos_ENABLE_OPENMP=ON` to enable OpenMP support
-
-`-DKokkos_ARCH_<arch>=ON` to enable a specific architecture (e.g. `-DKokkos_ARCH_AMPERE80=ON` for NVIDIA A100 gpus)
-
-see the [Kokkos documentation](https://kokkos.org/kokkos-core-wiki/get-started/configuration-guide.html#cmake-keywords) for more options
-
-### KLFT options
-
-KLFT is configured in the Bonn style: the dimension and gauge group are chosen at compile time.
-
-`-DKLFT_NDIM=2|3|4` chooses the lattice dimension
-
-`-DKLFT_NC=1|2|3` chooses the gauge group:
-- `1` = `U(1)`
-- `2` = `SU(2)`
-- `3` = `SU(3)`
-
-Example:
-
-```bash
-cmake -DKokkos_ENABLE_CUDA=ON -DKLFT_NDIM=4 -DKLFT_NC=3 /path/to/klft
-```
-
-## Code layout
-
-The public headers are now grouped by role under `include/`:
-
-- `include/core/` for shared types, compiled-theory settings, and indexing helpers
-- `include/groups/` for gauge-group storage and algebra
-- `include/fields/` for Kokkos-backed lattice field wrappers
-- `include/updates/` for Metropolis and heatbath/overrelaxation kernels
-- `include/observables/` for plaquettes, Wilson loops, Retrace(U), and nested Wilson actions
-- `include/params/` for runtime parameter structs
-- `include/io/` for YAML parsing and driver/sample-input helpers
-
-# Usage
-
-## Metropolis
-
-```bash
-binaries/metropolis
-  -f <file_name> --filename <file_name>
-     Name of the input file.
-     Default: input.yaml
-  -h, --help
-     Prints this message.
-     Hint: use --kokkos-help to see command line options provided by Kokkos.
-```
-
-Running `binaries/metropolis` with no arguments writes a sample `input.yaml`
-and exits.
-
-Observable files are written incrementally and use space-separated columns.
-The plaquette file written by `metropolis` starts with `step`, ends with
-`acceptance_rate time`, and contains the selected plaquette columns described
-below.
-Wilson-loop multihit measurements in this executable use Metropolis local-link
-updates for the averaged links.
-
-`start` accepts `"cold"` (all links equal the identity) or `"hot"` (random
-group matrices generated from `seed`). Omitting it preserves the cold-start
+Direction `KLFT_NDIM - 1` is Euclidean time. Periodic boundaries are the
 default.
 
-### SU(2) partitionings
+## Run a simulation
 
-An SU(2) build can restrict every link to a finite linear or Fibonacci
-partition. The implementation follows the point sets and nearest-neighbor
-Metropolis update of [Hartung et al., EPJC 82 (2022)
-237](https://arxiv.org/abs/2201.09625). Because neighbor degrees can vary, it
-uses the full Metropolis--Hastings proposal ratio of [Hastings, Biometrika 57
-(1970) 97](https://doi.org/10.1093/biomet/57.1.97).
+The two drivers use the same command line:
+
+```text
+-f FILE, --filename FILE   read FILE instead of input.yaml
+-h, --help                 show KLFT options
+--kokkos-help              show Kokkos options
+```
+
+Run a driver without arguments in an empty run directory to generate the
+complete input file for that driver and compiled theory. The generator never
+overwrites an existing `input.yaml`.
+
+```bash
+mkdir run-metropolis
+cd run-metropolis
+../build/binaries/metropolis
+../build/binaries/metropolis -f input.yaml
+```
+
+Use `heatbath` in place of `metropolis` for heatbath updates with
+`nOverrelax` overrelaxation sweeps. Heatbath currently supports `epsilon1` but
+rejects nonzero `epsilon2`; finite SU(2) partitionings are Metropolis-only.
+
+The generated YAML is the authoritative list of run-time keys. In both
+drivers, `start` is `cold`, `hot`, or `restart`. A restart requires
+`configuration_input`; set `configuration_output` to save the final field.
+Restart files record their format and compiled theory and are validated when
+loaded.
+
+## Measurements and gradient flow
+
+`GaugeObservableParams` controls incremental, space-separated output for:
+
+- plaquettes averaged over all, spatial-spatial, or spatial-temporal planes;
+- temporal and arbitrary-plane Wilson loops, with optional multihit;
+- Polyakov loops, correlators, and zero/minimum-momentum susceptibilities;
+- normalized `Re Tr(U) / Nc` and `Re Tr(U^2) / Nc`;
+- nested Wilson actions and the specialized Dirichlet observables below.
+
+Each split plaquette is normalized by its own number of planes. Metropolis
+multihit uses local Metropolis link updates; heatbath multihit uses heatbath
+plus the configured overrelaxation updates.
+
+The susceptibility output contains raw-loop `G_0 = |A(0)|^2` and `G_pmin`, the
+average of `|A(p_min)|^2` over spatial directions. At analysis time,
+`U4 = <G_0^2> / <G_0>^2` and
+`xi = sqrt(<G_0> / <G_pmin> - 1) / (2 sin(pi/L))`. Raw loops are used here
+because a multihit estimator would bias the diagonal self-term.
+
+`GradientFlowParams` enables third-order Runge--Kutta Wilson flow at requested
+`t/a^2` values, with clover energy, Wilson-loop, and optional `t0` output.
+
+## Specialized modes
+
+### Finite SU(2) partitionings
+
+An SU(2) Metropolis build can restrict links to an included linear or Fibonacci
+point set:
 
 ```yaml
 PartitioningParams:
@@ -133,14 +113,14 @@ PartitioningParams:
   table_file: "partitionings/fibonacci_N88.yaml"
 ```
 
-`nHits` remains the number of nearest-neighbor proposals per link; the paper
-uses `nHits: 10`. `delta` is ignored in partition mode. Partition mode requires
-`epsilon1: 0`, `epsilon2: 0`, `wilson_loop_multihit: 1`, and
-`polyakov_loop_multihit: 1`. It is rejected by non-SU(2) builds and by the
-heatbath driver. Cold starts use the table point nearest the identity; hot
-starts sample table points according to their integration weights.
+The update follows the point sets and nearest-neighbor proposals of
+[Hartung et al., EPJC 82 (2022) 237](https://arxiv.org/abs/2201.09625) and
+includes the [Metropolis--Hastings](https://doi.org/10.1093/biomet/57.1.97)
+degree ratio. `nHits` is the number of nearest-neighbor proposals per link;
+`delta` is ignored. Partition mode requires `epsilon1: 0`, `epsilon2: 0`, and
+both multihit counts equal to one.
 
-Generate the deterministic tables with NumPy and SciPy through `uv`:
+Generate and test tables with the locked Python environment:
 
 ```bash
 uv run python tools/generate_partitioning.py linear 3 partitionings/linear_m3.yaml
@@ -148,205 +128,53 @@ uv run python tools/generate_partitioning.py fibonacci 88 partitionings/fibonacc
 uv run python tools/test_generate_partitioning.py
 ```
 
-Linear tables use the analytic weight `(sqrt(2)/M)^3` and a sign-aware unit
-transfer graph. Fibonacci tables use uniform weights and convex-hull edges,
-which are the spherical Delaunay neighbors. `--weights FILE` overrides the
-default weights with a one-column text or `.npy` file. Files use JSON syntax,
-which is valid YAML, and are validated again when loaded by KLFT.
+### Temporal Dirichlet slabs
 
-Set `measure_retrace_U2: true` and `RetraceU2_filename` to write the normalized
-observable `Re Tr(U^2) / Nc`. For a benchmark with plaquettes measured every
-sweep, report update and autocorrelation-adjusted sampling rates with:
+Temporal Dirichlet mode is restricted to 3D SU(2) pure Wilson builds. For
+physical slab thickness `Nt`, store `L2: Nt + 1` sites and set
+`temporal_dirichlet: true`. Spatial links in directions 0 and 1 at stored
+slices 0 and `Nt` are fixed to the identity; direction-2 links remain
+dynamical.
+
+The periodic neighbor table is unchanged. The wrapping link based at `t=Nt`
+is an exactly factorized PCM sector and is excluded from the physical
+holonomy:
+
+```text
+G(x) = U_2(x,0) ... U_2(x,Nt-1).
+```
+
+Use the dedicated Dirichlet holonomy, plaquette-profile, boundary-Wilson-loop,
+and bulk-Polyakov measurements. Periodic Polyakov observables are rejected in
+this mode; the aggregate plaquette still includes the factorized wrapping
+sector. Restart loading validates the fixed boundaries and fails rather than
+repairing an invalid field.
+
+## Analysis helpers
+
+The scripts in `analysis/` summarize the incremental output. Inspect their
+arguments with:
 
 ```bash
-uv run python analysis/partition_benchmark.py plaquette.out \
-  --volume 4096 --dimensions 4 --hits 10 --thermalization 1000
+uv run python analysis/plaquette_stats.py --help
+uv run python analysis/polyakov_stats.py --help
+uv run python analysis/wtemp_stats.py --help
+uv run python analysis/partition_benchmark.py --help
 ```
 
-### Example input.yaml
+The first three require an explicit thermalization cut and block size; choose
+blocks longer than the measured autocorrelation scale. The partition benchmark
+uses the automatic-window autocorrelation estimate of
+[Wolff, CPC 156 (2004) 143](https://arxiv.org/abs/hep-lat/0306017).
 
-```yaml
-# input.yaml
-MetropolisParams:
-  L0: 8
-  L1: 8
-  L2: 8
-  L3: 8
-  nHits: 10
-  nSweep: 1000
-  seed: 32091
-  start: "cold"
-  beta: 2.0
-  delta: 0.1
-  epsilon1: 0.0
-  epsilon2: 0.0
+## Repository layout
 
-PartitioningParams:
-  enabled: false
-  table_file: "partitionings/fibonacci_N88.yaml"
+- `include/`: public fields, groups, updates, observables, parameters, and I/O
+- `lib/`: compiled Metropolis and heatbath implementations
+- `binaries/`: simulation drivers and deterministic gradient-flow check
+- `tests/`: configuration-dependent deterministic and statistical checks
+- `analysis/`: Python post-processing helpers
+- `partitionings/`: checked finite SU(2) point sets
+- `thirdparty/`: Kokkos and yaml-cpp submodules
 
-GaugeObservableParams:
-  measurement_interval: 10
-  measure_plaquette: true
-  measure_plaquette_spatial: false
-  measure_plaquette_temporal: false
-  measure_wilson_loop_temporal: true
-  measure_wilson_loop_mu_nu: true
-  measure_polyakov_loop: true
-  measure_polyakov_correlator: true
-  measure_polyakov_susceptibility: true
-  measure_retrace_U: false
-  measure_retrace_U2: false
-  wilson_loop_multihit: 1
-  polyakov_loop_multihit: 1
-  polyakov_correlator_max_r: 4
-  measure_nested_wilson_action: false
-  nested_child_offset: [0, 0, 0, 0]
-  W_temp_L_T_pairs:
-    - [2, 2]
-    - [3, 3]
-    - [4, 4]
-  W_mu_nu_pairs:
-    - [0, 1]
-    - [0, 2]
-    - [0, 3]
-  W_Lmu_Lnu_pairs:
-    - [2, 2]
-    - [3, 3]
-    - [4, 3]
-  plaquette_filename: "plaquette.out"
-  W_temp_filename: "w_temp.out"
-  W_mu_nu_filename: "w_mu_nu.out"
-  polyakov_loop_filename: "polyakov_loop.out"
-  polyakov_correlator_filename: "polyakov_correlator.out"
-  polyakov_susceptibility_filename: "polyakov_susceptibility.out"
-  RetraceU_filename: "retrace_u.out"
-  RetraceU2_filename: "retrace_u2.out"
-  nested_wilson_action_filename: "nested_wilson_action.out"
-  write_to_file: true
-
-GradientFlowParams:
-  enabled: false
-  integrator: "rk3"
-  dt: 0.01
-  t_values: [0.0, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0]
-  measure_energy_clover: true
-  measure_wilson_loop_temporal: false
-  measure_wilson_loop_mu_nu: false
-  extract_t0: false
-  t0_target: 0.3
-  obs_filename: "gradient_flow_obs.dat"
-  W_temp_filename: "gradient_flow_wtemp.dat"
-  W_mu_nu_filename: "gradient_flow_w_mu_nu.dat"
-  t0_filename: "gradient_flow_t0.dat"
-```
-
-## Heatbath
-
-```bash
-binaries/heatbath
-  -f <file_name> --filename <file_name>
-     Name of the input file.
-     Default: input.yaml
-  -h, --help
-     Prints this message.
-     Hint: use --kokkos-help to see command line options provided by Kokkos.
-```
-
-Running `binaries/heatbath` with no arguments writes a sample `input.yaml` and exits.
-
-Observable files are written incrementally and use space-separated columns.
-The plaquette file written by `heatbath` starts with `step`, ends with `time`,
-and contains the selected plaquette columns. `measure_plaquette` writes the
-existing average over all planes; `measure_plaquette_spatial` and
-`measure_plaquette_temporal` independently add averages over spatial-spatial
-and spatial-temporal planes. Each component is normalized by its own number of
-planes, as in `yang-mills-Bonn`. KLFT uses direction `KLFT_NDIM - 1` as time.
-Wilson-loop multihit measurements in this executable use heatbath plus
-`nOverrelax` local overrelaxation updates for the averaged links.
-Polyakov-loop multihit in this executable uses the same local heatbath plus
-overrelaxation updates on every temporal link of the loop.
-Polyakov-loop correlators are written as `# step R real imaginary`; `R = 0`
-and `R = 1` always use raw Polyakov loops, while only `R >= 2` uses the
-configured Polyakov multihit.
-The Polyakov-susceptibility file is written as `# step G_0 G_pmin`, from the
-spatial Fourier amplitude
-`A(p) = 1/[(KLFT_NDIM-1)V_s] sum_x exp(i p.x) P(x)` used by the Bonn-lverzich
-comparison: `G_0 = |A(0)|^2`, while `G_pmin` is
-`|A(p_min)|^2`, averaged over the spatial directions, with
-`p_min = 2*pi/L`. These use raw Polyakov loops, independent of
-`polyakov_loop_multihit` (a multihit estimator would bias the diagonal
-self-term of `|A(p)|^2`). The finite-size-scaling analysis builds the Binder
-cumulant `U4 = <G_0^2>/<G_0>^2` and the second-moment correlation length
-`xi = sqrt(<G_0>/<G_pmin> - 1) / (2*sin(pi/L))`.
-
-### Example heatbath input.yaml
-
-```yaml
-# input.yaml
-HeatbathParams:
-  L0: 8
-  L1: 8
-  L2: 8
-  L3: 8
-  nSweep: 1000
-  nOverrelax: 5
-  seed: 32091
-  start: "cold"
-  beta: 2.0
-  epsilon1: 0.0    # supported by heatbath/overrelaxation
-  epsilon2: 0.0    # currently not supported by heatbath/overrelaxation
-
-GaugeObservableParams:
-  measurement_interval: 10
-  measure_plaquette: true
-  measure_plaquette_spatial: false
-  measure_plaquette_temporal: false
-  measure_wilson_loop_temporal: true
-  measure_wilson_loop_mu_nu: true
-  measure_polyakov_loop: true
-  measure_polyakov_correlator: true
-  measure_polyakov_susceptibility: true
-  measure_retrace_U: false
-  wilson_loop_multihit: 1  # H+OR Wilson-loop multihit; 1 disables averaged-link sampling
-  polyakov_loop_multihit: 1  # H+OR Polyakov-loop multihit; 1 disables averaged-link sampling
-  polyakov_correlator_max_r: 4  # must not exceed half the smallest spatial extent
-  measure_nested_wilson_action: false
-  nested_child_offset: [0, 0, 0, 0]
-  W_temp_L_T_pairs:
-    - [2, 2]
-    - [3, 3]
-    - [4, 4]
-  W_mu_nu_pairs:
-    - [0, 1]
-    - [0, 2]
-    - [0, 3]
-  W_Lmu_Lnu_pairs:
-    - [2, 2]
-    - [3, 3]
-    - [4, 3]
-  plaquette_filename: "plaquette.out"
-  W_temp_filename: "w_temp.out"
-  W_mu_nu_filename: "w_mu_nu.out"
-  polyakov_loop_filename: "polyakov_loop.out"
-  polyakov_correlator_filename: "polyakov_correlator.out"
-  polyakov_susceptibility_filename: "polyakov_susceptibility.out"
-  RetraceU_filename: "retrace_u.out"
-  nested_wilson_action_filename: "nested_wilson_action.out"
-  write_to_file: true
-
-GradientFlowParams:
-  enabled: false
-  integrator: "rk3"
-  dt: 0.01
-  t_values: [0.0, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0]
-  measure_energy_clover: true
-  measure_wilson_loop_temporal: false
-  measure_wilson_loop_mu_nu: false
-  extract_t0: false
-  t0_target: 0.3
-  obs_filename: "gradient_flow_obs.dat"
-  W_temp_filename: "gradient_flow_wtemp.dat"
-  W_mu_nu_filename: "gradient_flow_w_mu_nu.dat"
-  t0_filename: "gradient_flow_t0.dat"
-```
+KLFT is distributed under the terms in `LICENSE`.
