@@ -46,6 +46,89 @@ different dimensions, groups, or backends.
 Direction `KLFT_NDIM - 1` is Euclidean time. Periodic boundaries are the
 default.
 
+## Orbifold action and HMC
+
+The `orbifold` branch adds a header-only, periodic 3+1D SU(3) orbifold action
+and Hybrid Monte Carlo implementation in `include/orbifold.hpp`. It requires
+`KLFT_NDIM=4` and `KLFT_NC=3`. The generic `metropolis` and `heatbath` drivers
+below still simulate compact lattice gauge theory; they do not run the
+orbifold action.
+
+At every site, `OrbifoldField` stores three unconstrained complex 3-by-3
+spatial links `Z_j` and one compact temporal link `U_0` in SU(3). With
+`c = a_s / (2 g^2)`, the implementation is
+[Eq. (12) of Bergner et al.](https://arxiv.org/abs/2401.12045):
+
+```text
+S = sum_n {
+      (1/a_t) sum_j ||U_0(n) Z_j(n+t) - Z_j(n) U_0(n+j)||_F^2
+    + a_t [
+        g^2/(2 a_s^3) ||D(n)||_F^2
+      + 2 g^2/a_s^3 sum_(j<k) ||F_jk(n)||_F^2
+      + m^2 g^2/(2 a_s) sum_j ||Z_j(n) Z_j(n)^dagger - c I||_F^2
+      + m_U1^2 c sum_j |det(Z_j(n)) c^(-3/2) - 1|^2
+    ] }
+
+D(n) = sum_j [Z_j(n) Z_j(n)^dagger
+              - Z_j(n-j)^dagger Z_j(n-j)]
+
+F_jk(n) = Z_j(n) Z_k(n+j) - Z_k(n) Z_j(n+k).
+```
+
+`OrbifoldActionParams` maps `spatial_spacing` to `a_s`,
+`temporal_spacing` to `a_t`, `coupling` to `g`, `scalar_mass` to `m`, and
+`u1_mass` to `m_U1`. The constrained constant vacuum is
+`Z_j = sqrt(c) I`. The code evaluates the temporal term in the
+norm-equivalent transported form
+`||U_0(n) Z_j(n+t) U_0(n+j)^dagger - Z_j(n)||_F^2`.
+
+The temporal links remain dynamical, so the periodic Polyakov holonomy is not
+removed by imposing `U_0 = I`. Gauge fixing is not implemented.
+
+`OrbifoldHMC` uses analytic forces, independent Gaussian momenta for the real
+and imaginary components of `Z_j`, eight Gaussian algebra components for each
+`U_0`, reversible leapfrog integration, and Metropolis acceptance. This is the
+standard HMC construction of
+[Duane et al., Phys. Lett. B 195 (1987) 216](https://doi.org/10.1016/0370-2693(87)91197-X).
+Temporal-link updates use a scaling-and-squaring matrix exponential following
+[Higham, SIAM J. Matrix Anal. Appl. 26 (2005) 1179](https://doi.org/10.1137/04061101X)
+without projection inside a trajectory.
+
+A minimal update inside an initialized Kokkos scope is:
+
+```cpp
+using namespace klft;
+
+OrbifoldActionParams action;
+action.spatial_spacing = 1.0;
+action.temporal_spacing = 0.25;
+action.coupling = 1.0;
+action.scalar_mass = 0.1;
+action.u1_mass = 0.1;
+
+const IndexArray<4> dimensions{4, 4, 4, 8};
+const auto vacuum = identitySUN<3>() *
+                    std::sqrt(action.vacuum_scale_squared());
+OrbifoldField field(dimensions, vacuum);
+
+OrbifoldHMCParams integrator;
+integrator.step_size = 0.01;
+integrator.steps = 10;
+OrbifoldHMC hmc(field, action, integrator, 1234);
+const OrbifoldHMCResult result = hmc.step();
+```
+
+Run the deterministic action, force, gauge-invariance, holonomy, reversibility,
+and SU(3)-preservation checks with:
+
+```bash
+ctest --test-dir build -R orbifold_deterministic --output-on-failure
+```
+
+There is not yet an orbifold YAML driver, checkpoint format, production
+observable pipeline, gauge fixing, static-potential analysis, or Sommer-scale
+analysis.
+
 ## Run a simulation
 
 The two drivers use the same command line:
