@@ -9,8 +9,8 @@ remain complete.
 
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 
-- Status: staged; smoke, timing, and all four production chains completed and
-  passed validation. Diagnostics are not yet submitted.
+- Status: staged; smoke, timing, production, and diagnostics completed and
+  passed validation. Mass analysis job `289402` is active on `lnode11`.
 - Purpose: resolve the sole failed tuning group `(c,Nt)=(0.5,3)`, whose
   round-1 local log-linear interpolation has `p=0.01350`.
 - Ensemble: `(physical Nt,stored L2,Ns,beta)=(3,4,80,4.290)`. Beta 4.290 is
@@ -54,6 +54,14 @@ remain complete.
   `289397_[0-3]` completed on `lnode13` in 1:24--1:26 with exit code zero.
   The manifest-wide validator passed all four chains, including hashes,
   metadata, exact 8000-sweep measurement counts, and `run_complete.txt`.
+- Diagnostics job `289401` completed on `lnode11` in 21 seconds with exit code
+  zero. Every chain uses a 500-sweep cut; the common 20/30/40-sweep plateau
+  selects 40-sweep blocks and leaves 187 complete blocks per chain. The
+  largest monitored autocorrelation time is 4.421 sweeps, the maximum
+  split-history discrepancy is 2.245 standard deviations, and the maximum
+  between-chain discrepancy is 2.704 standard deviations. All primary and
+  secondary plateau gates pass. Dependency-free mass analysis job `289402`
+  was then submitted with 1000 replicas and bootstrap seed `20261001`.
 
 ## Fixed-beta/Nt production extension
 
