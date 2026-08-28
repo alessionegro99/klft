@@ -9,7 +9,8 @@ remain complete.
 
 ## Nonperturbative fixed-`m_G Nt` final checks
 
-- Status: locally generated and validated; not yet staged or submitted.
+- Status: staged byte-for-byte; smoke and timing passed; production array
+  `289406_[0-11]` is active on `lnode13--14`.
 - Purpose: increase the selected `Nt=3,Ns=80,beta=4.40` statistics, directly
   check the two low-volume `c=1,Nt=4` tuning inputs, and repeat the borderline
   `c=2,Nt=4` mass analyses with 10000 joint-bootstrap replicas before the
@@ -37,6 +38,15 @@ remain complete.
   `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/final_checks/`,
   `/qbigwork2/negro/dirichlet/analysis/mg_nt_fixed/final_checks/`, and
   `/qbigwork2/negro/dirichlet/logs/mgnt-final-*`.
+- Execution: at 12:08 CEST the user queue was empty, `lnode13--17` were
+  Slurm-idle, and direct checks found no GPU compute processes on all 40
+  P100s. Smoke job `289404` completed on `lnode13` in 12 seconds with exit
+  code zero and `gate PASS`. Timing job `289405` completed there in 13
+  seconds; 100 largest-volume sweeps took 1.69 seconds, projecting 0.375556
+  hours for the 80000-sweep chain and 1.80267 total P100 GPU-hours. Production
+  array `289406_[0-11]` started all tasks concurrently across `lnode13--14`.
+  Representative initial metadata and output from all three ensembles match
+  the manifest, including dimensions, beta, purpose, seed, and GPU assignment.
 
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 
