@@ -8,9 +8,11 @@ per chain, and 1000 finite mass replicas.
 
 The official initial tuning under `tuning/` passes seven of nine targets. The
 two failed `c=0.5` targets triggered the separate `extensions/round1/` points.
-Both extension analyses are synchronized and accepted. Round-1 tuning under
-`tuning_round1/` passes eight of nine targets; only `c=0.5,Nt=3` still fails
-the local log-linear gate.
+Both round-1 extension analyses are synchronized and accepted. The round-2
+point under `extensions/round2/` is also accepted, with
+`m_G Nt=0.5051264 +/- 0.0020453` and fit `p=0.8891`. Round-2 tuning under
+`tuning_round2/` passes all nine targets. Its `c=0.5,Nt=3` result is
+`beta_star=4.29462 [4.29213,4.29828]` with fit `p=0.1474`.
 
 Required statistical increases are tracked in
 [`preliminary_checklist.md`](preliminary_checklist.md).
@@ -33,7 +35,7 @@ set from the repository root with:
 MPLCONFIGDIR=/tmp/dirichlet-mpl \
 UV_CACHE_DIR=/tmp/dirichlet-uv-cache uv run python \
   scripts/mg_nt_fixed_plot.py \
-  --summary analysis/mg_nt_fixed/tuning_round1/tuning_summary.json \
+  --summary analysis/mg_nt_fixed/tuning_round2/tuning_summary.json \
   --analysis-root analysis/mg_nt_fixed \
   --output analysis/mg_nt_fixed/preliminary_plots \
   --preliminary

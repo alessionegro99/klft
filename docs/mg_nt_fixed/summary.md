@@ -20,7 +20,7 @@ programs use `data/mg_nt_fixed/`, `analysis/mg_nt_fixed/`, and the
 `mg_nt_fixed_` prefix. Fixed-`beta/Nt` results are allowed only as explicitly
 labelled prior information.
 
-## Status on 2026-07-27
+## Status on 2026-08-28
 
 The 25 pilot ensembles, all 100 chains, all diagnostics, and all 25 mass
 analyses are complete. Every pilot point has an accepted asymptotic mass, an
@@ -43,8 +43,17 @@ blocking gate with 1000 finite replicas.
 Round-1 tuning job `282508` then completed. It accepts `(c,Nt)=(0.5,4)` at
 `beta_star=5.58394 [5.57975,5.58790]`, but `(0.5,3)` still fails the local
 log-linear gate with `p=0.01350`. Eight of nine tunings now pass. No
-confirmation has been submitted; extrapolation and confirmation remain
-forbidden until the final group passes.
+confirmation was submitted at that stage.
+
+Round 2 adds `(Nt,Ns,beta)=(3,80,4.290)`. Its four 8000-sweep chains pass
+validation and diagnostics with 187 complete 40-sweep blocks per chain. Mass
+analysis job `289402` obtains `m_G Nt=0.5051264 +/- 0.0020453`; the selected
+`R=5--40` fit has recentered-bootstrap `p=0.8891`, a stable three-by-three
+window patch, and 1000 finite positive replicas. Tuning job `289403` then
+accepts all nine groups. The new `(c,Nt)=(0.5,3)` result is
+`beta_star=4.29462 [4.29213,4.29828]`, fit `p=0.1474`, and interpolation
+systematic `0.00513`. Confirmation remains unsubmitted pending the listed
+statistics, volume, and final-bootstrap checks.
 
 The local campaign provenance is:
 
@@ -201,6 +210,15 @@ extrapolation. For simulation placement only, the two-point log interpolation
 between beta 4.27 and 4.40 suggests beta approximately 4.290. This is not a
 reported tuned beta.
 
+## Round-2 tuning result
+
+The compact result is
+`analysis/mg_nt_fixed/tuning_round2/tuning_summary.json`. All nine groups
+pass. The only changed group selects beta `4.27,4.29,4.40` and gives
+`beta_star=4.29462 [4.29213,4.29828]`, fit `p=0.1474`, and interpolation
+systematic `0.00513`. Beta 4.40 remains selected, so its physical statistics
+must be increased before final tuning.
+
 ## Preliminary plots
 
 The current compact data produce 84 grid-free, single-page 16:9 PDFs under
@@ -298,10 +316,9 @@ results rather than final production measurements.
 - [ ] Increase independent Monte Carlo statistics at
   `Nt=3,Ns=80,beta=4.40`: its relative mass error is 3.14%, much larger than
   the approximately 0.4% errors at beta 4.20 and 4.27.
-- [ ] Add another target-bracketing `c=0.5,Nt=3` point before quoting a tuned
-  beta; the current local log-linear fit fails with `p=0.01350`. A candidate
-  near beta 4.290 follows from the bracketing pair and is only a placement
-  estimate.
+- [x] Add and analyze the target-bracketing `c=0.5,Nt=3` point at beta 4.290.
+  Round-2 tuning passes all nine groups; the resulting beta remains
+  preliminary until the remaining checks below pass.
 - [ ] Increase statistics for `Nt=4,Ns=96,beta=6.20` if it is used in a final
   result: 46 blocks per chain pass the hard floor but miss the target of 50.
 - [ ] Repeat or directly volume-check the bracket points with

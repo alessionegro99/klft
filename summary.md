@@ -10,10 +10,10 @@ provenance are in
 [`docs/beta_nt_fixed/summary.md`](docs/beta_nt_fixed/summary.md).
 
 The separate nonperturbative fixed-`m_G Nt` pilot completed all 100 chains and
-25 mass analyses. The required two-point extension is also fully analyzed;
-round-1 tuning now passes eight of nine groups, with only `c=0.5,Nt=3`
-failing the local log-linear gate. Its 84 grid-free pilot PDFs also expose
-low-volume bracket inputs that must be checked before final tuning. The
+25 mass analyses. Both extension rounds are fully analyzed, and round-2
+tuning passes all nine groups. Beta 4.40 remains selected and needs more
+physical statistics; two low-volume `c=1,Nt=4` bracket inputs and the
+borderline `c=2,Nt=4` fit also require final checks before confirmation. The
 canonical report is
 [`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
 

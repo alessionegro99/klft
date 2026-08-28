@@ -12,7 +12,8 @@ Current campaign status is documented separately. The
 [fixed `beta/Nt`](docs/beta_nt_fixed/summary.md) analysis has `p=1` continuum
 fits on the 1.8 and 2.0 lines, 64 comparison PDFs, and 30 per-ensemble
 first-stage PDFs; the 2.1 line remains incomplete. The separate
-[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has 84 PDFs. All are
+[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has 84 PDFs and its
+round-2 tuning passes all nine groups. All plots are
 grid-free and preliminary.
 
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
