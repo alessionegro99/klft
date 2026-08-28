@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from beta_nt_fixed.pilot_summary import finite_volume_comparison
@@ -12,6 +13,35 @@ from beta_nt_fixed.pilot_summary import finite_volume_comparison
 
 def _load(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def replacement_decision(
+    smaller: dict[str, object],
+    larger: dict[str, object],
+    comparison: dict[str, object],
+) -> dict[str, object]:
+    """Gate the larger volume using mass and xi, not unequal periodic images."""
+    mass_difference_z = abs(float(smaller["mass"]) - float(larger["mass"])) / math.hypot(
+        float(smaller["mass_error"]), float(larger["mass_error"])
+    )
+    mass_relative_difference = abs(
+        float(smaller["mass"]) - float(larger["mass"])
+    ) / float(larger["mass"])
+    mass_pass = mass_difference_z < 2.0 and mass_relative_difference < 0.05
+    larger_lower = float(larger["Ns_over_xi_2nd_68_percent_interval"][0])
+    return {
+        **comparison,
+        "raw_periodic_correlator_is_diagnostic_only": True,
+        "mass_difference_z": mass_difference_z,
+        "mass_relative_difference": mass_relative_difference,
+        "mass_consistency_pass": mass_pass,
+        "larger_68_percent_lower_Ns_over_xi_2nd": larger_lower,
+        "larger_volume_replacement_accepted": bool(
+            larger_lower >= 10.0
+            and comparison["xi_2nd_consistency_pass"]
+            and mass_pass
+        ),
+    }
 
 
 def summarize(pilot: Path, replacements: Path, output: Path) -> dict[str, object]:
@@ -28,17 +58,7 @@ def summarize(pilot: Path, replacements: Path, output: Path) -> dict[str, object
         old = _load(old_path)
         new = _load(new_path)
         comparison = finite_volume_comparison(old_path, old, new_path, new)
-        larger_lower = float(new["Ns_over_xi_2nd_68_percent_interval"][0])
-        accepted = bool(
-            larger_lower >= 10.0
-            and comparison["xi_2nd_consistency_pass"]
-            and comparison["full_correlator_pass"]
-        )
-        volumes[beta] = {
-            **comparison,
-            "larger_68_percent_lower_Ns_over_xi_2nd": larger_lower,
-            "larger_volume_replacement_accepted": accepted,
-        }
+        volumes[beta] = replacement_decision(old, new, comparison)
 
     summary = {
         "statistics_beta_4p40": {
