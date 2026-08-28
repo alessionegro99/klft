@@ -9,7 +9,8 @@ remain complete.
 
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 
-- Status: planned and committed locally; not yet staged or submitted.
+- Status: staged; smoke, timing, and all four production chains completed and
+  passed validation. Diagnostics are not yet submitted.
 - Purpose: resolve the sole failed tuning group `(c,Nt)=(0.5,3)`, whose
   round-1 local log-linear interpolation has `p=0.01350`.
 - Ensemble: `(physical Nt,stored L2,Ns,beta)=(3,4,80,4.290)`. Beta 4.290 is
@@ -45,6 +46,14 @@ remain complete.
 - Planned log prefixes: `mgnt-ext2-smoke`, `mgnt-ext2-timing`,
   `mgnt-ext2-prod`, `mgnt-ext2-diag`, `mgnt-ext2-analysis`, and
   `mgnt-ext2-tuning` below `/qbigwork2/negro/dirichlet/logs/`.
+- Execution: smoke job `289395` completed on `lnode13` in 12 seconds and wrote
+  `gate PASS`; its 25 summary, 1025 correlator, and 35 profile rows match the
+  immutable input. Timing job `289396` completed on `lnode13` in 13 seconds;
+  100 sweeps took 1.52 seconds, projecting 0.0337778 hours per chain and
+  0.135111 total P100 GPU-hours, so its gate passed. Production array
+  `289397_[0-3]` completed on `lnode13` in 1:24--1:26 with exit code zero.
+  The manifest-wide validator passed all four chains, including hashes,
+  metadata, exact 8000-sweep measurement counts, and `run_complete.txt`.
 
 ## Fixed-beta/Nt production extension
 
