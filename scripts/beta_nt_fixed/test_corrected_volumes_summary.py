@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic tests for the corrected-volume Step-3 summary."""
+"""Deterministic tests for the corrected fixed-beta/Nt volume summary."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ import unittest
 
 import numpy as np
 
-from step3_corrected_volumes_summary import summarize
+from beta_nt_fixed.corrected_volumes_summary import summarize
 
 
-class Step3CorrectedVolumesSummaryTest(unittest.TestCase):
+class BetaNtFixedCorrectedVolumesSummaryTest(unittest.TestCase):
     @staticmethod
     def _result(nt: int, ns: int, xi: float, purpose: str) -> dict[str, object]:
         error = 0.2
@@ -56,19 +56,19 @@ class Step3CorrectedVolumesSummaryTest(unittest.TestCase):
     def test_summary_uses_corrected_points_for_scaling(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            step3 = root / "step3"
-            fv160 = root / "fv160"
+            pilot = root / "pilot"
+            finite_volume = root / "finite_volume"
             corrected = root / "corrected"
             self._write_result(
-                step3 / "Nt_2_Ns_128_b_3p6",
+                pilot / "Nt_2_Ns_128_b_3p6",
                 self._result(2, 128, 10.0, "anchor_finite_volume"),
             )
             self._write_result(
-                step3 / "Nt_3_Ns_144_b_5p4",
+                pilot / "Nt_3_Ns_144_b_5p4",
                 self._result(3, 144, 15.0, "constant_lambda_nt3"),
             )
             self._write_result(
-                step3 / "Nt_4_Ns_192_b_7p2",
+                pilot / "Nt_4_Ns_192_b_7p2",
                 self._result(4, 192, 20.0, "constant_lambda_nt4"),
             )
             self._write_result(
@@ -83,13 +83,13 @@ class Step3CorrectedVolumesSummaryTest(unittest.TestCase):
                     4, 256, 24.0, "constant_lambda_nt4_volume_corrected"
                 ),
             )
-            fv160.mkdir()
-            (fv160 / "finite_volume_summary.json").write_text(
+            finite_volume.mkdir()
+            (finite_volume / "finite_volume_summary.json").write_text(
                 json.dumps({"decision": {"finite_volume_gate_pass": True}}),
                 encoding="utf-8",
             )
 
-            result = summarize(step3, fv160, corrected, corrected)
+            result = summarize(pilot, finite_volume, corrected, corrected)
 
             fit = result["corrected_constant_lambda_scaling"][
                 "xi_2nd_over_Nt"

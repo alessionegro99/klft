@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Aggregate compact Step-3 results and apply campaign-level decisions."""
+"""Aggregate compact fixed-beta/Nt pilot results."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def load_results(root: Path) -> list[tuple[Path, dict[str, object]]]:
         raise ValueError(f"{root}: expected eight ensemble analyses, found {len(results)}")
     purposes = {str(result["purpose"]) for _, result in results}
     if len(purposes) != 8:
-        raise ValueError("Step-3 result purposes are not unique")
+        raise ValueError("pilot result purposes are not unique")
     return results
 
 
@@ -204,7 +204,7 @@ def continuum_scaling(
     ]
     line.sort(key=lambda result: int(result["physical_Nt"]))
     if len(line) != 3:
-        raise ValueError("constant-lambda line must contain Nt=2,3,4")
+        raise ValueError("fixed-beta/Nt line must contain Nt=2,3,4")
     nt = np.asarray([result["physical_Nt"] for result in line], dtype=np.float64)
     xi = np.asarray([result["xi_2nd"] for result in line], dtype=np.float64)
     xi_error = np.asarray(

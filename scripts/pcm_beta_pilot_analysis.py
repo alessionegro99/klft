@@ -219,15 +219,50 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
         out=correlator_correlation,
         where=denominator > 0.0,
     )
-    np.savez(
-        args.covariance_output,
-        R=separations,
-        C_G=correlator_mean,
-        covariance=correlator_covariance,
-        correlation=correlator_correlation,
-        fit_R=separations[1:],
-        fit_covariance=correlator_covariance[1:, 1:],
-    )
+    covariance_arrays = {
+        "R": separations,
+        "C_G": correlator_mean,
+        "covariance": correlator_covariance,
+        "correlation": correlator_correlation,
+        "fit_R": separations[1:],
+        "fit_covariance": correlator_covariance[1:, 1:],
+        "xi_2nd_bootstrap": samples[:, n_r],
+    }
+    fit_output: dict[str, object] = {}
+    if args.fit_k0:
+        # The shared fixed-beta/Nt implementation is needed because the
+        # statanalysis utility does not provide diagonal bootstrap refits plus
+        # a post-fit complete-covariance goodness-of-fit statistic.
+        from beta_nt_fixed.analysis import scan_k0_fits
+
+        fit = scan_k0_fits(
+            separations,
+            correlator_mean,
+            correlator_covariance,
+            samples[:, :n_r],
+            args.ns,
+        )
+        covariance_arrays.update(
+            {
+                "C_G_bootstrap": samples[:, :n_r],
+                "xi_exp_bootstrap": fit.xi_exp_bootstrap,
+                "mass_bootstrap": fit.mass_bootstrap,
+            }
+        )
+        fit_output = {
+            "K0_fit_method": {
+                "parameter_covariance": "diagonal",
+                "parameter_errors": "joint hierarchical bootstrap",
+                "goodness_of_fit_covariance": "complete",
+                "goodness_of_fit_p_value": "recentered joint bootstrap",
+            },
+            "xi_exp": fit.xi_exp,
+            "xi_exp_error": fit.xi_exp_error,
+            "mass": fit.mass,
+            "mass_error": fit.mass_error,
+            "K0_fit_scan": fit.entries,
+        }
+    np.savez(args.covariance_output, **covariance_arrays)
 
     conservative_criteria = bool(
         lower[n_r] >= args.minimum_xi
@@ -262,6 +297,7 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
         ],
         "mean_TrG": mean_tr_g,
         "mean_TrG_error": float(errors[n_r + 2]),
+        **fit_output,
         "selection_criteria": {
             "minimum_xi": args.minimum_xi,
             "minimum_Ns_over_xi": args.minimum_volume_ratio,
@@ -291,6 +327,14 @@ def main() -> None:
     parser.add_argument("--bootstrap-seed", type=int, default=20260720)
     parser.add_argument("--minimum-xi", type=float, default=5.0)
     parser.add_argument("--minimum-volume-ratio", type=float, default=8.0)
+    parser.add_argument(
+        "--fit-k0",
+        action="store_true",
+        help=(
+            "fit K0 with diagonal errors in every joint bootstrap replica, "
+            "then evaluate the complete-covariance goodness of fit"
+        ),
+    )
     parser.add_argument("--output", type=Path, default=Path("pcm_beta_analysis.json"))
     parser.add_argument(
         "--covariance-output", type=Path, default=Path("pcm_beta_covariance.npz")

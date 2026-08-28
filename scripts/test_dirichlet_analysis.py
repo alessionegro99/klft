@@ -37,6 +37,11 @@ class DirichletAnalysisTest(unittest.TestCase):
             np.testing.assert_array_equal(chain.steps, np.arange(3, 7))
             np.testing.assert_array_equal(chain.keys[:, 0], np.arange(3))
             self.assertEqual(chain.values.shape, (4, 3, 2))
+            frozen = load_keyed_chain(
+                path, (1,), (2, 3), discard=0, maximum_step=4
+            )
+            np.testing.assert_array_equal(frozen.steps, np.arange(1, 5))
+            self.assertEqual(frozen.values.shape, (4, 3, 2))
 
     def test_autocorrelation_and_blocking(self) -> None:
         rng = np.random.default_rng(12345)

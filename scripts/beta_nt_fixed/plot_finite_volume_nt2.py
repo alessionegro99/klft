@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot the corrected ``Nt=3,4`` Step-3 volume analyses."""
+"""Plot compact products from the fixed-beta/Nt ``Ns=160`` check."""
 
 from __future__ import annotations
 
@@ -15,11 +15,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = ROOT / "scripts"
 STATANALYSIS = ROOT / "statanalysis-Bonn"
 if not (STATANALYSIS / "plot_utils.py").is_file():
     raise FileNotFoundError("statanalysis-Bonn/plot_utils.py is required")
 sys.path.insert(0, str(STATANALYSIS))
+sys.path.insert(0, str(SCRIPTS))
 import plot_utils as pu  # noqa: E402
 
 from plot_thesis_results import FIGURE_SIZE, save_figure  # noqa: E402
@@ -29,18 +31,16 @@ pu.setup_mpl()
 
 
 def load_result(path: Path) -> dict[str, object]:
-    """Load one JSON result."""
+    """Load one compact ensemble result."""
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def plot_volume_correlators(
-    pilot: dict[str, object], corrected: dict[str, object], output: Path
+def plot_correlators(
+    results: list[dict[str, object]], output: Path
 ) -> None:
-    """Compare the full correlator before and after increasing ``Ns``."""
-    nt = int(corrected["physical_Nt"])
-    beta = float(corrected["beta"])
+    """Plot the three beta=3.6 correlators used in volume checks."""
     figure, axis = plt.subplots(figsize=FIGURE_SIZE)
-    for palette, result in enumerate((pilot, corrected), start=1):
+    for palette, result in enumerate(results, start=1):
         axis.errorbar(
             np.asarray(result["R"], dtype=np.float64),
             np.asarray(result["C_G"], dtype=np.float64),
@@ -53,22 +53,38 @@ def plot_volume_correlators(
         axis,
         xlabel=r"$R/a$",
         ylabel=r"$C_G(R)$",
-        title=rf"Volume comparison, $N_t={nt}$, $\beta={beta:g}$",
+        title=r"Finite-volume sequence, $N_t=2$, $\beta=3.6$",
         legend=True,
         grid=True,
     )
     save_figure(
-        figure,
-        output
-        / (
-            f"finite_volume_correlator_Nt_{nt}_Ns_"
-            f"{int(pilot['Ns'])}_{int(corrected['Ns'])}.pdf"
-        ),
+        figure, output / "finite_volume_correlator_Ns_96_128_160.pdf"
     )
 
 
+def plot_lengths(results: list[dict[str, object]], output: Path) -> None:
+    """Plot second-moment length versus spatial volume."""
+    ns = np.asarray([result["Ns"] for result in results], dtype=np.float64)
+    xi = np.asarray([result["xi_2nd"] for result in results], dtype=np.float64)
+    interval = np.asarray(
+        [result["xi_2nd_68_percent_interval"] for result in results],
+        dtype=np.float64,
+    )
+    error = np.vstack((xi - interval[:, 0], interval[:, 1] - xi))
+    figure, axis = plt.subplots(figsize=FIGURE_SIZE)
+    axis.errorbar(ns, xi, error, **pu.data(1, linestyle="-"))
+    pu.style_axes(
+        axis,
+        xlabel=r"$N_s$",
+        ylabel=r"$\xi_{\mathrm{2nd}}/a$",
+        title=r"Finite-volume sequence, $N_t=2$, $\beta=3.6$",
+        grid=True,
+    )
+    save_figure(figure, output / "finite_volume_xi_2nd.pdf")
+
+
 def plot_profile(result: dict[str, object], output: Path) -> None:
-    """Plot the spatial and temporal plaquette profile."""
+    """Plot the spatial and temporal plaquette profile at ``Ns=160``."""
     profile = result["plaquette_profile"]
     keys = np.asarray(profile["kind_t"], dtype=np.float64)
     mean = np.asarray(profile["mean"], dtype=np.float64)
@@ -90,26 +106,25 @@ def plot_profile(result: dict[str, object], output: Path) -> None:
         label=r"$P_t(t+1/2)$",
         **pu.data(2, linestyle="-"),
     )
-    nt = int(result["physical_Nt"])
-    ns = int(result["Ns"])
-    beta = float(result["beta"])
     pu.style_axes(
         axis,
         xlabel=r"$t/a$",
         ylabel=r"$\frac{1}{2}\,\mathrm{Re}\,\mathrm{Tr}\,U_p$",
-        title=rf"$N_t={nt},\ N_s={ns},\ \beta={beta:g}$",
+        title=r"$N_t=2,\ N_s=160,\ \beta=3.6$",
         legend=True,
         grid=True,
     )
     save_figure(
-        figure,
-        output / f"plaquette_profile_Nt_{nt}_Ns_{ns}.pdf",
+        figure, output / "plaquette_profile_Nt_2_Ns_160_b_3p6.pdf"
     )
 
 
-def plot_scaling(summary: dict[str, object], output: Path) -> None:
-    """Plot the corrected constant-coupling scaling fit."""
-    fit = summary["corrected_constant_lambda_scaling"]["xi_2nd_over_Nt"]
+def plot_revised_scaling(summary: dict[str, object], output: Path) -> None:
+    """Plot the volume-checked fixed-beta/Nt fit when available."""
+    scaling = summary["revised_constant_lambda_continuum_scaling"]
+    if scaling is None:
+        return
+    fit = scaling["xi_2nd_over_Nt"]
     nt = np.asarray(fit["Nt"], dtype=np.float64)
     inverse_nt = 1.0 / nt
     quantity = np.asarray(fit["q"], dtype=np.float64)
@@ -123,38 +138,32 @@ def plot_scaling(summary: dict[str, object], output: Path) -> None:
         axis,
         xlabel=r"$1/N_t$",
         ylabel=r"$\xi_{\mathrm{2nd}}/N_t$",
-        title=r"Constant $\lambda^2_{\rm tree}=20/9$, corrected volumes",
+        title=r"Fixed $\beta/N_t=1.8$ ($g_3^2L=20/9$), volume checked",
         grid=True,
     )
     save_figure(
-        figure, output / "constant_lambda_xi_2nd_over_Nt_corrected.pdf"
+        figure, output / "fixed_beta_over_nt_xi_2nd_over_Nt_fv_checked.pdf"
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--step3-results", type=Path, required=True)
-    parser.add_argument("--corrected-results", type=Path, required=True)
+    parser.add_argument("--pilot-results", type=Path, required=True)
+    parser.add_argument("--extension-results", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    pilot_paths = [
-        args.step3_results / "Nt_3_Ns_144_b_5p4" / "analysis.json",
-        args.step3_results / "Nt_4_Ns_192_b_7p2" / "analysis.json",
+    paths = [
+        args.pilot_results / "Nt_2_Ns_96_b_3p6" / "analysis.json",
+        args.pilot_results / "Nt_2_Ns_128_b_3p6" / "analysis.json",
+        args.extension_results / "Nt_2_Ns_160_b_3p6" / "analysis.json",
     ]
-    corrected_paths = [
-        args.corrected_results / "Nt_3_Ns_176_b_5p4" / "analysis.json",
-        args.corrected_results / "Nt_4_Ns_256_b_7p2" / "analysis.json",
-    ]
-    pilot = [load_result(path) for path in pilot_paths]
-    corrected = [load_result(path) for path in corrected_paths]
-    for old, new in zip(pilot, corrected, strict=True):
-        plot_volume_correlators(old, new, args.output)
-        plot_profile(new, args.output)
-    summary = load_result(
-        args.corrected_results / "corrected_volume_summary.json"
-    )
-    plot_scaling(summary, args.output)
+    results = [load_result(path) for path in paths]
+    summary = load_result(args.extension_results / "finite_volume_summary.json")
+    plot_correlators(results, args.output)
+    plot_lengths(results, args.output)
+    plot_profile(results[-1], args.output)
+    plot_revised_scaling(summary, args.output)
 
 
 if __name__ == "__main__":

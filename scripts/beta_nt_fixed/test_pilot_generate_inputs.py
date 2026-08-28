@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic tests for the immutable Step-3 grid generator."""
+"""Deterministic tests for the immutable fixed-beta/Nt pilot generator."""
 
 from __future__ import annotations
 
@@ -11,28 +11,51 @@ import tempfile
 import unittest
 
 
-ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = ROOT / "data" / "step3_scan" / "generate_inputs.py"
-SPEC = importlib.util.spec_from_file_location("step3_generate_inputs", MODULE_PATH)
+ROOT = Path(__file__).resolve().parents[2]
+MODULE_PATH = (
+    ROOT
+    / "data"
+    / "beta_nt_fixed"
+    / "comparison"
+    / "provenance"
+    / "legacy_pilot_inputs"
+    / "generate_inputs.py"
+)
+SPEC = importlib.util.spec_from_file_location("beta_nt_fixed_pilot_inputs", MODULE_PATH)
 if SPEC is None or SPEC.loader is None:
     raise ImportError(MODULE_PATH)
-step3 = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = step3
-SPEC.loader.exec_module(step3)
+pilot = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = pilot
+SPEC.loader.exec_module(pilot)
 
 
-class Step3GenerateInputsTest(unittest.TestCase):
+class BetaNtFixedPilotGenerateInputsTest(unittest.TestCase):
     def test_qbig_stage_submission_has_no_dependencies(self) -> None:
         submission = (
-            ROOT / "data" / "step3_scan" / "qbig" / "queue_all.sh"
+            ROOT
+            / "data"
+            / "beta_nt_fixed"
+            / "comparison"
+            / "provenance"
+            / "legacy_pilot_inputs"
+            / "qbig"
+            / "queue_all.sh"
         ).read_text(encoding="utf-8")
         self.assertNotIn("--dependency", submission)
         self.assertNotIn("afterok", submission)
+        self.assertIn("analysis) script=submit_analysis.slurm", submission)
         self.assertIn('printf \'%s\\t%s\\tnone\\n\'', submission)
 
     def test_qbig_analysis_uses_only_manifested_replicas(self) -> None:
         wrapper = (
-            ROOT / "data" / "step3_scan" / "qbig" / "analyze_step3_ensemble.sh"
+            ROOT
+            / "data"
+            / "beta_nt_fixed"
+            / "comparison"
+            / "provenance"
+            / "legacy_pilot_inputs"
+            / "qbig"
+            / "analyze_ensemble.sh"
         ).read_text(encoding="utf-8")
         self.assertIn("mapfile -t manifest_runs", wrapper)
         self.assertIn("--chain-directory", wrapper)
@@ -40,8 +63,8 @@ class Step3GenerateInputsTest(unittest.TestCase):
 
     def test_grid_geometry_cadence_and_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "step3"
-            step3.generate(output)
+            output = Path(directory) / "pilot"
+            pilot.generate(output)
             with (output / "manifest.tsv").open(
                 encoding="utf-8", newline=""
             ) as stream:
@@ -60,7 +83,7 @@ class Step3GenerateInputsTest(unittest.TestCase):
                 )
                 input_path = output / row["input"]
                 text = input_path.read_text(encoding="utf-8")
-                self.assertEqual(step3.sha256_text(text), row["input_sha256"])
+                self.assertEqual(pilot.sha256_text(text), row["input_sha256"])
                 self.assertIn("  measurement_interval: 1\n", text)
                 self.assertIn(
                     "  dirichlet_suite_measurement_interval: 5\n", text
@@ -81,11 +104,11 @@ class Step3GenerateInputsTest(unittest.TestCase):
 
     def test_generation_refuses_overwrites_without_partial_changes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "step3"
-            step3.generate(output)
+            output = Path(directory) / "pilot"
+            pilot.generate(output)
             original = (output / "manifest.tsv").read_bytes()
             with self.assertRaises(FileExistsError):
-                step3.generate(output)
+                pilot.generate(output)
             self.assertEqual((output / "manifest.tsv").read_bytes(), original)
 
 

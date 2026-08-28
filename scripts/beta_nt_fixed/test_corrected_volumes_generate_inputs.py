@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the corrected Step-3 constant-coupling volumes."""
+"""Tests for the corrected fixed-beta/Nt volumes."""
 
 from __future__ import annotations
 
@@ -11,12 +11,18 @@ import tempfile
 import unittest
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = (
-    ROOT / "data" / "step3_corrected_volumes" / "generate_inputs.py"
+    ROOT
+    / "data"
+    / "beta_nt_fixed"
+    / "beta_over_nt_1p8"
+    / "validation"
+    / "corrected_volumes_nt3_nt4"
+    / "generate_inputs.py"
 )
 SPEC = importlib.util.spec_from_file_location(
-    "step3_corrected_volume_inputs", MODULE_PATH
+    "beta_nt_fixed_corrected_volume_inputs", MODULE_PATH
 )
 if SPEC is None or SPEC.loader is None:
     raise ImportError(MODULE_PATH)
@@ -25,10 +31,10 @@ sys.modules[SPEC.name] = corrected
 SPEC.loader.exec_module(corrected)
 
 
-class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
+class BetaNtFixedCorrectedVolumesGenerateInputsTest(unittest.TestCase):
     def test_grid_cadence_hashes_and_unique_seeds(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "step3_corrected_volumes"
+            output = Path(directory) / "corrected_volumes_nt3_nt4"
             corrected.generate(output)
             with (output / "manifest.tsv").open(
                 encoding="utf-8", newline=""
@@ -62,7 +68,7 @@ class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
                 )
                 text = (output / row["input"]).read_text(encoding="utf-8")
                 self.assertEqual(
-                    corrected.step3.sha256_text(text), row["input_sha256"]
+                    corrected.pilot.sha256_text(text), row["input_sha256"]
                 )
                 self.assertIn("  nOverrelax: 5\n", text)
                 self.assertIn("  measure_boundary_wilson_loops: false\n", text)
@@ -80,7 +86,7 @@ class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
 
     def test_refuses_overwrite_before_partial_changes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "step3_corrected_volumes"
+            output = Path(directory) / "corrected_volumes_nt3_nt4"
             corrected.generate(output)
             original = (output / "manifest.tsv").read_bytes()
             with self.assertRaises(FileExistsError):
@@ -88,7 +94,15 @@ class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
             self.assertEqual((output / "manifest.tsv").read_bytes(), original)
 
     def test_qbig_scripts_are_uncapped_and_dependency_free(self) -> None:
-        qbig = ROOT / "data" / "step3_corrected_volumes" / "qbig"
+        qbig = (
+            ROOT
+            / "data"
+            / "beta_nt_fixed"
+            / "beta_over_nt_1p8"
+            / "validation"
+            / "corrected_volumes_nt3_nt4"
+            / "qbig"
+        )
         queue = (qbig / "queue_stage.sh").read_text(encoding="utf-8")
         timing = (qbig / "submit_timing.slurm").read_text(encoding="utf-8")
         production = (qbig / "submit_production.slurm").read_text(
@@ -114,7 +128,7 @@ class Step3CorrectedVolumesGenerateInputsTest(unittest.TestCase):
             self.assertNotIn("--dependency", script)
             self.assertIn("#SBATCH --array=0-1\n", script)
         self.assertIn("blocking_error_plateau", (
-            ROOT / "scripts" / "step3_analysis.py"
+            ROOT / "scripts" / "beta_nt_fixed" / "analysis.py"
         ).read_text(encoding="utf-8"))
 
 

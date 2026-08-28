@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot compact Step-3 products after raw-history analysis on qbig."""
+"""Plot compact fixed-beta/Nt pilot products after qbig analysis."""
 
 from __future__ import annotations
 
@@ -15,15 +15,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS = ROOT / "scripts"
+CAMPAIGN_SCRIPTS = Path(__file__).resolve().parent
 STATANALYSIS = ROOT / "statanalysis-Bonn"
 if not (STATANALYSIS / "plot_utils.py").is_file():
     raise FileNotFoundError("statanalysis-Bonn/plot_utils.py is required")
 sys.path.insert(0, str(STATANALYSIS))
+sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(CAMPAIGN_SCRIPTS))
 import plot_utils as pu  # noqa: E402
 
 from plot_thesis_results import FIGURE_SIZE, save_figure  # noqa: E402
-from step3_campaign_summary import load_results  # noqa: E402
+from pilot_summary import load_results  # noqa: E402
 
 
 pu.setup_mpl()
@@ -65,7 +69,7 @@ def plot_nt2_lengths(
         axis,
         xlabel=r"$\beta$",
         ylabel=r"$\xi_{\mathrm{2nd}}/a$",
-        title=r"Step-3 fixed-$N_t=2$ scan",
+        title=r"Fixed-$N_t=2$ pilot scan",
         legend=True,
         grid=True,
     )
@@ -105,7 +109,7 @@ def plot_fixed_beta(
     save_figure(figure, output / "fixed_beta_xi_2nd_over_Nt.pdf")
 
 
-def plot_constant_lambda(
+def plot_fixed_beta_over_nt(
     summary: dict[str, object], output: Path, key: str, filename: str
 ) -> None:
     """Plot one ``q0+c/Nt`` scaling fit."""
@@ -130,7 +134,7 @@ def plot_constant_lambda(
         axis,
         xlabel=r"$1/N_t$",
         ylabel=ylabel,
-        title=r"Constant $\lambda^2_{\rm tree}=20/9$",
+        title=r"Fixed $\beta/N_t=1.8$ ($g_3^2L=20/9$)",
         grid=True,
     )
     save_figure(figure, output / filename)
@@ -219,17 +223,17 @@ def main() -> None:
     )
     plot_nt2_lengths(results, args.output)
     plot_fixed_beta(results, args.output)
-    plot_constant_lambda(
+    plot_fixed_beta_over_nt(
         summary,
         args.output,
         "xi_2nd_over_Nt",
-        "constant_lambda_xi_2nd_over_Nt.pdf",
+        "fixed_beta_over_nt_xi_2nd_over_Nt.pdf",
     )
-    plot_constant_lambda(
+    plot_fixed_beta_over_nt(
         summary,
         args.output,
         "xi_exp_over_Nt",
-        "constant_lambda_xi_exp_over_Nt.pdf",
+        "fixed_beta_over_nt_xi_exp_over_Nt.pdf",
     )
     plot_anchor_comparison(results, args.output)
     plot_profiles(results, args.output)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic tests for Step-3 campaign-level comparisons."""
+"""Deterministic tests for fixed-beta/Nt pilot comparisons."""
 
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ import unittest
 
 import numpy as np
 
-from step3_campaign_summary import (
+from beta_nt_fixed.pilot_summary import (
     generalized_chi_square,
     weighted_scaling_fit,
     write_tables,
 )
 
 
-class Step3CampaignSummaryTest(unittest.TestCase):
+class BetaNtFixedPilotSummaryTest(unittest.TestCase):
     def test_tables_record_blocking_and_boundary_diagnostics(self) -> None:
         result = {
             "purpose": "test",

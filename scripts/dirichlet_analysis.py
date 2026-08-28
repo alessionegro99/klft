@@ -41,9 +41,14 @@ def load_keyed_chain(
     key_columns: Sequence[int],
     value_columns: Sequence[int],
     discard: int,
+    maximum_step: int | None = None,
 ) -> KeyedChain:
-    """Load a long table and validate its rectangular step/key structure."""
+    """Load and validate a table, optionally freezing it at one sweep."""
     raw = np.loadtxt(path, comments="#", ndmin=2, dtype=np.float64)
+    if maximum_step is not None:
+        if maximum_step <= 0:
+            raise ValueError("maximum_step must be positive")
+        raw = raw[raw[:, 0] <= maximum_step]
     if raw.size == 0:
         raise ValueError(f"{path}: empty measurement file")
     steps = np.unique(raw[:, 0])

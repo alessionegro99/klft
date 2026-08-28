@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic tests for the Step-3 ``Ns=160`` volume decision."""
+"""Deterministic tests for the fixed-beta/Nt ``Ns=160`` decision."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ import unittest
 
 import numpy as np
 
-from step3_fv160_summary import summarize
+from beta_nt_fixed.finite_volume_nt2_summary import summarize
 
 
-class Step3Fv160SummaryTest(unittest.TestCase):
+class BetaNtFixedFiniteVolumeNt2SummaryTest(unittest.TestCase):
     @staticmethod
     def _result(nt: int, ns: int, xi: float, purpose: str) -> dict[str, object]:
         return {
@@ -46,23 +46,23 @@ class Step3Fv160SummaryTest(unittest.TestCase):
     def test_summary_accepts_stable_ns128_volume(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            step3 = root / "step3"
+            pilot = root / "pilot"
             extension = root / "extension"
             output = root / "output"
             self._write_result(
-                step3 / "Nt_2_Ns_96_b_3p6",
+                pilot / "Nt_2_Ns_96_b_3p6",
                 self._result(2, 96, 10.0, "constant_lambda_anchor"),
             )
             ns128_path = self._write_result(
-                step3 / "Nt_2_Ns_128_b_3p6",
+                pilot / "Nt_2_Ns_128_b_3p6",
                 self._result(2, 128, 10.0, "anchor_finite_volume"),
             )
             self._write_result(
-                step3 / "Nt_3_Ns_144_b_5p4",
+                pilot / "Nt_3_Ns_144_b_5p4",
                 self._result(3, 144, 16.0, "constant_lambda_nt3"),
             )
             self._write_result(
-                step3 / "Nt_4_Ns_192_b_7p2",
+                pilot / "Nt_4_Ns_192_b_7p2",
                 self._result(4, 192, 24.0, "constant_lambda_nt4"),
             )
             ns160_path = self._write_result(
@@ -80,7 +80,7 @@ class Step3Fv160SummaryTest(unittest.TestCase):
                     C_G_covariance=covariance,
                 )
 
-            result = summarize(step3, extension, output)
+            result = summarize(pilot, extension, output)
 
             comparison = result[
                 "finite_volume_comparison_Ns128_vs_Ns160"

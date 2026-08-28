@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize the Step-3 ``Ns=128`` versus ``Ns=160`` volume check."""
+"""Summarize the fixed-beta/Nt ``Ns=128`` versus ``Ns=160`` check."""
 
 from __future__ import annotations
 
@@ -8,11 +8,16 @@ import csv
 import json
 import math
 from pathlib import Path
+import sys
 from typing import Sequence
 
 import numpy as np
 
-from step3_campaign_summary import (
+
+SCRIPTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPTS))
+
+from beta_nt_fixed.pilot_summary import (
     finite_volume_comparison,
     weighted_scaling_fit,
 )
@@ -24,20 +29,20 @@ def load_result(path: Path) -> dict[str, object]:
 
 
 def revised_scaling(
-    step3_results: Path, nt2_result: dict[str, object]
+    pilot_results: Path, nt2_result: dict[str, object]
 ) -> dict[str, object]:
-    """Fit the constant-coupling line using the volume-checked ``Nt=2`` point."""
+    """Fit the fixed-beta/Nt line using the checked ``Nt=2`` point."""
     line = [
         nt2_result,
         load_result(
-            step3_results / "Nt_3_Ns_144_b_5p4" / "analysis.json"
+            pilot_results / "Nt_3_Ns_144_b_5p4" / "analysis.json"
         ),
         load_result(
-            step3_results / "Nt_4_Ns_192_b_7p2" / "analysis.json"
+            pilot_results / "Nt_4_Ns_192_b_7p2" / "analysis.json"
         ),
     ]
     if any(result["xi_2nd_error"] is None for result in line):
-        raise ValueError("constant-lambda scaling needs resolved xi_2nd errors")
+        raise ValueError("fixed-beta/Nt scaling needs resolved xi_2nd errors")
     nt = np.asarray(
         [result["physical_Nt"] for result in line], dtype=np.float64
     )
@@ -133,11 +138,11 @@ def _write_ensemble_table(
 
 
 def summarize(
-    step3_results: Path, extension_results: Path, output: Path
+    pilot_results: Path, extension_results: Path, output: Path
 ) -> dict[str, object]:
     """Write compact volume-check products and return the decision record."""
-    ns96_path = step3_results / "Nt_2_Ns_96_b_3p6" / "analysis.json"
-    ns128_path = step3_results / "Nt_2_Ns_128_b_3p6" / "analysis.json"
+    ns96_path = pilot_results / "Nt_2_Ns_96_b_3p6" / "analysis.json"
+    ns128_path = pilot_results / "Nt_2_Ns_128_b_3p6" / "analysis.json"
     ns160_path = extension_results / "Nt_2_Ns_160_b_3p6" / "analysis.json"
     ns96 = load_result(ns96_path)
     ns128 = load_result(ns128_path)
@@ -146,7 +151,7 @@ def summarize(
         ns128_path, ns128, ns160_path, ns160
     )
     accepted = bool(comparison["smaller_volume_accepted"])
-    scaling = revised_scaling(step3_results, ns128) if accepted else None
+    scaling = revised_scaling(pilot_results, ns128) if accepted else None
     target_size = 16 * math.ceil(10.0 * float(ns128["xi_2nd"]) / 16.0)
     selected_size = max(int(ns128["Ns"]), target_size) if accepted else None
     scaling_pass = bool(
@@ -186,12 +191,12 @@ def summarize(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--step3-results", type=Path, required=True)
+    parser.add_argument("--pilot-results", type=Path, required=True)
     parser.add_argument("--extension-results", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     summary = summarize(
-        args.step3_results, args.extension_results, args.output
+        args.pilot_results, args.extension_results, args.output
     )
     print(json.dumps(summary, indent=2, allow_nan=False))
 

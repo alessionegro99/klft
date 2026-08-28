@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Chain-aware analysis for the Step-3 Dirichlet-slab pilot.
+"""Chain-aware analysis for the fixed-beta/Nt Dirichlet-slab campaign.
 
 MSER-5 and the Sokal-window autocorrelation estimator follow the references in
 ``thermalization_diagnostics.py``. Independent chains are blocked separately;
 the seeded two-level resampling follows the references in
-``pcm_beta_pilot_analysis.py``. The correlated periodic K0 form is Eq. (4.14)
-of M. Nebbia, *Effects of Dirichlet Boundary Conditions in Yang-Mills
-Theories* (2024/2025 MSc thesis). No raw histories are concatenated.
+``pcm_beta_pilot_analysis.py``. Periodic K0 fits use Eq. (4.14) of M. Nebbia,
+*Effects of Dirichlet Boundary Conditions in Yang-Mills Theories* (2024/2025
+MSc thesis). Fit parameters and bootstrap refits use diagonal covariance,
+while the complete covariance enters a recentered-bootstrap goodness-of-fit
+statistic. No raw histories are concatenated.
 """
 
 from __future__ import annotations
@@ -16,11 +18,16 @@ from dataclasses import dataclass, replace
 import json
 import math
 from pathlib import Path
+import sys
 from typing import Callable, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy import linalg, optimize, special, stats
+from scipy import linalg, optimize, special
+
+
+SCRIPTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPTS))
 
 from dirichlet_analysis import (
     FloatArray,
@@ -40,7 +47,24 @@ MINIMUM_BLOCKS = 30
 TARGET_BLOCKS = 50
 PLATEAU_RELATIVE_TOLERANCE = 0.05
 PLATEAU_SIGMA_TOLERANCE = 2.0
-BLOCKING_CANDIDATE_UNITS = (1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64)
+BLOCKING_CANDIDATE_UNITS = (
+    1,
+    2,
+    3,
+    4,
+    6,
+    8,
+    12,
+    16,
+    24,
+    32,
+    40,
+    48,
+    56,
+    64,
+)
+RANGE_SCAN_BOOTSTRAP_SAMPLES = 1000
+ANALYSIS_BOOTSTRAP_SAMPLES = 1000
 
 
 @dataclass(frozen=True)
@@ -51,6 +75,7 @@ class ChainData:
     summary: KeyedChain
     correlator: KeyedChain
     profile: KeyedChain
+    boundary: KeyedChain | None
 
 
 @dataclass(frozen=True)
@@ -62,22 +87,61 @@ class PostCutChain:
     summary: FloatArray
     correlator: FloatArray
     profile: FloatArray
+    boundary: FloatArray | None
     tau: dict[str, object]
     block_length_sweeps: int
     primary_blocks: FloatArray
     profile_blocks: FloatArray
+    boundary_blocks: FloatArray | None
 
 
-def load_chain(directory: Path) -> ChainData:
-    """Load one chain and require the Step-3 1/5 measurement grids."""
+@dataclass(frozen=True)
+class K0ScanResult:
+    """Selected periodic-K0 fit and its complete bootstrap replicas."""
+
+    xi_exp: float | None
+    xi_exp_error: float | None
+    mass: float | None
+    mass_error: float | None
+    xi_exp_bootstrap: FloatArray
+    mass_bootstrap: FloatArray
+    entries: list[dict[str, object]]
+
+
+def load_chain(directory: Path, maximum_sweep: int | None = None) -> ChainData:
+    """Load one chain, optionally frozen at a completed common sweep."""
     summary = load_keyed_chain(
-        directory / "holonomy_summary.out", (), (1, 2, 3, 4), 0
+        directory / "holonomy_summary.out",
+        (),
+        (1, 2, 3, 4),
+        0,
+        maximum_step=maximum_sweep,
     )
     correlator = load_keyed_chain(
-        directory / "holonomy_correlator.out", (1,), (2,), 0
+        directory / "holonomy_correlator.out",
+        (1,),
+        (2,),
+        0,
+        maximum_step=maximum_sweep,
     )
     profile = load_keyed_chain(
-        directory / "plaquette_profile.out", (1, 2), (3,), 0
+        directory / "plaquette_profile.out",
+        (1, 2),
+        (3,),
+        0,
+        maximum_step=maximum_sweep,
+    )
+    boundary_path = directory / "boundary_wilson.out"
+    boundary = (
+        load_keyed_chain(
+            boundary_path,
+            (1, 2),
+            (3,),
+            0,
+            maximum_step=maximum_sweep,
+        )
+        if boundary_path.exists()
+        else None
     )
     if not np.array_equal(summary.steps, correlator.steps):
         raise ValueError(f"{directory}: holonomy measurement grids differ")
@@ -93,11 +157,44 @@ def load_chain(directory: Path) -> ChainData:
         raise ValueError(f"{directory}: incomplete correlator separation grid")
     if not np.all(correlator.values[:, 0, 0] == 1.0):
         raise ValueError(f"{directory}: C_G(0) is not exactly one")
-    return ChainData(directory, summary, correlator, profile)
+    if boundary is not None:
+        cadence = regular_measurement_cadence(boundary)
+        if cadence % PROFILE_CADENCE != 0:
+            raise ValueError(
+                f"{directory}: boundary cadence is not a multiple of five"
+            )
+        expected_boundary_steps = summary.steps[
+            np.asarray(summary.steps, dtype=np.int64) % cadence == 0
+        ]
+        if not np.array_equal(boundary.steps, expected_boundary_steps):
+            raise ValueError(f"{directory}: incomplete boundary-loop cadence")
+        r_h = boundary.keys.astype(np.int64)
+        zero_r = r_h[:, 0] == 0
+        if not np.all(boundary.values[:, zero_r, 0] == 1.0):
+            raise ValueError(f"{directory}: W_b(0,H) is not exactly one")
+        maximum_height = int(np.max(r_h[:, 1]))
+        full_height = np.flatnonzero(r_h[:, 1] == maximum_height)
+        summary_indices = np.searchsorted(summary.steps, boundary.steps)
+        for boundary_index in full_height:
+            separation = int(r_h[boundary_index, 0])
+            if separation >= correlator.values.shape[1]:
+                continue
+            if not np.allclose(
+                boundary.values[:, boundary_index, 0],
+                correlator.values[summary_indices, separation, 0],
+                rtol=0.0,
+                atol=2.0e-11,
+            ):
+                raise ValueError(
+                    f"{directory}: W_b(R,Nt) does not match C_G(R)"
+                )
+    return ChainData(directory, summary, correlator, profile, boundary)
 
 
 def load_ensemble(
-    directory: Path, chain_directories: Sequence[Path] | None = None
+    directory: Path,
+    chain_directories: Sequence[Path] | None = None,
+    maximum_sweep: int | None = None,
 ) -> list[ChainData]:
     """Load exactly four independent chains from one ensemble directory."""
     if chain_directories is None:
@@ -114,10 +211,31 @@ def load_ensemble(
             raise ValueError(f"{directory}: chain outside ensemble directory")
     if len(selected_directories) != 4:
         raise ValueError(f"{directory}: expected four seed directories")
-    chains = [load_chain(path) for path in selected_directories]
+    chains = [load_chain(path, maximum_sweep) for path in selected_directories]
     require_matching_grids([chain.correlator for chain in chains])
     require_matching_grids([chain.profile for chain in chains])
+    boundary_presence = [chain.boundary is not None for chain in chains]
+    if any(boundary_presence) and not all(boundary_presence):
+        raise ValueError(f"{directory}: boundary output is missing for a chain")
+    if all(boundary_presence):
+        require_matching_grids(
+            [chain.boundary for chain in chains if chain.boundary is not None]
+        )
     return chains
+
+
+def regular_measurement_cadence(chain: KeyedChain) -> int:
+    """Return a positive regular cadence whose first measurement is on-grid."""
+    steps = np.asarray(chain.steps, dtype=np.int64)
+    if len(steps) < 2:
+        raise ValueError(f"{chain.path}: need at least two measurements")
+    differences = np.diff(steps)
+    cadence = int(differences[0])
+    if cadence <= 0 or not np.all(differences == cadence):
+        raise ValueError(f"{chain.path}: measurement cadence is not regular")
+    if np.any(steps % cadence != 0):
+        raise ValueError(f"{chain.path}: measurement steps are off cadence")
+    return cadence
 
 
 def _largest_named(values: dict[str, float]) -> tuple[str, float]:
@@ -132,7 +250,7 @@ def _largest_named(values: dict[str, float]) -> tuple[str, float]:
 def candidate_thermalization_cut(
     chain: ChainData, minimum_cut: int
 ) -> tuple[int, dict[str, object]]:
-    """Return the per-chain MSER-5 cut in sweeps, rounded to profile cadence."""
+    """Return the per-chain MSER-5 cut on every enabled observable grid."""
     summary = chain.summary.values[:, 0, :]
     correlator = chain.correlator.values[:, :, 0]
     profile = chain.profile.values[:, :, 0]
@@ -153,13 +271,33 @@ def candidate_thermalization_cut(
     }
     largest_correlator = _largest_named(correlator_candidates)
     largest_profile = _largest_named(profile_candidates)
+    boundary_cadence = (
+        regular_measurement_cadence(chain.boundary)
+        if chain.boundary is not None
+        else PROFILE_CADENCE
+    )
+    boundary_candidates = (
+        {
+            boundary_label(chain.boundary.keys[index]): boundary_cadence
+            * mser5_cut(chain.boundary.values[:, index, 0])
+            for index in range(chain.boundary.values.shape[1])
+            if int(chain.boundary.keys[index, 0]) > 0
+        }
+        if chain.boundary is not None
+        else {}
+    )
+    largest_boundary = (
+        _largest_named(boundary_candidates) if boundary_candidates else None
+    )
     raw_cut = max(
         minimum_cut,
         *scalar_candidates.values(),
         largest_correlator[1],
         largest_profile[1],
+        largest_boundary[1] if largest_boundary is not None else 0.0,
     )
-    cut = int(PROFILE_CADENCE * math.ceil(raw_cut / PROFILE_CADENCE))
+    cut_cadence = math.lcm(PROFILE_CADENCE, boundary_cadence)
+    cut = int(cut_cadence * math.ceil(raw_cut / cut_cadence))
     if cut >= int(chain.summary.steps[-1]) - 4:
         raise ValueError(f"{chain.directory}: thermalization leaves too little data")
     return cut, {
@@ -172,6 +310,15 @@ def candidate_thermalization_cut(
             "observable": largest_profile[0],
             "sweeps": largest_profile[1],
         },
+        "largest_boundary_candidate": (
+            {
+                "observable": largest_boundary[0],
+                "sweeps": largest_boundary[1],
+            }
+            if largest_boundary is not None
+            else None
+        ),
+        "cut_cadence_sweeps": cut_cadence,
     }
 
 
@@ -181,9 +328,15 @@ def profile_label(key: FloatArray) -> str:
     return f"{kind}_t_{float(key[1]):g}"
 
 
+def boundary_label(key: FloatArray) -> str:
+    """Return an unambiguous boundary-loop label."""
+    return f"W_b_R_{int(key[0])}_H_{int(key[1])}"
+
+
 def tau_diagnostics(
     correlator: FloatArray, summary: FloatArray, profile: FloatArray,
-    profile_keys: FloatArray,
+    profile_keys: FloatArray, boundary: FloatArray | None = None,
+    boundary_keys: FloatArray | None = None, boundary_cadence: int = 0,
 ) -> dict[str, object]:
     """Estimate every required autocorrelation time in composite sweeps."""
     correlator_taus = {
@@ -197,6 +350,17 @@ def tau_diagnostics(
         for index in range(profile.shape[1])
     }
     largest_profile = _largest_named(profile_taus)
+    boundary_taus = (
+        {
+            boundary_label(boundary_keys[index]): boundary_cadence
+            * integrated_autocorrelation_time(boundary[:, index])
+            for index in range(boundary.shape[1])
+            if int(boundary_keys[index, 0]) > 0
+        }
+        if boundary is not None and boundary_keys is not None
+        else {}
+    )
+    largest_boundary = _largest_named(boundary_taus) if boundary_taus else None
     return {
         "Tr_G_real": integrated_autocorrelation_time(summary[:, 0]),
         "Ctilde_0": integrated_autocorrelation_time(summary[:, 2]),
@@ -211,6 +375,15 @@ def tau_diagnostics(
             "observable": largest_profile[0],
             "tau_int_sweeps": largest_profile[1],
         },
+        "boundary_wilson_loops": boundary_taus,
+        "largest_boundary_wilson_loop": (
+            {
+                "observable": largest_boundary[0],
+                "tau_int_sweeps": largest_boundary[1],
+            }
+            if largest_boundary is not None
+            else None
+        ),
     }
 
 
@@ -224,17 +397,27 @@ def maximum_required_tau(tau: dict[str, object]) -> float:
         float(tau["largest_positive_distance_C_G"]["tau_int_sweeps"]),
         float(tau["largest_plaquette_profile"]["tau_int_sweeps"]),
     ]
+    if tau["largest_boundary_wilson_loop"] is not None:
+        scalar.append(
+            float(
+                tau["largest_boundary_wilson_loop"]["tau_int_sweeps"]
+            )
+        )
     return max(scalar)
 
 
-def choose_block_length_sweeps(tau_int_sweeps: float) -> int:
-    """Choose the smallest 5-sweep multiple strictly exceeding ``2 tau``."""
+def choose_block_length_sweeps(
+    tau_int_sweeps: float, cadence_sweeps: int = PROFILE_CADENCE
+) -> int:
+    """Choose the smallest cadence multiple strictly exceeding ``2 tau``."""
     if not np.isfinite(tau_int_sweeps) or tau_int_sweeps < 0.5:
         raise ValueError("tau_int must be finite and at least 0.5 sweeps")
+    if cadence_sweeps <= 0 or cadence_sweeps % PROFILE_CADENCE != 0:
+        raise ValueError("block cadence must be a positive multiple of five")
     minimum = math.floor(2.0 * tau_int_sweeps) + 1
-    length = PROFILE_CADENCE * math.ceil(minimum / PROFILE_CADENCE)
+    length = cadence_sweeps * math.ceil(minimum / cadence_sweeps)
     if length <= 2.0 * tau_int_sweeps:
-        length += PROFILE_CADENCE
+        length += cadence_sweeps
     return int(length)
 
 
@@ -243,20 +426,53 @@ def _post_cut(chain: ChainData, cut: int) -> PostCutChain:
     summary_mask = chain.summary.steps > cut
     correlator_mask = chain.correlator.steps > cut
     profile_mask = chain.profile.steps > cut
+    boundary_mask = (
+        chain.boundary.steps > cut if chain.boundary is not None else None
+    )
     summary = chain.summary.values[summary_mask, 0, :]
     correlator = chain.correlator.values[correlator_mask, :, 0]
     profile = chain.profile.values[profile_mask, :, 0]
+    boundary = (
+        chain.boundary.values[boundary_mask, :, 0]
+        if chain.boundary is not None and boundary_mask is not None
+        else None
+    )
     if len(summary) != len(correlator) or len(summary) < 4:
         raise ValueError(f"{chain.directory}: invalid post-cut holonomy grid")
     if len(summary) != PROFILE_CADENCE * len(profile):
         raise ValueError(f"{chain.directory}: post-cut 1/5 grids are misaligned")
 
-    tau = tau_diagnostics(correlator, summary, profile, chain.profile.keys)
-    block_length = choose_block_length_sweeps(maximum_required_tau(tau))
+    boundary_cadence = (
+        regular_measurement_cadence(chain.boundary)
+        if chain.boundary is not None
+        else PROFILE_CADENCE
+    )
+    if boundary is not None and len(summary) != boundary_cadence * len(boundary):
+        raise ValueError(f"{chain.directory}: post-cut boundary grid is misaligned")
+    tau = tau_diagnostics(
+        correlator,
+        summary,
+        profile,
+        chain.profile.keys,
+        boundary,
+        chain.boundary.keys if chain.boundary is not None else None,
+        boundary_cadence,
+    )
+    block_cadence = math.lcm(PROFILE_CADENCE, boundary_cadence)
+    block_length = choose_block_length_sweeps(
+        maximum_required_tau(tau), block_cadence
+    )
     combined = np.concatenate((summary, correlator), axis=1)
     primary_blocks = block_values(combined, block_length)
     profile_blocks = block_values(profile, block_length // PROFILE_CADENCE)
-    if len(primary_blocks) != len(profile_blocks):
+    boundary_blocks = (
+        block_values(boundary, block_length // boundary_cadence)
+        if boundary is not None
+        else None
+    )
+    if len(primary_blocks) != len(profile_blocks) or (
+        boundary_blocks is not None and len(primary_blocks) != len(boundary_blocks)
+    ):
         raise ValueError(f"{chain.directory}: inconsistent complete block counts")
     if len(primary_blocks) < MINIMUM_BLOCKS:
         raise ValueError(
@@ -269,10 +485,12 @@ def _post_cut(chain: ChainData, cut: int) -> PostCutChain:
         summary,
         correlator,
         profile,
+        boundary,
         tau,
         block_length,
         primary_blocks,
         profile_blocks,
+        boundary_blocks,
     )
 
 
@@ -285,7 +503,23 @@ def _reblock_chain(chain: PostCutChain, block_length_sweeps: int) -> PostCutChai
     profile_blocks = block_values(
         chain.profile, block_length_sweeps // PROFILE_CADENCE
     )
-    if len(primary_blocks) != len(profile_blocks):
+    boundary_cadence = (
+        regular_measurement_cadence(chain.raw.boundary)
+        if chain.raw.boundary is not None
+        else PROFILE_CADENCE
+    )
+    if block_length_sweeps % boundary_cadence != 0:
+        raise ValueError("block length must be a multiple of boundary cadence")
+    boundary_blocks = (
+        block_values(
+            chain.boundary, block_length_sweeps // boundary_cadence
+        )
+        if chain.boundary is not None
+        else None
+    )
+    if len(primary_blocks) != len(profile_blocks) or (
+        boundary_blocks is not None and len(primary_blocks) != len(boundary_blocks)
+    ):
         raise ValueError(f"{chain.raw.directory}: inconsistent reblocked grids")
     if len(primary_blocks) < MINIMUM_BLOCKS:
         raise ValueError(
@@ -297,6 +531,7 @@ def _reblock_chain(chain: PostCutChain, block_length_sweeps: int) -> PostCutChai
         block_length_sweeps=block_length_sweeps,
         primary_blocks=primary_blocks,
         profile_blocks=profile_blocks,
+        boundary_blocks=boundary_blocks,
     )
 
 
@@ -377,6 +612,10 @@ def _blocking_labels(chains: Sequence[PostCutChain]) -> tuple[list[str], int]:
     labels.extend(
         f"plaquette_{profile_label(key)}" for key in chains[0].raw.profile.keys
     )
+    if chains[0].raw.boundary is not None:
+        labels.extend(
+            boundary_label(key) for key in chains[0].raw.boundary.keys
+        )
     n_primary = len(labels)
     labels.extend(("xi_2nd", "Ns_over_xi_2nd"))
     return labels, n_primary
@@ -428,9 +667,10 @@ def blocking_error_plateau(
 ) -> dict[str, object]:
     """Check primary and secondary error plateaus over whole histories.
 
-    Candidate block lengths use a fixed five-sweep-aligned grid. At every
-    length, chains are blocked separately and fused only through equal-weight
-    replica means. The standard-error uncertainty ``sigma/sqrt(2 dof)`` is the
+    Candidate block lengths use a fixed grid in units of the least common
+    multiple of every enabled measurement cadence. At every length, chains
+    are blocked separately and fused only through equal-weight replica means.
+    The standard-error uncertainty ``sigma/sqrt(2 dof)`` is the
     large-sample variance-estimator result used in the blocking analysis of
     Flyvbjerg and Petersen, J. Chem. Phys. 91, 461 (1989), DOI
     10.1063/1.457480. Unequal replica contributions use Satterthwaite effective
@@ -440,23 +680,40 @@ def blocking_error_plateau(
     if not chains:
         raise ValueError("blocking plateau needs at least one chain")
     labels, n_primary = _blocking_labels(chains)
+    boundary_cadence = (
+        regular_measurement_cadence(chains[0].raw.boundary)
+        if chains[0].raw.boundary is not None
+        else PROFILE_CADENCE
+    )
+    elementary_cadence = math.lcm(PROFILE_CADENCE, boundary_cadence)
     suite_series = []
     for chain in chains:
         holonomy = np.concatenate((chain.summary, chain.correlator), axis=1)
-        holonomy_five_sweep = block_values(holonomy, PROFILE_CADENCE)
-        if len(holonomy_five_sweep) != len(chain.profile):
-            raise ValueError(f"{chain.raw.directory}: fused 1/5 grids differ")
-        suite_series.append(
-            np.concatenate((holonomy_five_sweep, chain.profile), axis=1)
+        holonomy_elementary = block_values(holonomy, elementary_cadence)
+        profile_elementary = block_values(
+            chain.profile, elementary_cadence // PROFILE_CADENCE
         )
+        parts = [holonomy_elementary, profile_elementary]
+        if chain.boundary is not None:
+            parts.append(
+                block_values(
+                    chain.boundary,
+                    elementary_cadence // boundary_cadence,
+                )
+            )
+        if len({len(part) for part in parts}) != 1:
+            raise ValueError(
+                f"{chain.raw.directory}: fused observable grids differ"
+            )
+        suite_series.append(np.concatenate(parts, axis=1))
 
-    minimum_units = min(len(series) for series in suite_series)
-    candidate_units = [
-        units
+    candidate_lengths = [
+        elementary_cadence * units
         for units in BLOCKING_CANDIDATE_UNITS
-        if minimum_units // units >= MINIMUM_BLOCKS
+        if min(len(series) for series in suite_series) // units
+        >= MINIMUM_BLOCKS
     ]
-    if len(candidate_units) < 3:
+    if len(candidate_lengths) < 3:
         raise ValueError("too few blocking lengths for a three-point plateau")
 
     def transform(mean: FloatArray) -> FloatArray:
@@ -466,14 +723,15 @@ def blocking_error_plateau(
         xi = math.sqrt(ratio) / (2.0 * math.sin(math.pi / ns))
         return np.concatenate((mean, np.asarray([xi, ns / xi])))
 
-    lengths = [PROFILE_CADENCE * units for units in candidate_units]
+    lengths = candidate_lengths
     errors = np.empty((len(lengths), len(labels)), dtype=np.float64)
     error_uncertainties = np.empty_like(errors)
     effective_degrees_of_freedom = np.empty_like(errors)
     estimates = np.empty_like(errors)
     blocks_per_chain: list[list[int]] = []
     discarded_sweeps_per_chain: list[list[int]] = []
-    for length_index, units in enumerate(candidate_units):
+    for length_index, length in enumerate(lengths):
+        units = length // elementary_cadence
         blocks = [block_values(series, units) for series in suite_series]
         estimate, error, degrees_of_freedom = fused_replica_jackknife(
             blocks, transform
@@ -489,7 +747,7 @@ def blocking_error_plateau(
         blocks_per_chain.append([len(chain_blocks) for chain_blocks in blocks])
         discarded_sweeps_per_chain.append(
             [
-                PROFILE_CADENCE * (len(series) % units)
+                elementary_cadence * (len(series) % units)
                 for series in suite_series
             ]
         )
@@ -522,10 +780,11 @@ def blocking_error_plateau(
     selected_length = common_group[-1] if common_group is not None else None
     return {
         "method": (
-            "whole post-cut histories; five-sweep elementary vectors; "
+            "whole post-cut histories; common-cadence elementary vectors; "
             "separate complete blocks per replica; replica-stratified "
             "delete-one-block jackknife; three-length error plateau"
         ),
+        "elementary_cadence_sweeps": elementary_cadence,
         "candidate_block_lengths_sweeps": lengths,
         "minimum_tau_block_length_sweeps": tau_minimum,
         "minimum_complete_blocks_per_replica": MINIMUM_BLOCKS,
@@ -564,6 +823,16 @@ def _split_diagnostics(chain: PostCutChain) -> dict[str, object]:
             for index in range(chain.profile.shape[1])
         }
     )
+    if chain.boundary is not None and chain.raw.boundary is not None:
+        all_values.update(
+            {
+                boundary_label(chain.raw.boundary.keys[index]): split_z_score(
+                    chain.boundary[:, index]
+                )
+                for index in range(chain.boundary.shape[1])
+                if int(chain.raw.boundary.keys[index, 0]) > 0
+            }
+        )
     worst = _largest_named(all_values)
     return {
         "selected": core,
@@ -616,8 +885,16 @@ def prepare_chains(
         cuts = [int(cut) for cut in prescribed_cuts]
         if any(cut < automatic for cut, automatic in zip(cuts, automatic_cuts)):
             raise ValueError("a prescribed cut is below its MSER-5 minimum")
-        if any(cut % PROFILE_CADENCE != 0 for cut in cuts):
-            raise ValueError("every prescribed cut must be a multiple of five")
+        for cut, chain in zip(cuts, raw_chains, strict=True):
+            boundary_cadence = (
+                regular_measurement_cadence(chain.boundary)
+                if chain.boundary is not None
+                else PROFILE_CADENCE
+            )
+            if cut % math.lcm(PROFILE_CADENCE, boundary_cadence) != 0:
+                raise ValueError(
+                    "a prescribed cut is off an enabled measurement cadence"
+                )
     chains = [
         _post_cut(chain, cut)
         for chain, cut in zip(raw_chains, cuts, strict=True)
@@ -637,6 +914,11 @@ def prepare_chains(
     profile_labels = [
         profile_label(key) for key in raw_chains[0].profile.keys
     ]
+    boundary_labels = (
+        [boundary_label(key) for key in raw_chains[0].boundary.keys]
+        if raw_chains[0].boundary is not None
+        else []
+    )
     chain_entries = []
     for index, (chain, candidate) in enumerate(zip(chains, candidates, strict=True)):
         chain_entries.append(
@@ -648,6 +930,9 @@ def prepare_chains(
                 "mser5": candidate[1],
                 "retained_holonomy_measurements": len(chain.summary),
                 "retained_profile_measurements": len(chain.profile),
+                "retained_boundary_measurements": (
+                    len(chain.boundary) if chain.boundary is not None else 0
+                ),
                 "tau_int_sweeps": chain.tau,
                 "block_length_sweeps": chain.block_length_sweeps,
                 "n_complete_blocks": len(chain.primary_blocks),
@@ -663,8 +948,28 @@ def prepare_chains(
     profile_between = _pairwise_block_diagnostic(
         [chain.profile_blocks for chain in chains], profile_labels
     )
+    boundary_between = (
+        _pairwise_block_diagnostic(
+            [
+                chain.boundary_blocks
+                for chain in chains
+                if chain.boundary_blocks is not None
+            ],
+            boundary_labels,
+        )
+        if boundary_labels
+        else None
+    )
+    between_results = [holonomy_between, profile_between]
+    if boundary_between is not None:
+        between_results.append(boundary_between)
     maximum_between = max(
-        (holonomy_between, profile_between), key=lambda entry: float(entry["z"])
+        between_results, key=lambda entry: float(entry["z"])
+    )
+    boundary_cadence = (
+        regular_measurement_cadence(raw_chains[0].boundary)
+        if raw_chains[0].boundary is not None
+        else None
     )
     diagnostics = {
         "method": (
@@ -674,11 +979,13 @@ def prepare_chains(
         ),
         "minimum_cut_sweeps": minimum_cut,
         "profile_cadence_sweeps": PROFILE_CADENCE,
+        "boundary_wilson_cadence_sweeps": boundary_cadence,
         "recommended_per_chain_cuts": cuts,
         "chains": chain_entries,
         "between_chain": {
             "holonomy": holonomy_between,
             "plaquette_profiles": profile_between,
+            "boundary_wilson_loops": boundary_between,
             "maximum": maximum_between,
         },
         "blocking_error_plateau": blocking_plateau,
@@ -722,7 +1029,7 @@ def correlated_k0_fit(
     ns: int,
     initial: FloatArray | None = None,
 ) -> dict[str, float]:
-    """Fit the periodic K0 form using the full fixed covariance matrix."""
+    """Fit the periodic K0 form using the complete fixed covariance."""
     if len(separation) < 5 or np.any(separation <= 0.0):
         raise ValueError("a K0 fit requires at least five positive distances")
     scale = linalg.cholesky(covariance, lower=True)
@@ -736,11 +1043,70 @@ def _correlated_k0_fit_with_scale(
     ns: int,
     initial: FloatArray | None = None,
 ) -> dict[str, float]:
-    """Fit with a precomputed covariance Cholesky factor."""
+    """Fit using a precomputed complete-covariance Cholesky factor."""
 
     def residual(parameters: FloatArray) -> FloatArray:
         model = finite_volume_k0(separation, parameters[0], parameters[1], ns)
         return linalg.solve_triangular(scale, values - model, lower=True)
+
+    if initial is None:
+        initial_mass = max(1.0 / ns, 0.05)
+        normalization = finite_volume_k0(
+            np.asarray([separation[0]]), 1.0, initial_mass, ns
+        )[0]
+        initial = np.asarray(
+            [max(abs(values[0]) / normalization, 1.0e-8), initial_mass]
+        )
+    fit = optimize.least_squares(
+        residual,
+        x0=np.asarray(initial, dtype=np.float64),
+        bounds=(np.asarray([1.0e-15, 1.0e-15]), np.asarray([np.inf, np.inf])),
+        max_nfev=300,
+    )
+    if not fit.success or np.any(~np.isfinite(fit.x)) or np.any(fit.x <= 0.0):
+        raise RuntimeError(f"K0 fit failed: {fit.message}")
+    return {
+        "amplitude": float(fit.x[0]),
+        "mass": float(fit.x[1]),
+        "chi2": float(np.dot(fit.fun, fit.fun)),
+        "dof": len(separation) - 2,
+    }
+
+
+def uncorrelated_k0_fit(
+    separation: FloatArray,
+    values: FloatArray,
+    covariance: FloatArray,
+    ns: int,
+    initial: FloatArray | None = None,
+) -> dict[str, float]:
+    """Fit the periodic K0 form using only covariance diagonal errors."""
+    if len(separation) < 5 or np.any(separation <= 0.0):
+        raise ValueError("a K0 fit requires at least five positive distances")
+    if covariance.shape != (len(separation), len(separation)):
+        raise ValueError("K0 covariance has the wrong shape")
+    errors = np.sqrt(np.maximum(np.diag(covariance), 0.0))
+    return _uncorrelated_k0_fit_with_errors(
+        separation, values, errors, ns, initial
+    )
+
+
+def _uncorrelated_k0_fit_with_errors(
+    separation: FloatArray,
+    values: FloatArray,
+    errors: FloatArray,
+    ns: int,
+    initial: FloatArray | None = None,
+) -> dict[str, float]:
+    """Fit with fixed marginal errors from blocked vector estimates."""
+    if errors.shape != separation.shape:
+        raise ValueError("K0 marginal errors have the wrong shape")
+    if np.any(~np.isfinite(errors)) or np.any(errors <= 0.0):
+        raise ValueError("K0 marginal errors must be finite and positive")
+
+    def residual(parameters: FloatArray) -> FloatArray:
+        model = finite_volume_k0(separation, parameters[0], parameters[1], ns)
+        return (values - model) / errors
 
     if initial is None:
         initial_mass = max(1.0 / ns, 0.05)
@@ -763,10 +1129,141 @@ def _correlated_k0_fit_with_scale(
     return {
         "amplitude": float(fit.x[0]),
         "mass": float(fit.x[1]),
-        "chi2": chi2,
+        "diagonal_chi2": chi2,
         "dof": dof,
-        "p_value": float(stats.chi2.sf(chi2, dof)),
+        "diagonal_chi2_per_dof": chi2 / dof,
     }
+
+
+def full_covariance_chi2(
+    separation: FloatArray,
+    values: FloatArray,
+    covariance_factor: FloatArray,
+    amplitude: float,
+    mass: float,
+    ns: int,
+) -> float:
+    """Return ``r.T @ Cov^-1 @ r`` without explicitly inverting Cov."""
+    residual = values - finite_volume_k0(
+        separation, amplitude, mass, ns
+    )
+    whitened = linalg.solve_triangular(
+        covariance_factor, residual, lower=True
+    )
+    return float(np.dot(whitened, whitened))
+
+
+def k0_r_max_values(ns: int, scan_to_ns_third: bool) -> list[int]:
+    """Return the campaign-specific periodic-K0 endpoint grid."""
+    maximum = ns // 2
+    if maximum < 8:
+        raise ValueError("the K0 scan needs Ns/2 >= 8")
+    if scan_to_ns_third:
+        return list(range(maximum, math.ceil(ns / 3) - 1, -2))
+    return [maximum - 2 * index for index in range(3)]
+
+
+def _bootstrap_k0_window(
+    separation: FloatArray,
+    central_values: FloatArray,
+    covariance_factor: FloatArray,
+    errors: FloatArray,
+    bootstrap_values: FloatArray,
+    ns: int,
+    central: dict[str, float],
+) -> tuple[dict[str, float | bool], FloatArray, FloatArray]:
+    """Bootstrap one diagonal fit and calibrate its full-covariance statistic.
+
+    Each row of ``bootstrap_values`` is a jointly resampled vector over all
+    fitted separations. The recentered samples impose the fitted K0 mean while
+    retaining those joint fluctuations, which gives the null distribution of
+    the requested post-fit full-covariance statistic.
+    """
+    initial = np.asarray([central["amplitude"], central["mass"]])
+    central_model = finite_volume_k0(
+        separation, central["amplitude"], central["mass"], ns
+    )
+    observed_chi2 = full_covariance_chi2(
+        separation,
+        central_values,
+        covariance_factor,
+        central["amplitude"],
+        central["mass"],
+        ns,
+    )
+    n_samples = len(bootstrap_values)
+    mass_array = np.full(n_samples, np.nan, dtype=np.float64)
+    xi_array = np.full(n_samples, np.nan, dtype=np.float64)
+    null_chi2_samples: list[float] = []
+    for sample_index, sample in enumerate(bootstrap_values):
+        try:
+            fit = _uncorrelated_k0_fit_with_errors(
+                separation, sample, errors, ns, initial
+            )
+        except (ValueError, RuntimeError):
+            pass
+        else:
+            mass_array[sample_index] = float(fit["mass"])
+            xi_array[sample_index] = 1.0 / float(fit["mass"])
+
+        null_values = central_model + sample - central_values
+        try:
+            null_fit = _uncorrelated_k0_fit_with_errors(
+                separation, null_values, errors, ns, initial
+            )
+            null_chi2_samples.append(
+                full_covariance_chi2(
+                    separation,
+                    null_values,
+                    covariance_factor,
+                    float(null_fit["amplitude"]),
+                    float(null_fit["mass"]),
+                    ns,
+                )
+            )
+        except (ValueError, RuntimeError, linalg.LinAlgError):
+            continue
+
+    null_chi2_array = np.asarray(null_chi2_samples, dtype=np.float64)
+    valid_mass = mass_array[np.isfinite(mass_array)]
+    valid_xi = xi_array[np.isfinite(xi_array)]
+    fit_success = len(valid_mass) / n_samples
+    gof_success = len(null_chi2_array) / n_samples
+    mass_error = (
+        float(np.std(valid_mass, ddof=1))
+        if len(valid_mass) >= 2
+        else math.inf
+    )
+    xi_error = (
+        float(np.std(valid_xi, ddof=1))
+        if len(valid_xi) >= 2
+        else math.inf
+    )
+    bootstrap_p_value = (
+        (1.0 + float(np.count_nonzero(null_chi2_array >= observed_chi2)))
+        / (1.0 + len(null_chi2_array))
+        if len(null_chi2_array) >= 2
+        else 0.0
+    )
+    relative_error = mass_error / central["mass"]
+    quality_pass = bool(
+        central["mass"] > 0.0
+        and fit_success >= 0.90
+        and gof_success >= 0.90
+        and relative_error < 0.25
+        and bootstrap_p_value >= 0.05
+    )
+    statistics: dict[str, float | bool] = {
+        "mass_bootstrap_error": mass_error,
+        "xi_exp": 1.0 / central["mass"],
+        "xi_exp_bootstrap_error": xi_error,
+        "relative_error": relative_error,
+        "bootstrap_success_fraction": fit_success,
+        "gof_bootstrap_success_fraction": gof_success,
+        "bootstrap_gof_p_value": bootstrap_p_value,
+        "quality_pass": quality_pass,
+    }
+    return statistics, xi_array, mass_array
 
 
 def scan_k0_fits(
@@ -775,116 +1272,201 @@ def scan_k0_fits(
     covariance: FloatArray,
     bootstrap_correlators: FloatArray,
     ns: int,
-) -> tuple[float | None, float | None, list[dict[str, object]]]:
-    """Apply the preregistered correlated-fit and stability acceptance rules."""
-    r_max = int(separations[-1])
-    maximum_r_min = min(8, r_max - 4)
+    scan_r_max_to_ns_third: bool = False,
+) -> K0ScanResult:
+    """Scan joint-bootstrap K0 windows and select the earliest stable 3x3 patch.
+
+    The fixed-beta/Nt default uses the three endpoint choices
+    ``R_max = Ns/2, Ns/2-2, Ns/2-4``. The fixed-mass campaign instead scans
+    that grid down to the last endpoint not below ``ceil(Ns/3)``. Every
+    positive ``R_min`` leaving at least five points is tested. A stable patch
+    contains three adjacent ``R_min`` values at three adjacent endpoints.
+    Stability retains the pairwise two-combined-standard-deviation rule,
+    applied to all nine joint-bootstrap mass estimates. The selected window
+    is the earliest (smallest) ``R_min`` anchor, with the largest ``R_max``
+    breaking ties.
+
+    Range selection uses at most ``RANGE_SCAN_BOOTSTRAP_SAMPLES`` evenly
+    spaced replicas from the reproducible joint bootstrap. The selected
+    anchor is then refit with every replica for its final uncertainty and
+    recentered-bootstrap goodness-of-fit p-value.
+    """
+    if len(bootstrap_correlators) < 2:
+        raise ValueError("the K0 scan needs at least two bootstrap samples")
+    maximum_r_max = int(separations[-1])
+    if maximum_r_max != ns // 2:
+        raise ValueError("the K0 scan requires separations through floor(Ns/2)")
+    r_max_values = k0_r_max_values(ns, scan_r_max_to_ns_third)
+    n_range_samples = min(
+        len(bootstrap_correlators), RANGE_SCAN_BOOTSTRAP_SAMPLES
+    )
+    range_indices = np.linspace(
+        0, len(bootstrap_correlators) - 1, n_range_samples, dtype=np.int64
+    )
+    range_bootstrap = bootstrap_correlators[range_indices]
     entries: list[dict[str, object]] = []
-    for r_min in range(1, maximum_r_min + 1):
-        selected = (separations >= r_min) & (separations <= r_max)
-        entry: dict[str, object] = {
-            "r_min": r_min,
-            "r_max": r_max,
-            "n_points": int(np.count_nonzero(selected)),
-            "correlated": True,
-        }
-        selected_covariance = covariance[np.ix_(selected, selected)]
-        try:
-            scale = linalg.cholesky(selected_covariance, lower=True)
-            central = _correlated_k0_fit_with_scale(
-                separations[selected].astype(np.float64),
+    entry_by_window: dict[tuple[int, int], dict[str, object]] = {}
+    for r_max in r_max_values:
+        for r_min in range(1, r_max - 3):
+            selected = (separations >= r_min) & (separations <= r_max)
+            selected_separations = separations[selected].astype(np.float64)
+            selected_covariance = covariance[np.ix_(selected, selected)]
+            entry: dict[str, object] = {
+                "r_min": r_min,
+                "r_max": r_max,
+                "n_points": int(np.count_nonzero(selected)),
+                "parameter_fit_covariance": "diagonal",
+                "goodness_of_fit_covariance": "complete",
+                "range_scan_bootstrap_samples": n_range_samples,
+                "stable_three_by_three_patch": False,
+                "stable_patch_anchor": False,
+            }
+            entry_by_window[(r_min, r_max)] = entry
+            entries.append(entry)
+            try:
+                scale = linalg.cholesky(selected_covariance, lower=True)
+                errors = np.sqrt(np.diag(selected_covariance))
+                central = _uncorrelated_k0_fit_with_errors(
+                    selected_separations,
+                    correlator[selected],
+                    errors,
+                    ns,
+                )
+                complete_chi2 = full_covariance_chi2(
+                    selected_separations,
+                    correlator[selected],
+                    scale,
+                    central["amplitude"],
+                    central["mass"],
+                    ns,
+                )
+            except (ValueError, RuntimeError, linalg.LinAlgError) as error:
+                entry["error"] = str(error)
+                entry["quality_pass"] = False
+                continue
+            statistics, _, _ = _bootstrap_k0_window(
+                selected_separations,
                 correlator[selected],
                 scale,
+                errors,
+                range_bootstrap[:, selected],
                 ns,
+                central,
             )
-        except (ValueError, RuntimeError, linalg.LinAlgError) as error:
-            entry["error"] = str(error)
-            entry["quality_pass"] = False
-            entries.append(entry)
-            continue
-
-        initial = np.asarray([central["amplitude"], central["mass"]])
-        if central["p_value"] < 0.05:
             entry.update(
                 {
                     **central,
-                    "bootstrap_success_fraction": 0.0,
-                    "quality_pass": False,
-                    "stable_three_range_group": False,
+                    "full_covariance_chi2": complete_chi2,
+                    "full_covariance_chi2_per_dof": (
+                        complete_chi2 / central["dof"]
+                    ),
+                    "full_covariance_condition_number": float(
+                        np.linalg.cond(selected_covariance)
+                    ),
+                    **statistics,
                 }
             )
-            entries.append(entry)
-            continue
-        xi_samples: list[float] = []
-        for sample in bootstrap_correlators:
-            try:
-                fit = _correlated_k0_fit_with_scale(
-                    separations[selected].astype(np.float64),
-                    sample[selected],
-                    scale,
-                    ns,
-                    initial,
-                )
-            except (ValueError, RuntimeError, linalg.LinAlgError):
+
+    stable_anchors: list[tuple[int, int]] = []
+    for r_max_index in range(len(r_max_values) - 2):
+        patch_r_max = r_max_values[r_max_index : r_max_index + 3]
+        smallest_r_max = patch_r_max[-1]
+        for r_min in range(1, smallest_r_max - 5):
+            windows = [
+                entry_by_window[(patch_r_min, patch_max)]
+                for patch_max in patch_r_max
+                for patch_r_min in range(r_min, r_min + 3)
+            ]
+            if not all(
+                bool(entry.get("quality_pass", False)) for entry in windows
+            ):
                 continue
-            xi_samples.append(1.0 / fit["mass"])
-        success_fraction = len(xi_samples) / len(bootstrap_correlators)
-        xi = 1.0 / central["mass"]
-        xi_error = (
-            float(np.std(np.asarray(xi_samples), ddof=1))
-            if len(xi_samples) >= 2
-            else math.inf
+            stable = True
+            for left_index, left in enumerate(windows):
+                for right in windows[left_index + 1 :]:
+                    difference = abs(float(left["mass"]) - float(right["mass"]))
+                    combined = math.hypot(
+                        float(left["mass_bootstrap_error"]),
+                        float(right["mass_bootstrap_error"]),
+                    )
+                    if difference > 2.0 * combined:
+                        stable = False
+                        break
+                if not stable:
+                    break
+            if not stable:
+                continue
+            for entry in windows:
+                entry["stable_three_by_three_patch"] = True
+            anchor = entry_by_window[(r_min, patch_r_max[0])]
+            anchor["stable_patch_anchor"] = True
+            anchor["stable_patch_r_min_values"] = list(range(r_min, r_min + 3))
+            anchor["stable_patch_r_max_values"] = patch_r_max
+            stable_anchors.append((r_min, patch_r_max[0]))
+
+    for selected_window in sorted(
+        stable_anchors, key=lambda window: (window[0], -window[1])
+    ):
+        selected_entry = entry_by_window[selected_window]
+        selected = (
+            (separations >= selected_window[0])
+            & (separations <= selected_window[1])
         )
-        relative_error = xi_error / xi
-        quality_pass = bool(
-            entry["n_points"] >= 5
-            and central["p_value"] >= 0.05
-            and central["mass"] > 0.0
-            and success_fraction >= 0.90
-            and relative_error < 0.25
+        selected_separations = separations[selected].astype(np.float64)
+        selected_covariance = covariance[np.ix_(selected, selected)]
+        scale = linalg.cholesky(selected_covariance, lower=True)
+        errors = np.sqrt(np.diag(selected_covariance))
+        central = {
+            key: float(selected_entry[key])
+            for key in ("amplitude", "mass")
+        }
+        range_statistics = {
+            key: selected_entry[key]
+            for key in (
+                "mass_bootstrap_error",
+                "xi_exp_bootstrap_error",
+                "relative_error",
+                "bootstrap_success_fraction",
+                "gof_bootstrap_success_fraction",
+                "bootstrap_gof_p_value",
+                "quality_pass",
+            )
+        }
+        final_statistics, xi_samples, mass_samples = _bootstrap_k0_window(
+            selected_separations,
+            correlator[selected],
+            scale,
+            errors,
+            bootstrap_correlators[:, selected],
+            ns,
+            central,
         )
-        entry.update(
+        selected_entry.update(
             {
-                **central,
-                "xi_exp": xi,
-                "xi_exp_bootstrap_error": xi_error,
-                "relative_error": relative_error,
-                "bootstrap_success_fraction": success_fraction,
-                "quality_pass": quality_pass,
-                "stable_three_range_group": False,
+                **{
+                    f"range_scan_{key}": value
+                    for key, value in range_statistics.items()
+                },
+                **final_statistics,
+                "final_bootstrap_samples": len(bootstrap_correlators),
+                "final_quality_pass": final_statistics["quality_pass"],
             }
         )
-        entries.append(entry)
-
-    selected_index: int | None = None
-    for start in range(len(entries) - 2):
-        group = entries[start : start + 3]
-        if not all(bool(entry.get("quality_pass", False)) for entry in group):
+        if not bool(final_statistics["quality_pass"]):
             continue
-        stable = True
-        for left in range(3):
-            for right in range(left + 1, 3):
-                difference = abs(float(group[left]["xi_exp"]) - float(group[right]["xi_exp"]))
-                combined = math.hypot(
-                    float(group[left]["xi_exp_bootstrap_error"]),
-                    float(group[right]["xi_exp_bootstrap_error"]),
-                )
-                if combined <= 0.0 or difference > 2.0 * combined:
-                    stable = False
-        if stable:
-            for entry in group:
-                entry["stable_three_range_group"] = True
-            selected_index = start + 1
-            break
-    if selected_index is None:
-        return None, None, entries
-    selected = entries[selected_index]
-    selected["selected"] = True
-    return (
-        float(selected["xi_exp"]),
-        float(selected["xi_exp_bootstrap_error"]),
-        entries,
-    )
+        selected_entry["selected"] = True
+        return K0ScanResult(
+            float(selected_entry["xi_exp"]),
+            float(selected_entry["xi_exp_bootstrap_error"]),
+            float(selected_entry["mass"]),
+            float(selected_entry["mass_bootstrap_error"]),
+            xi_samples,
+            mass_samples,
+            entries,
+        )
+
+    empty = np.empty(0, dtype=np.float64)
+    return K0ScanResult(None, None, None, None, empty, empty, entries)
 
 
 def k0_fit_blocking_error_plateau(
@@ -899,16 +1481,17 @@ def k0_fit_blocking_error_plateau(
     selected = (separations >= int(selected_fit["r_min"])) & (
         separations <= int(selected_fit["r_max"])
     )
-    scale = linalg.cholesky(covariance[np.ix_(selected, selected)], lower=True)
+    selected_covariance = covariance[np.ix_(selected, selected)]
+    selected_errors = np.sqrt(np.diag(selected_covariance))
     initial = np.asarray(
         [selected_fit["amplitude"], selected_fit["mass"]], dtype=np.float64
     )
 
     def transform(mean: FloatArray) -> FloatArray:
-        fit = _correlated_k0_fit_with_scale(
+        fit = _uncorrelated_k0_fit_with_errors(
             separations[selected].astype(np.float64),
             mean[selected],
-            scale,
+            selected_errors,
             ns,
             initial,
         )
@@ -949,7 +1532,7 @@ def k0_fit_blocking_error_plateau(
     )
     selected_block_length = chains[0].block_length_sweeps
     selected_group = next(
-        (group for group in common_groups if group[-1] == selected_block_length),
+        (group for group in common_groups if selected_block_length in group),
         None,
     )
     labels = ("xi_exp", "mass")
@@ -975,7 +1558,7 @@ def k0_fit_blocking_error_plateau(
     return {
         "method": (
             "whole post-cut correlator histories; separate complete blocks "
-            "per replica; fixed selected-fit covariance and range; "
+            "per replica; fixed selected-fit marginal errors and range; "
             "replica-stratified delete-one-block refits"
         ),
         "fit_range": {
@@ -1014,10 +1597,14 @@ def analyse_ensemble(
     bootstrap_samples: int,
     bootstrap_seed: int,
     covariance_output: Path,
+    campaign_type: str | None = None,
+    target_c: float | None = None,
 ) -> dict[str, object]:
-    """Produce the full Step-3 result for one four-chain ensemble."""
-    if bootstrap_samples < 2:
-        raise ValueError("at least two bootstrap samples are required")
+    """Produce the full result for one four-chain ensemble."""
+    if bootstrap_samples != ANALYSIS_BOOTSTRAP_SAMPLES:
+        raise ValueError(
+            "fixed-beta/Nt analyses require exactly 1000 bootstrap samples"
+        )
     plateau = diagnostics["blocking_error_plateau"]
     if not bool(plateau["all_primary_and_secondary_plateaus_found"]):
         raise ValueError(
@@ -1028,11 +1615,50 @@ def analyse_ensemble(
     if not np.array_equal(separations, np.arange(ns // 2 + 1)):
         raise ValueError("correlator grid must be R=0,...,floor(Ns/2)")
 
-    mean_vector, mean_samples, _ = hierarchical_bootstrap(
-        [chain.primary_blocks for chain in chains],
+    primary_size = chains[0].primary_blocks.shape[1]
+    profile_size = chains[0].profile_blocks.shape[1]
+    boundary_size = (
+        chains[0].boundary_blocks.shape[1]
+        if chains[0].boundary_blocks is not None
+        else 0
+    )
+    joint_blocks = []
+    for chain in chains:
+        parts = [chain.primary_blocks, chain.profile_blocks]
+        if chain.boundary_blocks is not None:
+            parts.append(chain.boundary_blocks)
+        if len({len(part) for part in parts}) != 1:
+            raise ValueError(f"{chain.raw.directory}: joint block grids differ")
+        joint_blocks.append(np.concatenate(parts, axis=1))
+    joint_mean, joint_samples, _ = hierarchical_bootstrap(
+        joint_blocks,
         lambda mean: mean,
         bootstrap_samples,
         np.random.default_rng(bootstrap_seed),
+    )
+    mean_vector = joint_mean[:primary_size]
+    mean_samples = joint_samples[:, :primary_size]
+    profile_start = primary_size
+    profile_stop = profile_start + profile_size
+    profile_mean = joint_mean[profile_start:profile_stop]
+    profile_samples = joint_samples[:, profile_start:profile_stop]
+    profile_covariance = np.atleast_2d(
+        np.cov(profile_samples, rowvar=False, ddof=1)
+    )
+    boundary_mean = (
+        joint_mean[profile_stop : profile_stop + boundary_size]
+        if boundary_size > 0
+        else None
+    )
+    boundary_samples = (
+        joint_samples[:, profile_stop : profile_stop + boundary_size]
+        if boundary_size > 0
+        else None
+    )
+    boundary_covariance = (
+        np.atleast_2d(np.cov(boundary_samples, rowvar=False, ddof=1))
+        if boundary_samples is not None
+        else None
     )
     correlator = mean_vector[4:]
     bootstrap_correlators = mean_samples[:, 4:]
@@ -1070,19 +1696,21 @@ def analyse_ensemble(
         else None
     )
 
-    profile_mean, profile_samples, profile_covariance = hierarchical_bootstrap(
-        [chain.profile_blocks for chain in chains],
-        lambda mean: mean,
-        bootstrap_samples,
-        np.random.default_rng(bootstrap_seed + 1),
-    )
-    xi_exp, xi_exp_error, fit_scan = scan_k0_fits(
+    fit_result = scan_k0_fits(
         separations,
         correlator,
         correlator_covariance,
         bootstrap_correlators,
         ns,
+        scan_r_max_to_ns_third=(campaign_type == "nonperturbative_mg_nt"),
     )
+    xi_exp = fit_result.xi_exp
+    xi_exp_error = fit_result.xi_exp_error
+    mass = fit_result.mass
+    mass_error = fit_result.mass_error
+    xi_exp_bootstrap = fit_result.xi_exp_bootstrap
+    mass_bootstrap = fit_result.mass_bootstrap
+    fit_scan = fit_result.entries
     fit_blocking_plateau: dict[str, object] | None = None
     if xi_exp is not None:
         selected_fit = next(
@@ -1110,21 +1738,56 @@ def analyse_ensemble(
         if not blocking_pass:
             xi_exp = None
             xi_exp_error = None
+            mass = None
+            mass_error = None
+            xi_exp_bootstrap = np.empty(0, dtype=np.float64)
+            mass_bootstrap = np.empty(0, dtype=np.float64)
 
+    covariance_arrays = {
+        "R": separations,
+        "C_G": correlator,
+        "C_G_covariance": correlator_covariance,
+        "C_G_bootstrap": bootstrap_correlators,
+        "profile_kind_t": chains[0].raw.profile.keys,
+        "profile_mean": profile_mean,
+        "profile_covariance": profile_covariance,
+        "xi_2nd_bootstrap": xi_samples,
+        "xi_2nd_squared_bootstrap": xi_squared_samples,
+        "Ns_over_xi_2nd_bootstrap": ratio_samples,
+        "xi_exp_bootstrap": xi_exp_bootstrap,
+        "mass_bootstrap": mass_bootstrap,
+    }
+    boundary_result: dict[str, object] | None = None
+    if (
+        boundary_mean is not None
+        and boundary_samples is not None
+        and boundary_covariance is not None
+        and chains[0].raw.boundary is not None
+    ):
+        boundary_error = np.sqrt(
+            np.maximum(np.diag(boundary_covariance), 0.0)
+        )
+        boundary_result = {
+            "R_H": chains[0].raw.boundary.keys.tolist(),
+            "mean": _strict_float_list(boundary_mean),
+            "error": _strict_float_list(boundary_error),
+            "measurement_interval_sweeps": regular_measurement_cadence(
+                chains[0].raw.boundary
+            ),
+        }
+        covariance_arrays.update(
+            {
+                "boundary_wilson_R_H": chains[0].raw.boundary.keys,
+                "boundary_wilson_mean": boundary_mean,
+                "boundary_wilson_covariance": boundary_covariance,
+                "boundary_wilson_bootstrap": boundary_samples,
+            }
+        )
     covariance_output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(
-        covariance_output,
-        R=separations,
-        C_G=correlator,
-        C_G_covariance=correlator_covariance,
-        profile_kind_t=chains[0].raw.profile.keys,
-        profile_mean=profile_mean,
-        profile_covariance=profile_covariance,
-        xi_2nd_bootstrap=xi_samples,
-        xi_2nd_squared_bootstrap=xi_squared_samples,
-        Ns_over_xi_2nd_bootstrap=ratio_samples,
-    )
-    return {
+    np.savez(covariance_output, **covariance_arrays)
+    result = {
+        "campaign_type": campaign_type,
+        "target_c": target_c,
         "purpose": purpose,
         "physical_Nt": nt,
         "stored_L2": nt + 1,
@@ -1135,8 +1798,18 @@ def analyse_ensemble(
         "sweep_definition": "one heatbath sweep plus five overrelaxation sweeps",
         "measurement_interval_sweeps": 1,
         "dirichlet_suite_measurement_interval_sweeps": PROFILE_CADENCE,
+        "boundary_wilson_measurement_interval_sweeps": (
+            regular_measurement_cadence(chains[0].raw.boundary)
+            if chains[0].raw.boundary is not None
+            else None
+        ),
         "bootstrap_samples": bootstrap_samples,
         "bootstrap_seed": bootstrap_seed,
+        "bootstrap_resampling": (
+            "hierarchical complete-vector resampling: identical chain/block "
+            "draws for every correlator separation, profile coordinate, and "
+            "boundary-loop geometry"
+        ),
         "thermalization_and_blocking": diagnostics,
         "R": separations.tolist(),
         "C_G": _strict_float_list(correlator),
@@ -1159,13 +1832,21 @@ def analyse_ensemble(
         ),
         "xi_exp": xi_exp,
         "xi_exp_error": xi_exp_error,
-        "mass": None if xi_exp is None else 1.0 / xi_exp,
-        "mass_error": (
-            None
-            if xi_exp is None or xi_exp_error is None
-            else xi_exp_error / (xi_exp * xi_exp)
-        ),
-        "K0_correlated_fit_scan": fit_scan,
+        "mass": mass,
+        "mass_error": mass_error,
+        "K0_fit_method": {
+            "model": "A * [K0(m R) + K0(m (Ns - R))]",
+            "parameter_estimation": "diagonal covariance",
+            "parameter_uncertainty": "joint hierarchical bootstrap fits",
+            "goodness_of_fit": "complete covariance chi2 per dof",
+            "goodness_of_fit_p_value": "recentered joint bootstrap",
+            "r_max_scan": (
+                "Ns/2, Ns/2-2, ..., last endpoint >= ceil(Ns/3)"
+                if campaign_type == "nonperturbative_mg_nt"
+                else "Ns/2, Ns/2-2, Ns/2-4"
+            ),
+        },
+        "K0_fit_scan": fit_scan,
         "xi_exp_blocking_error_plateau": fit_blocking_plateau,
         "plaquette_profile": {
             "kind_t": chains[0].raw.profile.keys.tolist(),
@@ -1174,7 +1855,9 @@ def analyse_ensemble(
                 np.sqrt(np.maximum(np.diag(profile_covariance), 0.0))
             ),
         },
+        "boundary_wilson": boundary_result,
     }
+    return result
 
 
 def _load_prescribed_cuts(path: Path, chains: Sequence[ChainData]) -> list[int]:
@@ -1195,8 +1878,16 @@ def main() -> None:
     parser.add_argument("--ns", type=int, required=True)
     parser.add_argument("--beta", type=float, required=True)
     parser.add_argument("--purpose", required=True)
+    parser.add_argument("--campaign-type")
+    parser.add_argument("--target-c", type=float)
     parser.add_argument("--minimum-cut", type=int, default=500)
-    parser.add_argument("--bootstrap-samples", type=int, default=20_000)
+    parser.add_argument("--maximum-sweep", type=int)
+    parser.add_argument(
+        "--bootstrap-samples",
+        type=int,
+        choices=[ANALYSIS_BOOTSTRAP_SAMPLES],
+        default=ANALYSIS_BOOTSTRAP_SAMPLES,
+    )
     parser.add_argument("--bootstrap-seed", type=int, default=20_260_721)
     parser.add_argument("--diagnostics-only", action="store_true")
     parser.add_argument("--thermalization-diagnostics", type=Path)
@@ -1205,8 +1896,12 @@ def main() -> None:
     args = parser.parse_args()
     if args.nt < 1 or args.ns < 2 or args.beta <= 0.0 or args.minimum_cut < 0:
         raise ValueError("invalid ensemble parameters")
+    if args.maximum_sweep is not None and args.maximum_sweep <= args.minimum_cut:
+        raise ValueError("maximum sweep must exceed the minimum cut")
 
-    raw_chains = load_ensemble(args.ensemble_dir, args.chain_directory)
+    raw_chains = load_ensemble(
+        args.ensemble_dir, args.chain_directory, args.maximum_sweep
+    )
     prescribed = (
         _load_prescribed_cuts(args.thermalization_diagnostics, raw_chains)
         if args.thermalization_diagnostics is not None
@@ -1230,7 +1925,12 @@ def main() -> None:
             args.bootstrap_samples,
             args.bootstrap_seed,
             args.covariance_output,
+            args.campaign_type,
+            args.target_c,
         )
+    if args.maximum_sweep is not None:
+        result["analysis_status"] = "preliminary_common_sweep_snapshot"
+        result["maximum_sweep_inclusive"] = args.maximum_sweep
     args.output.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(result, indent=2, allow_nan=False) + "\n"
     args.output.write_text(text, encoding="utf-8")

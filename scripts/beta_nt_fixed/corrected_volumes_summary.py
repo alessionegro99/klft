@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Summarize the corrected ``Nt=3,4`` constant-coupling volumes."""
+"""Summarize the corrected ``Nt=3,4`` fixed-beta/Nt volumes."""
 
 from __future__ import annotations
 
@@ -7,11 +7,16 @@ import argparse
 import csv
 import json
 from pathlib import Path
+import sys
 from typing import Sequence
 
 import numpy as np
 
-from step3_campaign_summary import (
+
+SCRIPTS = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(SCRIPTS))
+
+from beta_nt_fixed.pilot_summary import (
     finite_volume_comparison,
     weighted_scaling_fit,
 )
@@ -26,9 +31,9 @@ def scaling_fit(results: Sequence[dict[str, object]]) -> dict[str, object]:
     """Fit ``xi_2nd/Nt = q0 + c/Nt`` for the three slab thicknesses."""
     ordered = sorted(results, key=lambda result: int(result["physical_Nt"]))
     if [int(result["physical_Nt"]) for result in ordered] != [2, 3, 4]:
-        raise ValueError("constant-lambda scaling requires Nt=2,3,4")
+        raise ValueError("fixed-beta/Nt scaling requires Nt=2,3,4")
     if any(result["xi_2nd_error"] is None for result in ordered):
-        raise ValueError("constant-lambda scaling needs resolved xi_2nd errors")
+        raise ValueError("fixed-beta/Nt scaling needs resolved xi_2nd errors")
     nt = np.asarray(
         [result["physical_Nt"] for result in ordered], dtype=np.float64
     )
@@ -122,15 +127,15 @@ def write_points(
 
 
 def summarize(
-    step3_results: Path,
-    fv160_results: Path,
+    pilot_results: Path,
+    finite_volume_results: Path,
     corrected_results: Path,
     output: Path,
 ) -> dict[str, object]:
     """Compare pilot and corrected volumes and update the scaling fit."""
-    nt2_path = step3_results / "Nt_2_Ns_128_b_3p6" / "analysis.json"
-    nt3_old_path = step3_results / "Nt_3_Ns_144_b_5p4" / "analysis.json"
-    nt4_old_path = step3_results / "Nt_4_Ns_192_b_7p2" / "analysis.json"
+    nt2_path = pilot_results / "Nt_2_Ns_128_b_3p6" / "analysis.json"
+    nt3_old_path = pilot_results / "Nt_3_Ns_144_b_5p4" / "analysis.json"
+    nt4_old_path = pilot_results / "Nt_4_Ns_192_b_7p2" / "analysis.json"
     nt3_new_path = (
         corrected_results / "Nt_3_Ns_176_b_5p4" / "analysis.json"
     )
@@ -147,7 +152,7 @@ def summarize(
     nt2, nt3_old, nt3_new, nt4_old, nt4_new = [
         load_result(path) for path in paths
     ]
-    fv_summary = load_result(fv160_results / "finite_volume_summary.json")
+    fv_summary = load_result(finite_volume_results / "finite_volume_summary.json")
     nt3_comparison = finite_volume_comparison(
         nt3_old_path, nt3_old, nt3_new_path, nt3_new
     )
@@ -232,14 +237,14 @@ def summarize(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--step3-results", type=Path, required=True)
-    parser.add_argument("--fv160-results", type=Path, required=True)
+    parser.add_argument("--pilot-results", type=Path, required=True)
+    parser.add_argument("--finite-volume-results", type=Path, required=True)
     parser.add_argument("--corrected-results", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     summary = summarize(
-        args.step3_results,
-        args.fv160_results,
+        args.pilot_results,
+        args.finite_volume_results,
         args.corrected_results,
         args.output,
     )
