@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from mg_nt_fixed_tuning import Point, tune_group
+from mg_nt_fixed_tuning import Point, load_points, tune_group
 
 
 class MgNtFixedTuningTest(unittest.TestCase):
@@ -87,6 +87,17 @@ class MgNtFixedTuningTest(unittest.TestCase):
             [4.6, 5.0, 5.4],
         )
         self.assertEqual(len(samples), 1000)
+
+    def test_extension_manifests_and_results_are_paired(self) -> None:
+        with self.assertRaisesRegex(ValueError, "must be supplied together"):
+            load_points(
+                Path("pilot.tsv"),
+                Path("prior.tsv"),
+                Path("results"),
+                Path("audit"),
+                [Path("round1.tsv")],
+                [],
+            )
 
 
 if __name__ == "__main__":

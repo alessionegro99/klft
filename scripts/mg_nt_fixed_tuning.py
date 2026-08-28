@@ -66,19 +66,21 @@ def load_points(
     prior_points: Path,
     results: Path,
     audit_results: Path,
-    extension_manifest: Path | None = None,
-    extension_results: Path | None = None,
+    extension_manifests: Sequence[Path] = (),
+    extension_results: Sequence[Path] = (),
 ) -> list[Point]:
     """Load pilot, optional extension, and explicitly labelled prior points."""
+    if len(extension_manifests) != len(extension_results):
+        raise ValueError("extension manifests and results must be supplied together")
     points = _load_manifest_points(manifest, results, "mg_nt_fixed")
-    if (extension_manifest is None) != (extension_results is None):
-        raise ValueError("extension manifest and results must be supplied together")
-    if extension_manifest is not None and extension_results is not None:
+    for index, (extension_manifest, extension_result) in enumerate(
+        zip(extension_manifests, extension_results, strict=True), start=1
+    ):
         points.extend(
             _load_manifest_points(
                 extension_manifest,
-                extension_results,
-                "mg_nt_fixed_extension_round1",
+                extension_result,
+                f"mg_nt_fixed_extension_round{index}",
             )
         )
 
@@ -546,8 +548,8 @@ def main() -> None:
     parser.add_argument("--prior-points", type=Path, required=True)
     parser.add_argument("--results", type=Path, required=True)
     parser.add_argument("--audit-results", type=Path, required=True)
-    parser.add_argument("--extension-manifest", type=Path)
-    parser.add_argument("--extension-results", type=Path)
+    parser.add_argument("--extension-manifest", type=Path, action="append", default=[])
+    parser.add_argument("--extension-results", type=Path, action="append", default=[])
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     points = load_points(
