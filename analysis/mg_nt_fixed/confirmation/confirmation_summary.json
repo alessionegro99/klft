@@ -1,0 +1,14 @@
+{
+  "target_c": 1.0,
+  "physical_Nt": 4,
+  "beta": 4.61755576,
+  "measured_mass_Nt": 1.006200209245963,
+  "measured_mass_Nt_error": 0.006541897147159241,
+  "combined_standard_deviation": 0.007441292150656154,
+  "absolute_difference_from_target": 0.006200209245962984,
+  "three_percent_threshold": 0.03,
+  "acceptance_threshold": 0.03,
+  "criterion": "absolute difference <= max(one combined standard deviation, 3 percent)",
+  "accepted": true,
+  "next_action": "stop_for_review"
+}
