@@ -20,6 +20,6 @@ confirmation=$(find "${confirmation_root}" -mindepth 2 -maxdepth 2 -name analysi
 export UV_CACHE_DIR="${remote_root}/.uv-cache"
 cd "${project}"
 exec "${remote_root}/bin/uv" run --frozen python scripts/mg_nt_fixed_confirmation.py \
-    --tuning-summary "${remote_root}/analysis/mg_nt_fixed/tuning/tuning_summary.json" \
+    --tuning-summary "${remote_root}/analysis/mg_nt_fixed/tuning_final/tuning_summary.json" \
     --confirmation "${confirmation}" \
     --output "${confirmation_root}"

@@ -25,7 +25,7 @@ binary="${remote_root}/build/klft/binaries/heatbath"
 [[ "$(awk -F '\t' '$1 == "gate" {print $2}' "${campaign}/timing_gate.tsv")" == PASS ]] || exit 1
 [[ "$(awk -F '\t' '$1 == "gate" {print $2}' "${campaign}/audit_gate.tsv")" == PASS ]] || exit 1
 expected_tuning_sha=$(tr -d '[:space:]' < "${campaign}/confirmation_tuning_summary_sha256.txt")
-[[ "$(sha256sum "${remote_root}/analysis/mg_nt_fixed/tuning/tuning_summary.json" | awk '{print $1}')" == "${expected_tuning_sha}" ]] || {
+[[ "$(sha256sum "${remote_root}/analysis/mg_nt_fixed/tuning_final/tuning_summary.json" | awk '{print $1}')" == "${expected_tuning_sha}" ]] || {
     echo "confirmation inputs do not match the remote tuning summary" >&2
     exit 1
 }

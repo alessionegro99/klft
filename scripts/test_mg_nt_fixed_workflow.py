@@ -119,6 +119,12 @@ class MgNtFixedWorkflowTest(unittest.TestCase):
         timing = (qbig / "submit_timing.slurm").read_text(encoding="utf-8")
         diagnostics = (qbig / "submit_diagnostics.slurm").read_text(encoding="utf-8")
         analysis = (qbig / "submit_analysis.slurm").read_text(encoding="utf-8")
+        confirmation = (qbig / "submit_confirmation_production.slurm").read_text(
+            encoding="utf-8"
+        )
+        confirmation_gate = (qbig / "submit_confirmation_gate.slurm").read_text(
+            encoding="utf-8"
+        )
         queue = (qbig / "queue_stage.sh").read_text(encoding="utf-8")
         self.assertIn("#SBATCH --array=0-99\n", production)
         self.assertNotIn("#SBATCH --array=0-99%", production)
@@ -132,6 +138,8 @@ class MgNtFixedWorkflowTest(unittest.TestCase):
             self.assertNotIn("#SBATCH --array=0-24%", script)
         self.assertNotIn("--dependency", queue)
         self.assertNotIn("afterok", queue)
+        self.assertIn("tuning_final/tuning_summary.json", confirmation)
+        self.assertIn("tuning_final/tuning_summary.json", confirmation_gate)
 
 
 if __name__ == "__main__":
