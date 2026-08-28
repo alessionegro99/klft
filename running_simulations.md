@@ -11,8 +11,8 @@ remain complete.
 
 - Status: complete. Smoke, timing, production, validation, diagnostics,
   analyses, corrected volume/statistics gates, 10000-replica reanalyses, and
-  final tuning all passed. Independent confirmation inputs are committed but
-  not yet submitted.
+  final tuning all passed. The independent confirmation is also complete and
+  accepted.
 - Purpose: increase the selected `Nt=3,Ns=80,beta=4.40` statistics, directly
   check the two low-volume `c=1,Nt=4` tuning inputs, and repeat the borderline
   `c=2,Nt=4` mass analyses with 10000 joint-bootstrap replicas before the
@@ -83,7 +83,7 @@ remain complete.
 
 ## Nonperturbative fixed-`m_G Nt` confirmation
 
-- Status: immutable inputs committed; not yet staged or submitted.
+- Status: complete and accepted; final gate `PASS`.
 - Ensemble: `(physical Nt,stored L2,Ns,beta)=(4,5,48,4.61755576)`, target
   `c=1`, four independent 8000-sweep hot-start chains with reserved seeds
   `816415709`, `1698854721`, `738942754`, and `1813195289`.
@@ -94,6 +94,19 @@ remain complete.
 - Acceptance: after chain-aware diagnostics and mass analysis, require the
   measured `m_G Nt` to agree with one within the wider of one combined
   standard deviation and 3%. No scheduler dependencies are used.
+- Execution: at 15:26 CEST the user queue was empty, `lnode13--17` were idle,
+  and direct checks found no GPU compute processes on all 40 P100s.
+  Production array `289432_[0-3]` completed on `lnode13` in 1:00--1:01 with
+  exit code zero; all four 8000-sweep histories passed exact input-hash and
+  measurement-count validation. Diagnostics job `289436` completed in 17
+  seconds. All chains use a 500-sweep cut and 30-sweep blocks, leaving 250
+  blocks per chain; every primary and secondary plateau passes. Analysis job
+  `289437` completed on `lnode11` in 11:48 with exit code zero. Its selected
+  `R=4--24` fit has recentered-bootstrap `p=0.4266`, 1000 finite replicas,
+  and an accepted mass/`xi_exp` plateau. The result is
+  `m_G Nt=1.006200 +/- 0.006542`. Gate job `289438` completed in 12 seconds
+  and passed: the 0.006200 absolute target discrepancy is below the 0.03
+  acceptance threshold.
 
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 

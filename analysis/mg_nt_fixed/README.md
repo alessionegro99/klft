@@ -14,10 +14,41 @@ point under `extensions/round2/` is also accepted, with
 `tuning_round2/` passes all nine targets. Its `c=0.5,Nt=3` result is
 `beta_star=4.29462 [4.29213,4.29828]` with fit `p=0.1474`.
 
-Required statistical increases are tracked in
-[`preliminary_checklist.md`](preliminary_checklist.md).
+The final checks under `final_checks/` replace beta 4.40 with four fresh
+80000-sweep chains, replace the two low-volume `c=1,Nt=4` inputs by `Ns=96`
+measurements, and repeat all three `c=2,Nt=4` analyses with 10000 replicas.
+Final tuning under `tuning_final/` passes all nine groups. The independent
+confirmation at `Nt=4,c=1,beta=4.61755576` gives
+`m_G Nt=1.006200 +/- 0.006542` and passes its 3% agreement gate.
 
-[`preliminary_plots/`](preliminary_plots/) contains 84 grid-free,
+Required statistical increases are tracked in
+the [canonical checklist](../../docs/mg_nt_fixed/summary.md#preliminary-statistics-checklist).
+
+[`preliminary_plots/`](preliminary_plots/) contains the historical 84-plot
+round-2 diagnostic set. [`final_plots/`](final_plots/) contains seven focused,
+grid-free, single-page 16:9 PDFs from the checked final tuning:
+
+- three final mass-bracket plots;
+- tuned `beta_star/Nt` versus `1/Nt`;
+- two direct periodic-correlator volume comparisons;
+- one extracted-mass volume-stability comparison.
+
+Reproduce the focused set from the repository root with:
+
+```bash
+MPLCONFIGDIR=/tmp/dirichlet-mpl \
+UV_CACHE_DIR=/tmp/dirichlet-uv-cache uv run python \
+  scripts/mg_nt_fixed_volume_plots.py \
+  --pilot-results analysis/mg_nt_fixed/pilot \
+  --replacement-results analysis/mg_nt_fixed/final_checks \
+  --tuning-summary analysis/mg_nt_fixed/tuning_final/tuning_summary.json \
+  --output analysis/mg_nt_fixed/final_plots
+```
+
+The focused plotting-program SHA-256 is
+`cd12a7988b36b2400cc9d743b11bb7893b4e6056a95484dfb6b64fdf19889f8c`.
+
+The historical [`preliminary_plots/`](preliminary_plots/) set contains 84
 single-page 16:9 LaTeX PDFs made from all currently available compact pilot,
 extension, and audit results:
 

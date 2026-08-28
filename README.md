@@ -12,9 +12,10 @@ Current campaign status is documented separately. The
 [fixed `beta/Nt`](docs/beta_nt_fixed/summary.md) analysis has `p=1` continuum
 fits on the 1.8 and 2.0 lines, 64 comparison PDFs, and 30 per-ensemble
 first-stage PDFs; the 2.1 line remains incomplete. The separate
-[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has 84 PDFs and its
-round-2 tuning passes all nine groups. All plots are
-grid-free and preliminary.
+[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign passes all nine final
+tunings and its independent `Nt=4,c=1` confirmation. All plots are grid-free;
+the fixed-mass report separates the historical pilot set from the focused
+checked plots.
 
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
 build. Set `temporal_dirichlet: true` in either update section. With it false,

@@ -9,12 +9,11 @@ PDFs. Direct volume and statistics checks remain necessary. Exact results and
 provenance are in
 [`docs/beta_nt_fixed/summary.md`](docs/beta_nt_fixed/summary.md).
 
-The separate nonperturbative fixed-`m_G Nt` pilot completed all 100 chains and
-25 mass analyses. Both extension rounds are fully analyzed, and round-2
-tuning passes all nine groups. Beta 4.40 remains selected and needs more
-physical statistics; two low-volume `c=1,Nt=4` bracket inputs and the
-borderline `c=2,Nt=4` fit also require final checks before confirmation. The
-canonical report is
+The separate nonperturbative fixed-`m_G Nt` campaign completed its pilot,
+both extensions, statistics and volume replacements, final tuning, and the
+independent `Nt=4,c=1` confirmation. All nine final tunings pass. The
+confirmation gives `m_G Nt=1.006200 +/- 0.006542` and passes its 3% agreement
+gate. The canonical report is
 [`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
 
 ## Fixed-beta/Nt pilot implementation and execution

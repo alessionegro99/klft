@@ -52,8 +52,26 @@ analysis job `289402` obtains `m_G Nt=0.5051264 +/- 0.0020453`; the selected
 window patch, and 1000 finite positive replicas. Tuning job `289403` then
 accepts all nine groups. The new `(c,Nt)=(0.5,3)` result is
 `beta_star=4.29462 [4.29213,4.29828]`, fit `p=0.1474`, and interpolation
-systematic `0.00513`. Confirmation remains unsubmitted pending the listed
-statistics, volume, and final-bootstrap checks.
+systematic `0.00513`. At that stage, confirmation remained unsubmitted pending
+the listed statistics, volume, and final-bootstrap checks.
+
+Those final checks are now complete. Four fresh 80000-sweep chains reduce the
+beta-4.40 relative mass error from 3.14% to 0.204%. Direct `Ns=48` versus 96
+checks at beta 4.95 and 5.30 find mass agreement within 0.422 and 0.730
+combined standard deviations and `xi_2nd` agreement within 0.480 standard
+deviations. The raw correlators separate near the `Ns=48` midpoint because
+the two boxes have different periodic images; that comparison is retained as
+a diagnostic rather than misused as a volume-independence gate. The larger
+volumes have 68% lower bounds `Ns/xi_2nd=17.375` and 14.390.
+
+Final tuning job `289431` accepts all nine groups. Its `c=2,Nt=4` fit remains
+borderline but passes with `p=0.05155` after the three input analyses were
+repeated with 10000 replicas. The tuned confirmation coupling is
+`beta=4.61755576`. Four independent confirmation chains pass validation,
+diagnostics, and mass analysis. They give
+`m_G Nt=1.006200 +/- 0.006542`, selected-fit `p=0.4266`, and pass the
+preregistered 3% agreement gate. The tuning-and-confirmation phase is
+complete.
 
 The local campaign provenance is:
 
@@ -219,24 +237,40 @@ pass. The only changed group selects beta `4.27,4.29,4.40` and gives
 systematic `0.00513`. Beta 4.40 remains selected, so its physical statistics
 must be increased before final tuning.
 
-## Preliminary plots
+## Final tuning and confirmation
 
-The current compact data produce 84 grid-free, single-page 16:9 PDFs under
-`analysis/mg_nt_fixed/preliminary_plots/`. They include all tuning brackets
-and accepted tuned trajectories, 29 accepted mass fits, 29 plaquette
-profiles, nine local-bracket correlator comparisons, and three plots each for
-`xi_exp/xi_2nd`, `m_G Ns`, `Ns/xi_2nd`, and chiral symmetry. The two inputs
-from `beta_nt_fixed` are explicitly labelled as prior information in every
-figure that contains or derives from them. These are pilot diagnostics, not
-final production plots; all will be regenerated after the tuning,
-confirmation, and volume gates are complete.
+The compact final tuning is
+`analysis/mg_nt_fixed/tuning_final/tuning_summary.json`; all nine groups pass.
+For `(c,Nt)=(1,4)`, it gives
+`beta_star=4.61756 [4.61267,4.62241]`, fit `p=0.3066`, and interpolation
+systematic `0.00313`. The independent measurement at that coupling gives
+`m_G Nt=1.006200 +/- 0.006542`. Its absolute target difference is 0.006200,
+below the 0.03 gate threshold.
 
-The new volume plots expose a limitation not visible in the tuning table.
-`Ns/xi_2nd` is `7.313` at `(c,Nt,beta)=(1,4,5.30)`, `8.043` at
-`(0.5,4,6.20)`, and `9.476` at `(1,4,4.95)`. The accepted `c=1,Nt=4`
-three-point interpolation uses the first and third points. Its current
-`beta_star` is therefore preliminary until those inputs are repeated at
-larger `Ns` or their volume stability is demonstrated.
+## Plots
+
+The historical round-2 set contains 84 grid-free, single-page 16:9 PDFs under
+`analysis/mg_nt_fixed/preliminary_plots/`. A focused checked set under
+`analysis/mg_nt_fixed/final_plots/` contains the three final tuning brackets,
+`beta_star/Nt` versus `1/Nt`, two direct periodic-correlator volume
+comparisons, and the corresponding extracted-mass volume comparison. The
+larger-volume replacements resolve the low-volume limitation in the original
+`c=1,Nt=4` interpolation.
+
+## Physics visible in the checked data
+
+- The confirmation gives `xi_exp/xi_2nd=1.0046`, consistent with one dominant
+  screening scale and the selected periodic-`K0` description at this point.
+- From `Nt=2` to 4, `beta_star/Nt` decreases by 6.5%, 7.7%, and 4.3% for
+  `c=0.5`, 1, and 2. These are visible cutoff effects. Three temporal
+  resolutions do not justify a controlled continuum extrapolation.
+- The extracted masses at beta 4.95 and 5.30 are stable from `Ns=48` to 96.
+  The raw correlators separate only near the smaller-box midpoint, as expected
+  from the different periodic images.
+- The plaquette profiles show the fixed boundary layers and reflection
+  symmetry. A quantitative boundary-energy or profile screening scale still
+  requires the deferred chain-aware profile covariance analysis and a stated
+  subtraction or renormalization prescription.
 
 ## Job record
 
@@ -313,32 +347,29 @@ results rather than final production measurements.
   secondary blocking plateaus, and 1000 finite mass replicas.
 - [x] Record the two round-1 extension points as preliminary, despite their
   good 187/125 blocks per chain and sub-percent mass errors.
-- [ ] Increase independent Monte Carlo statistics at
-  `Nt=3,Ns=80,beta=4.40`: its relative mass error is 3.14%, much larger than
-  the approximately 0.4% errors at beta 4.20 and 4.27.
+- [x] Increase independent Monte Carlo statistics at
+  `Nt=3,Ns=80,beta=4.40`; four fresh 80000-sweep chains reduce the relative
+  mass error from 3.14% to 0.204%.
 - [x] Add and analyze the target-bracketing `c=0.5,Nt=3` point at beta 4.290.
   Round-2 tuning passes all nine groups; the resulting beta remains
   preliminary until the remaining checks below pass.
 - [ ] Increase statistics for `Nt=4,Ns=96,beta=6.20` if it is used in a final
   result: 46 blocks per chain pass the hard floor but miss the target of 50.
-- [ ] Repeat or directly volume-check the bracket points with
-  `Ns/xi_2nd < 10`, especially the two low-volume inputs to the accepted
-  `c=1,Nt=4` interpolation.
-- [ ] Repeat borderline final goodness-of-fit calculations with 10000
-  bootstrap replicas, especially the accepted `c=2,Nt=4` interpolation with
-  `p=0.05084`.
-- [ ] Run the independent `Nt=4,c=1` confirmation only after all nine tunings
-  pass, then require agreement within the wider of one combined standard
-  deviation and 3%.
+- [x] Directly volume-check and replace the two low-volume `c=1,Nt=4`
+  interpolation inputs with accepted `Ns=96` results.
+- [x] Repeat all three `c=2,Nt=4` input analyses with 10000 bootstrap
+  replicas; the final interpolation passes with `p=0.05155`.
+- [x] Run the independent `Nt=4,c=1` confirmation after all nine tunings
+  pass; `m_G Nt=1.006200 +/- 0.006542` passes the 3% gate.
 
 Increasing bootstrap replicas only reduces resampling noise; it does not add
 physical statistics. The latter requires longer independent histories or new
 independent chains.
 
-## Deferred until pilot review
+## Deferred roadmap
 
 The `Nt=6` pilot, Wilson-loop cadence changes, all-height and intermediate
 height validation, chain-aware Wilson/profile residual analysis, the explicit
 `Nt=4,c=0.5` volume check, scalar-profile covariance fit, and continuum
-analysis are not authorized before the confirmation review. `m_0++` remains
-null unless an independent bulk glueball extraction is validated.
+analysis remain deferred pending a new roadmap decision. `m_0++` remains null
+unless an independent bulk glueball extraction is validated.
