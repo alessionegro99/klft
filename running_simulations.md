@@ -1,10 +1,50 @@
 # Running simulations
 
-As checked on 2026-07-28 after jobs `282512` and `282513` completed, no
-fixed-beta/Nt GPU simulation or CPU analysis is active on qbig. Production
-tasks `282274_[36-39]` timed out. Fixed-mass extension analyses
-`282506_[0-1]` and round-1 tuning `282508` also remain complete. The
-production jobs listed in the historical campaign sections remain complete.
+As checked on 2026-08-28 at 10:52 CEST, the user queue was empty,
+`lnode13`--`lnode17` were Slurm-idle, and direct inspection found no GPU
+compute processes on their 40 P100s. This is an availability snapshot, not a
+reservation. Fixed-beta/Nt production tasks `282274_[36-39]` remain timed
+out. Fixed-mass extension analyses `282506_[0-1]` and round-1 tuning `282508`
+remain complete.
+
+## Nonperturbative fixed-`m_G Nt` round-2 extension
+
+- Status: planned and committed locally; not yet staged or submitted.
+- Purpose: resolve the sole failed tuning group `(c,Nt)=(0.5,3)`, whose
+  round-1 local log-linear interpolation has `p=0.01350`.
+- Ensemble: `(physical Nt,stored L2,Ns,beta)=(3,4,80,4.290)`. Beta 4.290 is
+  only a placement estimate from the target-bracketing beta-4.27 and
+  beta-4.40 measurements.
+- Production seeds: `767348994`, `1941201624`, `190362085`, and `1526132929`,
+  draws 113--116 from `np.random.default_rng(20260724)`. Separate smoke and
+  timing seeds are `922096603` and `1947777267`.
+- Histories: four independent hot starts, 8000 composite sweeps per chain,
+  one heatbath plus five overrelaxation sweeps. Holonomy measurements use
+  cadence one and profiles cadence five; boundary Wilson loops and horizontal
+  Polyakov loops are disabled.
+- Validation: one immutable 25-sweep smoke input followed by one immutable
+  100-sweep timing input. Production is forbidden unless both local campaign
+  gates pass; the timing limits remain two hours per chain and 12 total P100
+  GPU-hours.
+- Resources: smoke and timing request one typed Pascal GPU, three CPUs, and
+  5 GB each. Production is an uncapped four-task array with the same per-task
+  resources and a two-hour walltime. Diagnostics use four CPUs/12 GB/two
+  hours; analysis uses four CPUs/16 GB/eight hours; tuning uses two CPUs/8 GB/
+  30 minutes. No job has a Slurm dependency.
+- Inputs and manifest: `data/mg_nt_fixed/extensions/round2/`; immutable
+  manifest SHA-256 `a750d240ef00f3242b26e98ccaffe525dffef8996a1f551c5a2825f9ce3f4e10`.
+- KLFT: commit `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`,
+  sole P100 build `/qbigwork2/negro/dirichlet/build/klft`.
+- Remote campaign:
+  `/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/extensions/round2/`;
+  raw histories:
+  `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/extensions/round2/`; compact
+  results:
+  `/qbigwork2/negro/dirichlet/analysis/mg_nt_fixed/extensions/round2/`.
+- Planned log prefixes: `mgnt-ext2-smoke`, `mgnt-ext2-timing`,
+  `mgnt-ext2-prod`, `mgnt-ext2-diag`, `mgnt-ext2-analysis`, and
+  `mgnt-ext2-tuning` below `/qbigwork2/negro/dirichlet/logs/`.
 
 ## Fixed-beta/Nt production extension
 
