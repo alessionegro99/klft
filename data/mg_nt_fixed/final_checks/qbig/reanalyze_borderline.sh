@@ -16,14 +16,17 @@ IFS=$'\t' read -r _ campaign_type target_c run _ purpose physical_nt _ ns beta \
     _ _ _ _ _ _ _ _ _ <<< "${line}"
 ensemble=$(basename "$(dirname "${run}")")
 diagnostics="${root}/analysis/mg_nt_fixed/pilot/${ensemble}/thermalization_diagnostics.json"
+accepted="${root}/analysis/mg_nt_fixed/pilot/${ensemble}/analysis.json"
 output="${root}/analysis/mg_nt_fixed/final_checks/bootstrap_10000/${ensemble}"
-[[ -s "${diagnostics}" && ! -e "${output}/analysis.json" && ! -e "${output}/covariance.npz" ]]
+[[ -s "${diagnostics}" && -s "${accepted}" && ! -e "${output}/analysis.json" && ! -e "${output}/covariance.npz" ]]
 chain_arguments=()
 for offset in 0 1 2 3; do
     chain_run=$(sed -n "$((4 * index + offset + 2))p" "${manifest}" | cut -f4)
     [[ "$(basename "$(dirname "${chain_run}")")" == "${ensemble}" ]]
     chain="${root}/data/${chain_run}"
-    [[ -f "${chain}/run_complete.txt" ]]
+    for file in holonomy_summary.out holonomy_correlator.out plaquette_profile.out; do
+        [[ -f "${chain}/${file}" ]]
+    done
     chain_arguments+=(--chain-directory "${chain}")
 done
 mkdir -p "${output}"

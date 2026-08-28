@@ -60,6 +60,9 @@ class FinalChecksGenerateInputsTest(unittest.TestCase):
             self.assertIn(
                 "#SBATCH --gres=gpu:pascal:1\n", (qbig / name).read_text()
             )
+        reanalysis = (qbig / "reanalyze_borderline.sh").read_text()
+        self.assertIn('accepted="${root}/analysis/mg_nt_fixed/pilot/', reanalysis)
+        self.assertNotIn('run_complete.txt', reanalysis)
 
 
 if __name__ == "__main__":
