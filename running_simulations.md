@@ -1,25 +1,315 @@
 # Running simulations
 
-## Step-3 corrected constant-coupling volumes
+As checked on 2026-07-28 after jobs `282512` and `282513` completed, no
+fixed-beta/Nt GPU simulation or CPU analysis is active on qbig. Production
+tasks `282274_[36-39]` timed out. Fixed-mass extension analyses
+`282506_[0-1]` and round-1 tuning `282508` also remain complete. The
+production jobs listed in the historical campaign sections remain complete.
+
+## Fixed-beta/Nt production extension
+
+- Status: 36 of 40 production chains and eight of ten ensemble analyses are
+  complete and accepted. Tasks `282274_[36-39]`, the four
+  `(Nt,Ns,beta)=(5,688,10.5)` chains, all timed out after 95.5 hours. Their
+  final holonomy steps are 48399, 48778, 48724, and 48324; none has
+  `run_complete.txt`. The dependent final pipeline was cancelled, and no GPU
+  production is active. Clean P100 build
+  job `282258` failed before configuration because
+  its source path used an incorrect 8-character directory tag; it created no
+  build or simulation output. Corrected clean-build job `282259` supersedes
+  it and completed successfully on `lnode13`. Both deterministic and
+  statistical Dirichlet CTests passed. The P100 executable SHA-256 is
+  `a22087d10bdc78a9fae501cc0e4e0e91116577ce2bd684345331c4113e038ef8`.
+  Build and cadence-20 smoke logs are
+  `/qbigwork2/negro/dirichlet/logs/bntf-build-282259.out` and
+  `/qbigwork2/negro/dirichlet/logs/bntf-smoke-282265.out`.
+- Reanalysis: CPU array `282249_[0-4]` was cancelled after about 35 minutes
+  because it redundantly scanned every `Rmax` down to `Ns/3` and had not
+  produced compact output. Replacement array `282260_[0-4]` retains the full
+  `Rmin` scan and 3-by-3 stability test at the three endpoint choices
+  `Ns/2`, `Ns/2-2`, and `Ns/2-4`. It applies diagonal-covariance periodic-
+  `K0` fits to the existing `Nt=2` finite-volume sequence and the selected
+  `Nt=3,4` volumes. Complete correlator vectors are resampled jointly with
+  1000 seeded hierarchical-bootstrap replicas; fit errors come from the
+  refits, while the full covariance is used only for post-fit `chi2/dof` and
+  a recentered-bootstrap goodness-of-fit test.
+- Reanalysis outputs (replacement array):
+  `/qbigwork2/negro/dirichlet/analysis/beta_nt_fixed/reanalysis_v2/`; logs:
+  `/qbigwork2/negro/dirichlet/logs/bntf-reanalysis-282260_<task>.out`.
+- Replacement array `282260_[0-4]` completed. The selected `Nt=2,3,4` fits
+  give `m_G Nt=0.20736(77),0.17911(57),0.16236(92)`.
+- Borderline-fit confirmation array `282321_[3-4]` repeated the selected
+  `Nt=3,4` analyses with 10000 joint-bootstrap replicas and independent
+  explicit seeds `20260823,20260824`. It writes new immutable output under
+  `/qbigwork2/negro/dirichlet/analysis/beta_nt_fixed/reanalysis_v3/`. Both
+  tasks completed with exit code zero. They give `m_G Nt=0.179114(584)` with
+  `p=0.06579` and `0.162349(934)` with `p=0.05179`; both pass, with the `Nt=4`
+  fit close to the gate.
+- The earlier preliminary jobs `282318/282319` completed before most
+  production analyses and are stale. The reproducible current partial summary
+  is local under `analysis/beta_nt_fixed/comparison/`; it records missing or
+  rejected points explicitly and substitutes none.
+- Diagnostic jobs `282509` at sweep 40000 and `282510` at sweep 48300 used a
+  block grid with fewer than three candidates above their autocorrelation
+  bounds, so their apparent rejections are superseded. The corrected grid adds
+  viable 1000- and 1400-sweep candidates. Job `282511` completed in 5:43 with
+  exit code zero and accepts `[1000,1200,1400]` sweeps, selecting 1400-sweep
+  blocks and leaving `32,32,33,32` blocks after independent cuts
+  `2125,2250,1750,3250`. The maximum between-chain discrepancy is 3.102 sigma
+  in `Tr_G_real`. The byte-matched compact diagnostic is local under
+  `analysis/beta_nt_fixed/beta_over_nt_2p1/Nt_5_Ns_688_b_10p5/`.
+- Preliminary mass-analysis job `282512` ran dependency-free with eight CPUs,
+  32 GB, a 12-hour limit, exactly 1000 replicas, and bootstrap seed
+  `20260910`. It completed in 3:56:46 with exit code zero. Eight individual
+  windows pass the pointwise mass gates, but no stable three-by-three patch
+  exists; `mass` and `xi_exp` are null, so the snapshot enters no continuum
+  fit. Remote compact output remains under
+  `/qbigwork2/negro/dirichlet/analysis/beta_nt_fixed/preliminary_snapshot_48300_v2/`;
+  log: `/qbigwork2/negro/dirichlet/logs/bntf-pre483v2-analysis-282512.out`.
+- First-stage plotting job `282513` completed in 1:21 with exit code zero. It
+  generated 30 grid-free PDFs: one thermalization and one blocking-error plot
+  for each of 13 slab ensembles and two PCM references. Remote compact output:
+  `/qbigwork2/negro/dirichlet/analysis/beta_nt_fixed/first_stage_clean_20260728/`;
+  log: `/qbigwork2/negro/dirichlet/logs/bntf-first-stage-282513.out`.
+- The current accepted selection has 64 grid-free preliminary PDFs under
+  `analysis/beta_nt_fixed/comparison/plots/`. Its continuum products contain
+  only `p=1` fits and exactly 1000 bootstrap replicas per operation.
+- Matched exact-PCM references: CPU array `282267_[0-1]` failed before
+  analysis because its wrapper directly executed a non-executable script and
+  produced no compact output. Corrected array `282272_[0-1]` reanalyzes the
+  existing `Nt=1,Ns=96,beta=2.0,2.1` histories with the same diagonal-fit,
+  joint-bootstrap, and complete-covariance goodness-of-fit convention. These
+  are the `Nt=1` endpoints of the new `beta/Nt=2.0,2.1` lines. Compact output:
+  `/qbigwork2/negro/dirichlet/analysis/beta_nt_fixed/pcm_reanalysis_v2/`;
+  logs: `/qbigwork2/negro/dirichlet/logs/bntf-pcm-fit-282272_<task>.out`.
+  Both corrected tasks completed with exit code zero. They give
+  `m_G=0.126859(380)` at beta `2.0` and `0.096229(318)` at beta `2.1`.
+- Production grid: ten ensembles and four independent hot-start chains each.
+  The exact fixed `beta/Nt` lines are `1.8`, `2.0`, and `2.1`, corresponding
+  to `g_3^2 L = 20/9`, `2`, and `40/21`. New points are `(Nt,Ns,beta) =
+  (5,336,9.0),(6,416,10.8)`; `(2,192,4.0),(3,304,6.0),(4,416,8.0),
+  (5,544,10.0)`; and `(2,240,4.2),(3,384,6.3),(4,528,8.4),
+  (5,688,10.5)`.
+- Histories: 50000 composite sweeps per chain, one heatbath plus five
+  overrelaxation sweeps. Holonomy correlators, Fourier components, and
+  summaries are measured every sweep; profiles every five sweeps; boundary
+  Wilson loops at every height every 25 sweeps in the accepted production
+  revision. The largest boundary ranges
+  reach at least three expected correlation lengths.
+- Inputs and explicit seeds are grouped by line under
+  `data/beta_nt_fixed/beta_over_nt_*/inputs/`; the immutable shared manifest is
+  `data/beta_nt_fixed/comparison/provenance/cadence25/manifest.tsv`. Staged campaign:
+  `/qbigwork2/negro/dirichlet/campaigns/beta_nt_fixed/production/cadence25/`;
+  raw root:
+  `/qbigwork2/negro/dirichlet/data/beta_nt_fixed/production/`.
+- KLFT: clean pinned commit
+  `f3928aa958a3aef18d215670faafc817ba322484`, source
+  `/qbigwork2/negro/dirichlet/src/klft-f3928aa`, P100 build
+  `/qbigwork2/negro/dirichlet/build/klft-f3928aa-p100`. Build log:
+  `/qbigwork2/negro/dirichlet/logs/bntf-build-282259.out`.
+- Gates: the accepted revision used a 25-sweep `Nt=2,Ns=32,beta=4.0` smoke
+  to validate all output counts and the exact `W_b(R,Nt)=C_G(R)` identity,
+  followed by a 25-sweep timing run of the largest
+  `Nt=5,Ns=688,beta=10.5,Rmax=208` ensemble. Both passed before production.
+- Smoke job `282265` completed successfully on `lnode13` in 0.38 s of
+  executable wall time. It produced exactly 20 summary rows, 340 correlator
+  rows, 20 profile rows, and 18 boundary-loop rows; `C_G(0)=W_b(0,H)=1`, and
+  every `W_b(R,2)` agrees with the step-20 `C_G(R)` within `2e-11`.
+  Cadence-20 timing job `282266` followed; its log is
+  `/qbigwork2/negro/dirichlet/logs/bntf-timing-282266.out`.
+- Cadence-20 timing job `282266` completed in 150.875257 s and correctly
+  failed its gate: the deliberately conservative 50000-sweep projection is
+  104.77448403 hours, above the 93-hour limit. No production task was
+  submitted from that revision.
+- Superseding immutable revision `cadence25` uses 42 fresh seeds (40
+  production plus two validations) and keeps the same physics grid, profiles,
+  and all-height boundary ranges while measuring boundary loops every 25
+  sweeps. Its manifest SHA-256 is
+  `9cab946bd0ab735cc943e62c362ac37de7a1eb52f5d4ab5043cd9b4ac6be03bc`.
+  Inputs are locally grouped under `data/beta_nt_fixed/beta_over_nt_*/inputs/`
+  and staged at
+  `/qbigwork2/negro/dirichlet/campaigns/beta_nt_fixed/production/cadence25/`.
+  Replacement smoke job `282269` failed before KLFT execution because its
+  wrapper directly executed a non-executable shared script; it created no
+  validation output. Corrected smoke job `282270` superseded it and passed in
+  0.44 s of executable wall time with all generic count, cadence, and exact
+  boundary-identity checks. Logs:
+  `/qbigwork2/negro/dirichlet/logs/bntf-smoke25-282269.out`,
+  `/qbigwork2/negro/dirichlet/logs/bntf-smoke25-282270.out`, and
+  `/qbigwork2/negro/dirichlet/logs/bntf-time25-282271.out`.
+- Cadence-25 timing job `282271` passed: 164.568808 s for the 25-sweep
+  largest case, conservatively projecting 91.42711556 hours per 50000-sweep
+  chain. Immediately before production submission, Slurm reported all five
+  Pascal nodes `lnode13`--`lnode17` idle and direct `nvidia-smi` checks found
+  no compute process on any of their 40 GPUs.
+- Production array `282274_[0-39]` was submitted without a concurrency cap.
+  Every task requests one typed Pascal GPU, three CPU cores, 8 GB, and
+  `3-23:30:00`. Logs are
+  `/qbigwork2/negro/dirichlet/logs/bntf-prod25-282274_<task>.out`.
+- First-output inspection: all 40 tasks started simultaneously across
+  `lnode13`--`lnode17`, eight typed P100 tasks per node. Sampled tasks 0, 8,
+  24, and 36 have the intended dimensions, coupling, seed, three cadences,
+  input hash, KLFT commit, executable hash, node, and GPU recorded in
+  `run_metadata.txt`. Their holonomy/profile/boundary files grow only on the
+  intended grids. Live checks on tasks 8 and 24 find zero violations of
+  `C_G(0)=1`, `W_b(0,H)=1`, or `W_b(R,Nt)=C_G(R)` at the latest common
+  measurement. Tasks 0--35 now have exit code zero and `run_complete.txt`,
+  which is written only after all wrapper validation checks pass.
+- Incremental analysis: diagnostics job `282344_[2]` exposed a cadence-grid
+  bug before writing a result: the blocking candidates were expressed in
+  five-sweep units and none was divisible by the new 25-sweep boundary
+  cadence. The corrected grid uses units of the least common multiple of all
+  enabled cadences; its new cadence-25 regression test passes. Failed
+  dependent analysis job `282345_[2]` produced no output. Replacement
+  diagnostics job `282354_[2]` completed with exit code zero. Per-chain cuts
+  are `625,2625,750,750` sweeps; the common `300,400,600`-sweep blocking
+  plateau selects 600-sweep blocks and leaves `82,78,82,82` blocks. The
+  largest between-chain discrepancy is `3.11` standard deviations in
+  `W_b(R=2,H=2)`, and all primary and secondary plateau gates pass. Analysis
+  job `282355_[2]` completed. The subsequent incremental pairs through
+  `282386/282387` also completed; all eight available ensembles have accepted
+  masses, accepted mass/`xi_exp` plateaus, at least 30 blocks per chain, and
+  1000 finite mass replicas. Diagnostics `282388_8` completed for
+  `(Nt,Ns,beta)=(4,528,8.4)`, but analysis `282389_8` failed because no common
+  three-length blocking plateau exists across all 924 observables. Jobs
+  `282390_9/282391_9` were cancelled after their production dependencies
+  timed out. The separate common-cutoff jobs `282511/282512` supersede them
+  only for explicitly preliminary analysis.
+- Per-ensemble dependencies are recorded remotely in
+  `campaigns/beta_nt_fixed/production/cadence25/incremental_analysis_jobs.tsv`:
+
+| index | `(Nt,Ns,beta)` | production tasks | diagnostics | analysis |
+|---:|---:|---:|---:|---:|
+| 0 | `(5,336,9.0)` | `282274_[0-3]` | `282374_0` | `282375_0` |
+| 1 | `(6,416,10.8)` | `282274_[4-7]` | `282376_1` | `282377_1` |
+| 2 | `(2,192,4.0)` | `282274_[8-11]` | `282354_2` | `282355_2` |
+| 3 | `(3,304,6.0)` | `282274_[12-15]` | `282378_3` | `282379_3` |
+| 4 | `(4,416,8.0)` | `282274_[16-19]` | `282380_4` | `282381_4` |
+| 5 | `(5,544,10.0)` | `282274_[20-23]` | `282382_5` | `282383_5` |
+| 6 | `(2,240,4.2)` | `282274_[24-27]` | `282384_6` | `282385_6` |
+| 7 | `(3,384,6.3)` | `282274_[28-31]` | `282386_7` | `282387_7` |
+| 8 | `(4,528,8.4)` | `282274_[32-35]` | `282388_8` | `282389_8` |
+| 9 | `(5,688,10.5)` | `282274_[36-39]` | `282390_9` | `282391_9` |
+
+Every diagnostics job waited only for its four production chains; its analysis
+job waited for that diagnostic. Index 9 was cancelled by the timed-out
+dependency and is not a completed production analysis.
+- Current partial continuum analysis uses the exact accepted selection in
+  `analysis/beta_nt_fixed/comparison/` and retains only `p=1`. On
+  `beta/Nt=1.8` (`Nt=2--6`) it gives `m_G L=0.118373(884)`, fit
+  `p=0.1328`; on `beta/Nt=2.0` (`Nt=2--5`) it gives `0.073017(764)`, fit
+  `p=0.8508`. Line 2.1 has only two accepted resolutions and is not fit.
+- Cancelled post-production pipeline: diagnostics array `282314_[0-9]`, full
+  1000-replica analysis array `282315_[0-9]`, continuum summary job `282316`,
+  and PDF plotting job `282317` were cancelled when production tasks 36--39
+  timed out.
+  Diagnostics and blocking remain independent-chain operations. The cleaned
+  summary uses only fixed `p=1` and records any unavailable mass rather than
+  substituting an unaccepted fit. Logs use the corresponding
+  `bntf-diag`, `bntf-analysis`, `bntf-summary`, and `bntf-plots` prefixes in
+  `/qbigwork2/negro/dirichlet/logs/`.
+
+## Nonperturbative fixed-`m_G Nt`
+
+- Status: the full pilot, all 100 chains, all 25 diagnostics, and all 25 mass
+  analyses are complete and validated. The two required extension ensembles
+  are also fully analyzed. Round-1 tuning job `282508` passes eight of nine
+  targets: `(c,Nt)=(0.5,4)` is now tuned, while `(0.5,3)` still fails the
+  local log-linear gate with `p=0.01350`. No confirmation is submitted.
+- Campaign type: `nonperturbative_mg_nt`, separate from `beta_nt_fixed`.
+- Targets: `m_G Nt = 0.5, 1.0, 2.0`; physical `Nt=2,3,4`.
+- Grid: 25 new ensembles and 100 new hot-start chains. The beta 3.0
+  `(c,Nt)=(0.5,2)` and beta 2.1 `(c,Nt)=(2,2)` points are explicitly labelled
+  prior information and were independently reanalyzed before production.
+- Histories: 8000 composite sweeps per new chain, one heatbath plus five
+  overrelaxation sweeps; holonomy cadence one and profile cadence five.
+- Inputs: `data/mg_nt_fixed/pilot/`; compact output:
+  `analysis/mg_nt_fixed/`; remote raw root:
+  `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/`.
+- Resources: dependency-free arrays with no concurrency cap, one typed Pascal
+  GPU per task. The 100-sweep `(Nt,Ns,beta)=(4,96,6.20)` timing gate must stay
+  below two hours per chain and 12 total P100 GPU-hours.
+- KLFT: reuse the sole verified P100 build only while its revision remains
+  `7eed1f7d9bb0948621a2d4020706d19c56406001`; expected heatbath SHA-256 is
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`.
+- Timing job `282244` completed on `lnode13`: 1.614251 s per 100 largest-case
+  sweeps, projecting 0.03587224 hours per largest chain and 0.93835035 total
+  P100 GPU-hours. Output counts, metadata, `C_G(0)=1`, both cadences, disabled
+  outputs, and all recorded hashes passed.
+- Audit diagnostics array `282245_[0-1]` completed. Analysis array `282247`
+  failed on an incomplete intermediate source; superseded array `282254` was
+  cancelled after 8:18 without compact results when the fit convention was
+  corrected. Dependency-free array `282256_[0-1]` completed in 36:07 and
+  1:06:55. The beta-3.0 and beta-2.1 masses reproduce the prior accepted
+  values within 0.063 and 0.535 combined standard deviations; audit summary
+  job `282320` wrote `gate PASS`.
+- Production preflight found another valid Slurm allocation on 36 P100s and
+  four genuinely free devices on `lnode14`; all hashes and output-absence
+  checks passed. Array `282323_[0-99]` is dependency-free and uncapped. It was
+  monitored for more than one minute; tasks 0--3 completed cleanly in
+  1:02--1:05 and task 0 passed its exact output-count, cadence, metadata,
+  `C_G(0)=1`, and disabled-output checks.
+- All 100 production tasks completed with exit code zero. A manifest-wide
+  read-only validation passed every chain's files, metadata, hashes, exact
+  measurement grids and counts, `C_G(0)=1`, and disabled-output checks.
+  Dependency-free diagnostics array `282445_[0-24]` was then submitted.
+- Diagnostics array `282445_[0-24]` completed with exit code zero. All chains
+  use 500-sweep cuts and accepted primary/secondary three-length plateaus;
+  selected blocks retain 46--375 blocks per chain. The 46-block largest case
+  misses the 50-block target but passes the hard floor of 30. Dependency-free
+  mass-analysis array `282470_[0-24]` completed with exit code zero. Every
+  point has an accepted mass, an accepted mass/`xi_exp` plateau, at least 30
+  blocks per chain, and 1000 finite mass replicas.
+- Official tuning job `282495` completed in 15 seconds. Accepted beta values
+  are `2.98734,2.50249,3.59502,4.61998,1.96373,2.93960,3.76006` for
+  `(c,Nt)=(0.5,2),(1,2),(1,3),(1,4),(2,2),(2,3),(2,4)`, respectively. The
+  two rejected `c=0.5` rows are not extrapolated.
+- Gate-required extension points are `(c,Nt,Ns,beta)=(0.5,3,80,4.27)` and
+  `(0.5,4,96,5.50)`, four fresh hot-start chains each. Immutable manifest
+  SHA-256 is
+  `c4b4f4c8e0ac1f3186638ecd4463916bb37e9109fe80490d17c37952f8eb059a`.
+  Production `282496_[0-7]` completed in 1:22--1:59 and all eight chains
+  passed validation. Diagnostics `282504_[0-1]` selected 40- and 60-sweep
+  blocks, leaving 187 and 125 blocks per chain. Analysis `282506_[0-1]`
+  completed with accepted `m_G Nt=0.515906 +/- 0.002014` and
+  `0.531824 +/- 0.002275`, with fit p-values 0.6064 and 0.2567. Tuning
+  `282508` accepts `c=0.5,Nt=4` at
+  `beta_star=5.58394 [5.57975,5.58790]`; `c=0.5,Nt=3` still requires another
+  bracket point. The `Nt=4,c=1` confirmation remains unsubmitted until all
+  nine tunings pass.
+- Preliminary-statistics checklist:
+  `analysis/mg_nt_fixed/preliminary_checklist.md`. Highest priorities are a
+  new `c=0.5,Nt=3` point near beta 4.290, increased statistics at beta 4.40,
+  additional statistics for any final use of the 46-block beta-6.20
+  ensemble, and larger-volume checks for bracket inputs with
+  `Ns/xi_2nd < 10`. The 84 current grid-free pilot PDFs are under
+  `analysis/mg_nt_fixed/preliminary_plots/`. More bootstrap replicas do not
+  substitute for new Markov data.
+- Logs: `/qbigwork2/negro/dirichlet/logs/mgnt-*.out`; compact audit output:
+  `/qbigwork2/negro/dirichlet/analysis/mg_nt_fixed/audit/`.
+
+## Fixed-beta/Nt corrected `Nt=3,4` volumes
 
 - Status: completed, analyzed, plotted, and compact products synchronized.
   Timing job `274307`, production array `274308_[0-7]`, diagnostics array
   `282238_[0-1]`, analysis array `282240_[0-1]`, summary job `282242`, and
   plotting job `282243` all completed with exit code zero. Every stage was
   submitted explicitly with `Dependency=(null)`.
-- Purpose: replace the pilot constant-coupling `Nt=3,4` points with spatial
+- Purpose: replace the pilot fixed-beta/Nt `Nt=3,4` points with spatial
   sizes satisfying the measured target `Ns/xi_2nd` near 10 before extending
   the line to `Nt=6`
 - Ensembles: `(physical Nt,beta,Ns)=(3,5.4,176),(4,7.2,256)`, with stored
-  temporal extents `L2=4,5` and `lambda_tree^2=20/9`
+  temporal extents `L2=4,5`, `beta/Nt=1.8`, and `g_3^2 L=20/9`
 - Seeds: 1139865066, 1786727755, 1777987394, 1986906165 at `Nt=3`; 32943504,
   1111774376, 350847387, 1543348040 at `Nt=4`; all are independent hot starts
-  and distinct from earlier Step-3 campaigns
+  and distinct from earlier campaign stages
 - Histories: 20000 composite sweeps per chain; one heatbath plus five
   overrelaxation sweeps
 - Cadence: holonomy observables every sweep; plaquette profiles every five
   sweeps; Wilson-loop and horizontal-Polyakov output disabled
-- Inputs and manifest: local `data/step3_corrected_volumes/`; remote campaign
+- Inputs and manifest: local
+  `data/beta_nt_fixed/beta_over_nt_1p8/validation/corrected_volumes_nt3_nt4/`; legacy
+  remote campaign
   `/qbigwork2/negro/dirichlet/campaigns/step3_corrected_volumes/`
 - Raw output:
   `/qbigwork2/negro/dirichlet/data/Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/`
@@ -57,9 +347,11 @@
   `chi2/dof=311.13/96`, `p=1.59e-24` at `Nt=4`; the pilot volumes are rejected
   for full-correlator work. The corrected scaling fit gives
   `q0=7.356(448)`, `c=-5.160(1.076)`, and `p=0.882`.
-- Compact output: remote and local `analysis/step3_corrected_volumes/` (about
-  3 MB). Dry-run and compact-only synchronization completed on 2026-07-24;
-  raw histories were not synchronized. Analysis workflow commit `bda1a32`.
+- Compact output: legacy remote `analysis/step3_corrected_volumes/` and local
+  `analysis/beta_nt_fixed/beta_over_nt_1p8/validation/corrected_volumes_nt3_nt4/`
+  (about 3 MB). Dry-run and compact-only synchronization completed on
+  2026-07-24; raw histories were not synchronized. Analysis workflow commit
+  `bda1a32`.
 - Bootstrap decision for subsequent new analyses: use 1000 resamples by
   default; increase only a final calculation whose fit-success gate or
   interval is numerically borderline. Existing 20000-sample results remain
@@ -69,22 +361,24 @@
   `7eed1f7d9bb0948621a2d4020706d19c56406001`, heatbath SHA-256
   `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`
 
-## Step-3 `Ns=160` finite-volume extension
+## Fixed-beta/Nt `Ns=160` finite-volume check
 
 - Status: completed, analyzed, plotted, and compact products synchronized.
   Smoke job `274106`, production array `274107_[0-3]`, diagnostics job
   `274303`, analysis job `274304`, summary job `274305`, and plotting job
   `274306` all completed with exit code zero and no Slurm dependency.
 - Purpose: decide whether the `Nt=2`, beta 3.6 correlator is stable between
-  `Ns=128` and 160 before extending the constant-coupling continuum line
+  `Ns=128` and 160 before extending the fixed-beta/Nt continuum line
 - Ensemble: physical `Nt=2`, stored `L2=3`, `Ns=160`, beta 3.6,
-  `lambda_tree^2=20/9`
+  `beta/Nt=1.8` and `g_3^2 L=20/9`
 - Seeds: 98728066, 856366050, 397310628, 411907572; four independent hot starts
 - Histories: 10000 composite sweeps per chain; one heatbath plus five
   overrelaxation sweeps
 - Cadence: holonomy observables every sweep; plaquette profiles every five
   sweeps; Wilson-loop and horizontal-Polyakov output disabled
-- Inputs and manifest: local `data/step3_fv160/`; remote campaign
+- Inputs and manifest: local
+  `data/beta_nt_fixed/beta_over_nt_1p8/validation/finite_volume_nt2/`; legacy remote
+  campaign
   `/qbigwork2/negro/dirichlet/campaigns/step3_fv160/`
 - Raw output:
   `/qbigwork2/negro/dirichlet/data/Nt_2_Ns_160_b_3p6/seed_<seed>/`
@@ -113,14 +407,15 @@
 - Finite-volume decision: `Ns=128` versus 160 differs by 0.056 combined
   standard deviations and 0.34%. The 64-mode full-correlator comparison gives
   `chi2=48.54`, `p=0.924`; all criteria pass and `Ns=128` is accepted.
-  The revised preliminary constant-coupling fit gives `q0=7.525(453)`,
+  The revised preliminary fixed-beta/Nt fit gives `q0=7.525(453)`,
   `c=-5.540(1.075)`, and `p=0.344`. The optional `(Nt,beta)=(6,10.8)` point
   may now be considered but has not been submitted.
-- Compact output: remote and local `analysis/step3_fv160/` (about 1.4 MB).
-  Dry-run and compact-only synchronization completed; raw histories were not
-  synchronized.
+- Compact output: legacy remote `analysis/step3_fv160/` and local
+  `analysis/beta_nt_fixed/beta_over_nt_1p8/validation/finite_volume_nt2/` (about
+  1.4 MB). Dry-run and compact-only synchronization completed; raw histories
+  were not synchronized.
 
-## Step-3 Dirichlet slab parameter-space pilot
+## Fixed-beta/Nt mixed parameter-space pilot
 
 - Status: completed, analyzed, plotted, and compact products synchronized.
   Final analysis array `259877_[0-7]`, aggregation job `259886`, and plotting
@@ -140,7 +435,8 @@
   spatial and temporal plaquette profiles every five sweeps
 - Disabled observables: boundary Wilson loops, generic temporal/planar Wilson
   loops, horizontal Polyakov loops, PCM matching, and effective-action output
-- Inputs and immutable manifest: local `data/step3_scan/`; remote
+- Inputs and immutable manifest: local
+  `data/beta_nt_fixed/comparison/provenance/legacy_pilot_inputs/`; legacy remote
   `/qbigwork2/negro/dirichlet/campaigns/step3_scan/`
 - Raw output: `/qbigwork2/negro/dirichlet/data/Nt_<Nt>_Ns_<Ns>_b_<beta>/seed_<seed>/`
 - Logs: `/qbigwork2/negro/dirichlet/logs/step3-*.out`
@@ -186,9 +482,10 @@
 - Scheduling: stages are submitted only after their inputs have been
   inspected. `queue_all.sh STAGE` submits one stage with no `afterok`
   dependency and appends the job ID with dependency `none`.
-- Compact output: `/qbigwork2/negro/dirichlet/analysis/step3_scan/` and local
-  `analysis/step3_scan/` (7.5 MiB). The dry-run and compact-only transfer
-  completed on 2026-07-21; raw histories were not synchronized.
+- Compact output: legacy remote
+  `/qbigwork2/negro/dirichlet/analysis/step3_scan/` and local
+  `analysis/beta_nt_fixed/pilot/` (7.5 MiB). The dry-run and compact-only
+  transfer completed on 2026-07-21; raw histories were not synchronized.
 
 ## Exact-PCM beta calibration pilot
 

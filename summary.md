@@ -1,6 +1,23 @@
 # Numerical validation summary
 
-## Step-3 implementation and execution
+Fixed-beta/Nt production has 36 of 40 chains complete and eleven accepted slab
+masses. The 48,300-sweep `Nt=5,beta=10.5` analysis completed with exactly
+1,000 replicas but found no stable asymptotic mass patch; `Nt=4,beta=8.4`
+still fails the common blocking plateau. The cleaned comparison retains only
+`p=1` fits, 64 grid-free comparison PDFs, and 30 per-ensemble first-stage
+PDFs. Direct volume and statistics checks remain necessary. Exact results and
+provenance are in
+[`docs/beta_nt_fixed/summary.md`](docs/beta_nt_fixed/summary.md).
+
+The separate nonperturbative fixed-`m_G Nt` pilot completed all 100 chains and
+25 mass analyses. The required two-point extension is also fully analyzed;
+round-1 tuning now passes eight of nine groups, with only `c=0.5,Nt=3`
+failing the local log-linear gate. Its 84 grid-free pilot PDFs also expose
+low-volume bracket inputs that must be checked before final tuning. The
+canonical report is
+[`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
+
+## Fixed-beta/Nt pilot implementation and execution
 
 KLFT commit `7eed1f7d9bb0948621a2d4020706d19c56406001` adds a separate
 Dirichlet-suite cadence. A zero suite interval inherits the base measurement
@@ -12,7 +29,7 @@ passes, including the statistical test. ASan/UBSan deterministic testing
 passes with leak detection disabled because LeakSanitizer cannot run under the
 workspace ptrace sandbox.
 
-The Step-3 campaign contains eight grid points and 32 unique hot-start chains,
+The mixed pilot contains eight grid points and 32 unique hot-start chains,
 not 28: all eight explicitly listed ensembles are required to retain both the
 `Nt=1` matched-cadence reference and the `Ns=128` finite-volume comparison.
 Every input stores `L2=Nt+1`, measures holonomy at cadence one and profiles at
@@ -37,7 +54,7 @@ projected 0.20939614 hours for one largest chain and 1.70332127 total P100
 GPU-hours. All 32 tasks in production array `259794` started simultaneously
 across `lnode13`--`lnode16` and completed with exit code zero.
 
-The Step-3 analysis additionally scans blocking-error curves over each full
+The fixed-beta/Nt analysis additionally scans blocking-error curves over each full
 post-cut history for every primary component and for the secondary `xi_2nd`
 and `Ns/xi_2nd`. At each candidate length, every replica is blocked separately
 and incomplete tails are dropped separately; only the resulting replica means
@@ -82,7 +99,8 @@ The measured plane is:
 At fixed `Nt=2`, beta 3.0 and 3.6 bracket `xi/a` near five. At fixed beta
 2.1, `xi_2nd/Nt` falls sharply from 10.622(215) at the exact-PCM endpoint to
 0.601(57) and central value 0.193 at `Nt=2,3`. Along
-`lambda_tree^2=20/9`, using the volume-checked `Ns=128` value at `Nt=2`,
+`beta/Nt=1.8`, equivalently `g_3^2 L=20/9`, using the volume-checked
+`Ns=128` value at `Nt=2`,
 `xi_2nd/Nt` is 4.780(151), 5.527(210), and 6.294(261). The revised
 preliminary fit `q(Nt)=q0+c/Nt` gives `q0=7.525(453)`,
 `c=-5.540(1.075)`, and `p=0.344`.
@@ -103,10 +121,11 @@ Diagnostics job `274303`, analysis job `274304`, summary job `274305`, and
 plotting job `274306` completed with exit code zero and no dependencies. The
 optional `(Nt,beta)=(6,10.8)` point now passes the preregistered finite-volume
 and preliminary-scaling gates but has not been submitted. Compact results and
-single-page 16:9 LaTeX PDFs are documented in `analysis/step3_fv160/`; raw
+single-page 16:9 LaTeX PDFs are documented in
+`analysis/beta_nt_fixed/beta_over_nt_1p8/validation/finite_volume_nt2/`; raw
 histories remain on qbig.
 
-## Step-3 corrected constant-coupling volumes
+## Fixed-beta/Nt corrected `Nt=3,4` volumes
 
 The corrected `(Nt,beta,Ns)=(3,5.4,176),(4,7.2,256)` campaign used four
 independent 20000-sweep hot-start chains per ensemble with the same one/five
@@ -138,7 +157,8 @@ not suitable for full-correlator conclusions. With the corrected points,
 `xi_2nd/Nt=4.780(151),5.618(178),6.096(282)` for `Nt=2,3,4`. The preliminary
 fit `q(Nt)=q0+c/Nt` gives `q0=7.356(448)`, `c=-5.160(1.076)`, and `p=0.882`.
 Compact products and five one-page 16:9 PDFs are in
-`analysis/step3_corrected_volumes/`; raw histories remain on qbig.
+`analysis/beta_nt_fixed/beta_over_nt_1p8/validation/corrected_volumes_nt3_nt4/`; raw
+histories remain on qbig.
 
 ## qbig environment
 

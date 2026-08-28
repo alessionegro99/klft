@@ -8,6 +8,13 @@ Simulation inputs and campaign metadata are in `data/`, Python programs are in
 `scripts/`, and compact analyzed data and plots are in `analysis/`. Raw Markov
 chains remain on qbig and are never synchronized to this workspace.
 
+Current campaign status is documented separately. The
+[fixed `beta/Nt`](docs/beta_nt_fixed/summary.md) analysis has `p=1` continuum
+fits on the 1.8 and 2.0 lines, 64 comparison PDFs, and 30 per-ensemble
+first-stage PDFs; the 2.1 line remains incomplete. The separate
+[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has 84 PDFs. All are
+grid-free and preliminary.
+
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
 build. Set `temporal_dirichlet: true` in either update section. With it false,
 the original periodic initialization, checkerboard, action, updates, and
@@ -262,74 +269,22 @@ accepted only if the 68% interval satisfies `xi_2nd >= 5` and
 The completed pilot, selected beta, diagnostics, and compact products are
 documented in [`analysis/pcm_beta_pilot/`](analysis/pcm_beta_pilot/README.md).
 
-### Step-3 Dirichlet slab scan
+### Fixed-beta/Nt campaign
 
-The preregistered parameter-space pilot is generated from the explicit
-eight-ensemble grid in `data/step3_scan/generate_inputs.py`:
+At fixed `beta/Nt`, the convention `beta=4/(a g_3^2)` gives
+`g_3^2 L=4 Nt/beta`; hence the continuum limit increases `Nt` and beta at a
+fixed ratio. The cleaned analysis retains exactly 1,000 bootstrap replicas per
+operation and only `p=1` continuum fits. Exact status, failures, results, job
+IDs, and provenance are maintained in
+[`docs/beta_nt_fixed/summary.md`](docs/beta_nt_fixed/summary.md).
 
-```bash
-uv run --frozen python data/step3_scan/generate_inputs.py
-```
+### Nonperturbative fixed-`m_G Nt` campaign
 
-Generation is intentionally non-overwriting. The checked-in
-`data/step3_scan/manifest.tsv` contains 32 globally unique seeds, physical
-`Nt`, stored `L2=Nt+1`, tree-level `lambda^2=4Nt/beta`, both measurement
-cadences, and every input SHA-256. Holonomy measurements are taken every
-composite sweep and plaquette profiles every five sweeps; all Wilson-loop and
-horizontal-Polyakov measurements are disabled.
-
-The qbig stages are submitted explicitly, without Slurm dependencies, by
-`data/step3_scan/qbig/queue_all.sh STAGE`. Inspect each completed stage before
-submitting the next. The stages are `build`, `timing`, `production`,
-`diagnostics`, `analysis`, `aggregate`, and `plots`. The production script uses
-an uncapped `0-31` array, so Slurm may place all 32 one-GPU tasks across the
-available P100 nodes. It also requires a passing timing gate. The timing stage
-exits nonzero if it projects more than two hours for the largest chain or more
-than 12 total GPU-hours.
-
-`scripts/step3_analysis.py` selects MSER-5 cuts independently with a minimum
-500-sweep deletion, expresses every autocorrelation time in sweeps, and blocks
-each chain separately over its whole post-cut history. It scans five-sweep
-aligned block lengths for a three-length error plateau for every primary
-observable and for the secondary `xi_2nd` and `Ns/xi_2nd`; replicas are fused
-only after separate blocking with a replica-stratified delete-one-block
-jackknife. The final common block length must lie on those plateaus and remain
-strictly larger than twice the largest selected autocorrelation time. It
-requires at least 30 complete blocks per chain and records whether the 50-block
-target is met. A seeded 20000-sample hierarchical bootstrap carries complete
-correlator vectors through `C_G`, its covariance, `xi_2nd`, and `Ns/xi_2nd`.
-Signed bootstrap estimates of `xi_2nd^2` are retained. If some resamples cross
-the physical boundary, the output records their fraction and the unconditional
-68% percentile interval, while symmetric errors that would require truncating
-those samples are JSON `null`.
-Only correlated periodic-K0 fits can produce `xi_exp`. After a fit range passes
-the fit-quality and adjacent-range checks, every replica is separately blocked
-again and all delete-one-block correlator vectors are refitted. `xi_exp` and
-`mass` are reported only when the selected common block ends a three-length
-error plateau shared by both; otherwise `xi_exp` is JSON `null`.
-
-`scripts/step3_campaign_summary.py` applies the preregistered finite-volume
-criteria, fits constant-tree-coupling values as `q(Nt)=q0+c/Nt`, and writes
-CSV, JSON, and NPZ campaign tables. `scripts/plot_step3_scan.py` writes only
-single-plot 16:9 LaTeX PDFs using the shared plotting style. Raw histories stay
-on qbig; synchronize only compact products with
-`data/step3_scan/qbig/sync_step3_compact.sh`, beginning with `--dry-run`.
-
-The completed scan, numerical decisions, tables, and direct links to every
-scan-level and plaquette-profile PDF are documented in
-[`analysis/step3_scan/`](analysis/step3_scan/README.md).
-
-The follow-up `Nt=2`, beta 3.6, `Ns=160` analysis confirms that `Ns=128` is
-stable under the preregistered length and full-correlator tests. Its compact
-diagnostics, revised constant-coupling scaling fit, and four single-page PDFs
-are documented in
-[`analysis/step3_fv160/`](analysis/step3_fv160/README.md).
-
-The corrected constant-coupling repeats at `(Nt,beta,Ns)=(3,5.4,176)` and
-`(4,7.2,256)` satisfy the target volume ratios, expose significant
-full-correlator finite-volume effects in the pilot sizes, and update the
-preliminary scaling fit. Compact results and five single-page PDFs are in
-[`analysis/step3_corrected_volumes/`](analysis/step3_corrected_volumes/README.md).
+The separate `mg_nt_fixed` pilot tunes beta so that `c=m_G Nt` is fixed at
+`0.5`, `1.0`, or `2.0`. All 100 pilot chains and 25 mass analyses are complete;
+the required two-point extension is fully analyzed, and round-1 tuning passes
+eight of nine groups. Status and gates are maintained in
+[`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
 
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in

@@ -37,6 +37,27 @@ shared utility does not support the required statistical treatment, such as a
 full correlated covariance fit; document that reason where the fit is
 implemented.
 
+For correlators whose separations are strongly cross-correlated, use the
+following fit procedure by default. Thermalize and block every independent
+chain separately, then construct vector-valued bootstrap replicas: every
+resampling draw must act on the complete vector of separations, with one RNG
+seed recorded for the analysis, so the covariance across `R` is preserved.
+Estimate the fit parameters from a diagonal-covariance (uncorrelated) fit to
+the central data and repeat that same fit for every bootstrap replica. Quote
+parameter uncertainties from the bootstrap distribution. After fitting,
+evaluate and report
+
+\[
+\chi^2_{\rm full}=r^T\operatorname{Cov}^{-1}r,
+\qquad \chi^2_{\rm full}/{\rm dof},
+\]
+
+using the complete covariance matrix across the fitted separations. Because
+the parameters do not minimize `chi2_full`, its analytic chi-square p-value
+with `n_points - n_parameters` degrees of freedom is not valid. If a
+goodness-of-fit p-value is required, calibrate this statistic with a
+recentered joint bootstrap using the same diagonal fit procedure.
+
 ## Testing and Reproducibility
 
 No root test framework or coverage threshold is configured. Place future Python tests beside the analysis code as `scripts/test_<module>.py`. Check small-volume or analytically known limits, and test KLFT changes with CTest. Every reported result must record the boundary conditions, lattice dimensions, coupling convention, seed, thermalization, measurement spacing, and dependency revision. Estimate Monte Carlo uncertainty with autocorrelation-aware binning, jackknife, or bootstrap; never use an independent-sample standard error for correlated chains.
@@ -57,12 +78,14 @@ For every campaign:
 6. Keep raw data on qbig and synchronize only compact analyzed data, metadata, tables, and plots into local `analysis/`. Dry-run synchronization first, use partial transfers, and never use `--delete` for scientific data.
 7. Summarize completed numerical checks and provenance in `summary.md`. Do not report a production result until the corresponding job and analysis records are reproducible from those two tracking files.
 
-For the Step-3 slab scan, holonomy correlators, Fourier components, and
-holonomy summaries use `measurement_interval: 1`; plaquette profiles use
-`dirichlet_suite_measurement_interval: 5`. Keep the suite interval an integer
-multiple of the base interval and report both cadences. Boundary Wilson loops,
-horizontal Polyakov loops, PCM matching, and effective-action reconstruction
-are disabled for this campaign.
+For the fixed-beta/Nt slab campaign, holonomy correlators, Fourier components,
+and holonomy summaries use `measurement_interval: 1`; plaquette profiles use
+`dirichlet_suite_measurement_interval: 5`; accepted production boundary
+Wilson loops use `boundary_wilson_measurement_interval: 25`. Keep both
+secondary intervals
+integer multiples of the base interval and report all three cadences. Measure
+all boundary-loop heights for the continuum production. Horizontal Polyakov
+loops and effective-action reconstruction are disabled for this campaign.
 
 Follow the established gaugebreaking pattern: simulate remotely, analyze raw data where it resides, retain raw histories, and version compact reproducible products. Thermalization selection and uncertainty estimates must be quantitative; history plots are diagnostics, not substitutes for autocorrelation-aware analysis.
 
@@ -81,9 +104,10 @@ hierarchical bootstrap when a joint covariance across correlator separations is
 required. Report every chain's cut, `tau_int`, block length, and retained block
 count. All quoted uncertainties must follow this chain-aware procedure.
 
-For Step-3, also scan the blocking error over the whole post-cut history for
-every primary and secondary observable. Block each replica separately at every
-candidate size and fuse only replica-level blocked estimates; no block may
+For the fixed-beta/Nt campaign, also scan the blocking error over the whole
+post-cut history for every primary and secondary observable. Block each
+replica separately at every candidate size and fuse only replica-level blocked
+estimates; no block may
 cross a replica boundary. Require and record a quantitative error plateau in
 addition to the `tau_int` lower bound before accepting the final block length.
 
