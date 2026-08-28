@@ -9,9 +9,10 @@ remain complete.
 
 ## Nonperturbative fixed-`m_G Nt` final checks
 
-- Status: smoke, timing, production, validation, diagnostics, and the
-  10000-replica reanalyses passed. Mass-analysis array `289427_[0-2]` is
-  active.
+- Status: complete. Smoke, timing, production, validation, diagnostics,
+  analyses, corrected volume/statistics gates, 10000-replica reanalyses, and
+  final tuning all passed. Independent confirmation inputs are committed but
+  not yet submitted.
 - Purpose: increase the selected `Nt=3,Ns=80,beta=4.40` statistics, directly
   check the two low-volume `c=1,Nt=4` tuning inputs, and repeat the borderline
   `c=2,Nt=4` mass analyses with 10000 joint-bootstrap replicas before the
@@ -64,6 +65,35 @@ remain complete.
   zero in 5:15--8:45. All three selected fits contain exactly 10000 final
   replicas; their recentered-bootstrap fit p-values are 0.9960, 0.8831, and
   0.8387 at beta 3.70, 4.00, and 4.30.
+- Mass-analysis array `289427_[0-2]` completed with exit code zero in 41:18,
+  2:37:47, and 1:20:31. The beta-4.40 replacement has 0.204% relative mass
+  error. At beta 4.95 and 5.30, the `Ns=48` and `Ns=96` masses agree within
+  0.422 and 0.730 combined standard deviations; `xi_2nd` agrees within 0.480
+  and 0.480 standard deviations, and the larger-volume 68% lower bounds on
+  `Ns/xi_2nd` are 17.375 and 14.390.
+- Gate job `289430` stopped before tuning because comparing raw periodic
+  correlators through the smaller box midpoint confounds volume dependence
+  with the known periodic image. The failed diagnostic record is retained as
+  `final_checks_summary_failed_raw_periodic_gate.json`. Commit `f6bc4e4`
+  gates on the extracted mass and `xi_2nd` while retaining the raw-correlator
+  comparison as a diagnostic. Corrected job `289431` completed in 16 seconds
+  with exit code zero. All nine final tunings pass. The borderline
+  `(c,Nt)=(2,4)` fit has `p=0.05155`; the independent confirmation coupling is
+  `beta=4.61755576172643`.
+
+## Nonperturbative fixed-`m_G Nt` confirmation
+
+- Status: immutable inputs committed; not yet staged or submitted.
+- Ensemble: `(physical Nt,stored L2,Ns,beta)=(4,5,48,4.61755576)`, target
+  `c=1`, four independent 8000-sweep hot-start chains with reserved seeds
+  `816415709`, `1698854721`, `738942754`, and `1813195289`.
+- Input manifest SHA-256:
+  `6e2d150f16934334ecacf20b53a4554c91f8d7f06511bc87f0e199a51cfff0f9`.
+  The recorded final tuning-summary SHA-256 is
+  `92ccc18ac8fa55c53130eed7c9f9b409b8d256258629bdf7e2e387451ea5fb44`.
+- Acceptance: after chain-aware diagnostics and mass analysis, require the
+  measured `m_G Nt` to agree with one within the wider of one combined
+  standard deviation and 3%. No scheduler dependencies are used.
 
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 
