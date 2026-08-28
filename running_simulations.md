@@ -9,8 +9,9 @@ remain complete.
 
 ## Nonperturbative fixed-`m_G Nt` final checks
 
-- Status: staged byte-for-byte; smoke and timing passed; production array
-  `289406_[0-11]` is active on `lnode13--14`.
+- Status: smoke, timing, production, validation, diagnostics, and the
+  10000-replica reanalyses passed. Mass-analysis array `289427_[0-2]` is
+  active.
 - Purpose: increase the selected `Nt=3,Ns=80,beta=4.40` statistics, directly
   check the two low-volume `c=1,Nt=4` tuning inputs, and repeat the borderline
   `c=2,Nt=4` mass analyses with 10000 joint-bootstrap replicas before the
@@ -47,6 +48,22 @@ remain complete.
   array `289406_[0-11]` started all tasks concurrently across `lnode13--14`.
   Representative initial metadata and output from all three ensembles match
   the manifest, including dimensions, beta, purpose, seed, and GPU assignment.
+- Production completed with exit code zero: the four 80000-sweep chains took
+  12:27--12:47 and the eight volume chains took 1:58--2:11. The manifest-wide
+  validator passed all 12 chains. Diagnostics array `289424_[0-2]` completed
+  with exit code zero. Selected block lengths are 80, 60, and 60 sweeps,
+  leaving `992/993/993/993`, `125/125/125/125`, and `125/125/125/125` complete
+  blocks. Every primary and secondary blocking plateau passes; the maximum
+  split-history discrepancies are 2.731, 2.451, and 2.465 standard deviations,
+  and maximum between-chain discrepancies are 3.000, 2.839, and 2.860.
+- Initial 10000-replica array `289418_[0-2]` failed in 11 seconds because the
+  wrapper required `run_complete.txt`, which predates these accepted pilot
+  histories. It produced no compact output. Commit `1919b0d` replaces that
+  precondition with the accepted prior diagnostics and analysis plus the raw
+  observable files. Corrected array `289421_[0-2]` completed with exit code
+  zero in 5:15--8:45. All three selected fits contain exactly 10000 final
+  replicas; their recentered-bootstrap fit p-values are 0.9960, 0.8831, and
+  0.8387 at beta 3.70, 4.00, and 4.30.
 
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 
