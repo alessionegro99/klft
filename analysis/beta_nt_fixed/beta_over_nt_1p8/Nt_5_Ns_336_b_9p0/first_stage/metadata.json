@@ -1,0 +1,24 @@
+{
+  "beta_over_nt": 1.8,
+  "physical_Nt": 5,
+  "Ns": 336,
+  "beta": 9.0,
+  "role": "continuum",
+  "status": "accepted",
+  "result_path": "/qbigwork2/negro/dirichlet/analysis/beta_nt_fixed/production/Nt_5_Ns_336_b_9p0/analysis.json",
+  "maximum_sweep_inclusive": null,
+  "raw_chain_directories": [
+    "/qbigwork2/negro/dirichlet/data/beta_nt_fixed/production/Nt_5_Ns_336_b_9p0/seed_348447054",
+    "/qbigwork2/negro/dirichlet/data/beta_nt_fixed/production/Nt_5_Ns_336_b_9p0/seed_154013132",
+    "/qbigwork2/negro/dirichlet/data/beta_nt_fixed/production/Nt_5_Ns_336_b_9p0/seed_1170799925",
+    "/qbigwork2/negro/dirichlet/data/beta_nt_fixed/production/Nt_5_Ns_336_b_9p0/seed_120784240"
+  ],
+  "thermalization_bin_sweeps": 100,
+  "blocking_observable": "Ctilde_0",
+  "blocking_method": "recorded full-observable gate; Ctilde_0 component shown",
+  "bootstrap_operations": 0,
+  "plot_files": [
+    "thermalization.pdf",
+    "blocking_error.pdf"
+  ]
+}
