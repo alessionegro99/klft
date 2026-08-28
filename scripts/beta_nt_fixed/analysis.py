@@ -64,7 +64,7 @@ BLOCKING_CANDIDATE_UNITS = (
     64,
 )
 RANGE_SCAN_BOOTSTRAP_SAMPLES = 1000
-ANALYSIS_BOOTSTRAP_SAMPLES = 1000
+ANALYSIS_BOOTSTRAP_SAMPLES = (1000, 10000)
 
 
 @dataclass(frozen=True)
@@ -1601,9 +1601,9 @@ def analyse_ensemble(
     target_c: float | None = None,
 ) -> dict[str, object]:
     """Produce the full result for one four-chain ensemble."""
-    if bootstrap_samples != ANALYSIS_BOOTSTRAP_SAMPLES:
+    if bootstrap_samples not in ANALYSIS_BOOTSTRAP_SAMPLES:
         raise ValueError(
-            "fixed-beta/Nt analyses require exactly 1000 bootstrap samples"
+            "analysis bootstrap samples must be 1000 or 10000"
         )
     plateau = diagnostics["blocking_error_plateau"]
     if not bool(plateau["all_primary_and_secondary_plateaus_found"]):
@@ -1885,8 +1885,8 @@ def main() -> None:
     parser.add_argument(
         "--bootstrap-samples",
         type=int,
-        choices=[ANALYSIS_BOOTSTRAP_SAMPLES],
-        default=ANALYSIS_BOOTSTRAP_SAMPLES,
+        choices=ANALYSIS_BOOTSTRAP_SAMPLES,
+        default=ANALYSIS_BOOTSTRAP_SAMPLES[0],
     )
     parser.add_argument("--bootstrap-seed", type=int, default=20_260_721)
     parser.add_argument("--diagnostics-only", action="store_true")

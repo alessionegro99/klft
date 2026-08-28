@@ -8,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from mg_nt_fixed_tuning import Point, load_points, tune_group
+from mg_nt_fixed_tuning import Point, load_points, resolve_replacements, tune_group
 
 
 class MgNtFixedTuningTest(unittest.TestCase):
@@ -98,6 +98,16 @@ class MgNtFixedTuningTest(unittest.TestCase):
                 [Path("round1.tsv")],
                 [],
             )
+
+    def test_explicit_replacement_supersedes_duplicate_coupling(self) -> None:
+        original = self._point(5.0, 1.0)
+        replacement = self._point(5.0, 0.98)
+        replacement.result["purpose"] = "statistics_replacement"
+        self.assertEqual(resolve_replacements([original, replacement]), [replacement])
+
+    def test_unlabelled_duplicate_coupling_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "not an explicit replacement"):
+            resolve_replacements([self._point(5.0, 1.0), self._point(5.0, 0.98)])
 
 
 if __name__ == "__main__":

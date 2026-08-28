@@ -27,6 +27,11 @@ FloatArray = NDArray[np.float64]
 BOOTSTRAP_SAMPLES = 1_000
 TUNING_SEED = 20_260_724
 MINIMUM_BLOCKS = 30
+REPLACEMENT_PURPOSES = {
+    "finite_volume_replacement",
+    "final_bootstrap_replacement",
+    "statistics_replacement",
+}
 
 
 @dataclass(frozen=True)
@@ -103,7 +108,24 @@ def load_points(
                 _load_mass_samples(result_path.with_name("covariance.npz")),
             )
         )
-    return points
+    return resolve_replacements(points)
+
+
+def resolve_replacements(points: Sequence[Point]) -> list[Point]:
+    """Replace a duplicate coupling only when its purpose says so explicitly."""
+    resolved: dict[tuple[float, int, float], Point] = {}
+    order: list[tuple[float, int, float]] = []
+    for point in points:
+        key = (point.target_c, point.nt, point.beta)
+        if key not in resolved:
+            order.append(key)
+        elif point.result.get("purpose") not in REPLACEMENT_PURPOSES:
+            raise ValueError(
+                f"duplicate tuning point c={point.target_c}, Nt={point.nt}, "
+                f"beta={point.beta} is not an explicit replacement"
+            )
+        resolved[key] = point
+    return [resolved[key] for key in order]
 
 
 def _load_manifest_points(
