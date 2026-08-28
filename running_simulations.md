@@ -7,6 +7,37 @@ reservation. Fixed-beta/Nt production tasks `282274_[36-39]` remain timed
 out. Fixed-mass extension analyses `282506_[0-1]` and round-1 tuning `282508`
 remain complete.
 
+## Nonperturbative fixed-`m_G Nt` final checks
+
+- Status: locally generated and validated; not yet staged or submitted.
+- Purpose: increase the selected `Nt=3,Ns=80,beta=4.40` statistics, directly
+  check the two low-volume `c=1,Nt=4` tuning inputs, and repeat the borderline
+  `c=2,Nt=4` mass analyses with 10000 joint-bootstrap replicas before the
+  independent confirmation.
+- New GPU ensembles: four fresh 80000-sweep chains at
+  `(Nt,Ns,beta)=(3,80,4.40)` and four 8000-sweep chains at each of
+  `(4,96,4.95)` and `(4,96,5.30)`. All are independent hot starts with one
+  heatbath plus five overrelaxation sweeps; holonomy cadence is one and
+  profile cadence is five. Wilson and horizontal-Polyakov measurements remain
+  disabled.
+- Seeds: production draws 119--130 from `np.random.default_rng(20260724)`;
+  smoke and timing use draws 131--132. Exact values and input hashes are in
+  `data/mg_nt_fixed/final_checks/seed_provenance.tsv` and `manifest.tsv`.
+- Existing-data check: reanalyze the three `c=2,Nt=4` pilot ensembles at beta
+  3.70, 4.00, and 4.30 with 10000 replicas and seeds `20261020--20261022`;
+  no new Markov histories are used for this stage.
+- Resources: smoke, timing, and each production task request one typed Pascal
+  GPU. Production is an uncapped 12-task array with two-hour walltime.
+  Diagnostics and both analysis arrays use four CPUs and no scheduler
+  dependencies. Final gates and tuning use two CPUs.
+- Inputs: `data/mg_nt_fixed/final_checks/`; immutable manifest SHA-256
+  `275a4c408c5334b2e19408fca73e4368c8ca442b2f8ce0c64a09eafd28db7f96`.
+  Remote campaign, raw, compact-result, and log roots are respectively
+  `/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/final_checks/`,
+  `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/final_checks/`,
+  `/qbigwork2/negro/dirichlet/analysis/mg_nt_fixed/final_checks/`, and
+  `/qbigwork2/negro/dirichlet/logs/mgnt-final-*`.
+
 ## Nonperturbative fixed-`m_G Nt` round-2 extension
 
 - Status: complete. Smoke, timing, production, diagnostics, mass analysis,
