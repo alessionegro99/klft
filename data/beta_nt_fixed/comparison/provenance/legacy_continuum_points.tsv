@@ -1,0 +1,16 @@
+beta_over_nt	g3_squared_L	physical_Nt	beta	Ns	role	analysis_relative_path
+1.8	2.222222222222	2	3.6	128	continuum	beta_nt_fixed/reanalysis_v2/Nt_2_Ns_128_b_3p6
+1.8	2.222222222222	3	5.4	176	continuum	beta_nt_fixed/reanalysis_v3/Nt_3_Ns_176_b_5p4
+1.8	2.222222222222	4	7.2	256	continuum	beta_nt_fixed/reanalysis_v3/Nt_4_Ns_256_b_7p2
+1.8	2.222222222222	5	9.0	336	continuum	beta_nt_fixed/production/Nt_5_Ns_336_b_9p0
+1.8	2.222222222222	6	10.8	416	continuum	beta_nt_fixed/production/Nt_6_Ns_416_b_10p8
+2.0	2.000000000000	1	2.0	96	pcm_reference	beta_nt_fixed/pcm_reanalysis_v2/Nt_1_Ns_96_b_2p0
+2.0	2.000000000000	2	4.0	192	continuum	beta_nt_fixed/production/Nt_2_Ns_192_b_4p0
+2.0	2.000000000000	3	6.0	304	continuum	beta_nt_fixed/production/Nt_3_Ns_304_b_6p0
+2.0	2.000000000000	4	8.0	416	continuum	beta_nt_fixed/production/Nt_4_Ns_416_b_8p0
+2.0	2.000000000000	5	10.0	544	continuum	beta_nt_fixed/production/Nt_5_Ns_544_b_10p0
+2.1	1.904761904762	1	2.1	96	pcm_reference	beta_nt_fixed/pcm_reanalysis_v2/Nt_1_Ns_96_b_2p1
+2.1	1.904761904762	2	4.2	240	continuum	beta_nt_fixed/production/Nt_2_Ns_240_b_4p2
+2.1	1.904761904762	3	6.3	384	continuum	beta_nt_fixed/production/Nt_3_Ns_384_b_6p3
+2.1	1.904761904762	4	8.4	528	continuum	beta_nt_fixed/production/Nt_4_Ns_528_b_8p4
+2.1	1.904761904762	5	10.5	688	continuum	beta_nt_fixed/production/Nt_5_Ns_688_b_10p5
