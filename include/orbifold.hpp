@@ -47,6 +47,11 @@ struct OrbifoldField {
                                   dimensions[1], dimensions[2], dimensions[3]);
     temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0],
                                     dimensions[1], dimensions[2], dimensions[3]);
+    initialize(spatial_init, temporal_init, label);
+  }
+
+  void initialize(const SUN<3> &spatial_init, const SUN<3> &temporal_init,
+                  const std::string &label) {
     const auto z = spatial;
     const auto u = temporal;
     Kokkos::parallel_for(
@@ -781,7 +786,6 @@ public:
     return OrbifoldHMCResult{accepted, initial, final, delta};
   }
 
-private:
   void update_momenta(const real_t step) {
     orbifold_force(field_, action_params_, force_);
     const auto pz = momentum_.spatial;
@@ -827,6 +831,7 @@ private:
     Kokkos::fence();
   }
 
+private:
   OrbifoldField field_;
   OrbifoldActionParams action_params_;
   OrbifoldHMCParams hmc_params_;
