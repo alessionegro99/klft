@@ -1,7 +1,9 @@
 #pragma once
 
 #include "core/indexing.hpp"
+#include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
+#include "observables/wilson_loop.hpp"
 
 #include <Kokkos_Random.hpp>
 
@@ -12,6 +14,7 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace klft {
 
@@ -89,6 +92,51 @@ struct OrbifoldActionParams {
     return spatial_spacing / (2.0 * coupling * coupling);
   }
 };
+
+template <class RNG>
+inline void initialize_hot_orbifold_field(OrbifoldField &field,
+                                          const OrbifoldActionParams &params,
+                                          const real_t noise, RNG &rng) {
+  params.validate();
+  if (noise < 0.0) {
+    throw std::invalid_argument(
+        "Orbifold initialization noise must be non-negative.");
+  }
+  const auto z = field.spatial;
+  const auto u = field.temporal;
+  const auto dimensions = field.dimensions;
+  const real_t vacuum_scale = Kokkos::sqrt(params.vacuum_scale_squared());
+  const real_t complex_noise = noise / Kokkos::sqrt(2.0);
+  auto pool = rng;
+  Kokkos::parallel_for(
+      "orbifold_hot_start",
+      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
+      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
+                    const index_t i3) {
+        auto generator = pool.get_state();
+#pragma unroll
+        for (index_t j = 0; j < 3; ++j) {
+          SUN<3> value;
+          rand_matrix(value, generator);
+          value *= vacuum_scale;
+#pragma unroll
+          for (index_t row = 0; row < 3; ++row) {
+#pragma unroll
+            for (index_t col = 0; col < 3; ++col) {
+              matrix_ref(value, row, col) +=
+                  complex_t(generator.normal(0.0, complex_noise),
+                            generator.normal(0.0, complex_noise));
+            }
+          }
+          z(i0, i1, i2, i3, j) = value;
+        }
+        SUN<3> temporal;
+        rand_matrix(temporal, generator);
+        u(i0, i1, i2, i3) = temporal;
+        pool.free_state(generator);
+      });
+  Kokkos::fence();
+}
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3>
 orbifold_spatial_at(const OrbifoldSpatialView &z, const IndexArray<4> &site,
@@ -503,6 +551,106 @@ orbifold_temporal_group_errors(const OrbifoldField &field) {
       Kokkos::Max<real_t>(determinant));
   Kokkos::fence();
   return OrbifoldGroupErrors{unitarity, determinant};
+}
+
+KOKKOS_FORCEINLINE_FUNCTION SUN<3>
+orbifold_polar_unitary(const SUN<3> &z, bool &converged) {
+  // Newton's polar iteration computes the unitary U in Z = H U.  Unlike
+  // Gram--Schmidt projection, it is equivariant under both endpoint gauge
+  // transformations, as required for Wilson loops; see Higham (1986),
+  // doi:10.1137/0907079.
+  constexpr real_t tolerance_squared = 1.0e-24;
+  constexpr real_t singular_tolerance = 1.0e-30;
+  converged = false;
+  const real_t norm_squared = orbifold_matrix_norm_squared(z);
+  if (!(norm_squared > singular_tolerance)) {
+    return zeroSUN<3>();
+  }
+
+  SUN<3> x = z * Kokkos::sqrt(3.0 / norm_squared);
+  for (index_t iteration = 0; iteration < 50; ++iteration) {
+    const complex_t determinant = orbifold_determinant(x);
+    const real_t determinant_norm_squared =
+        determinant.real() * determinant.real() +
+        determinant.imag() * determinant.imag();
+    if (!(determinant_norm_squared > singular_tolerance)) {
+      return zeroSUN<3>();
+    }
+    const SUN<3> inverse_dagger = orbifold_matrix_scale(
+        orbifold_conjugate_cofactor(x),
+        complex_t(1.0, 0.0) / Kokkos::conj(determinant));
+    x = (x + inverse_dagger) * 0.5;
+    const SUN<3> residual = conj(x) * x - identitySUN<3>();
+    if (orbifold_matrix_norm_squared(residual) <= tolerance_squared) {
+      converged = true;
+      return x;
+    }
+  }
+  return x;
+}
+
+inline typename DeviceGaugeFieldType<4, 3>::type
+orbifold_projected_gauge_field(const OrbifoldField &field) {
+  const auto dimensions = field.dimensions;
+  typename DeviceGaugeFieldType<4, 3>::type projected(
+      dimensions[0], dimensions[1], dimensions[2], dimensions[3],
+      identitySUN<3>());
+  const auto z = field.spatial;
+  const auto u = field.temporal;
+  const auto links = projected;
+  size_t failures = 0;
+  Kokkos::parallel_reduce(
+      "orbifold_polar_projection",
+      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
+      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
+                    const index_t i3, size_t &local_failures) {
+#pragma unroll
+        for (index_t j = 0; j < 3; ++j) {
+          bool converged = false;
+          links(i0, i1, i2, i3, j) =
+              orbifold_polar_unitary(z(i0, i1, i2, i3, j), converged);
+          if (!converged) {
+            ++local_failures;
+          }
+        }
+        links(i0, i1, i2, i3, 3) = u(i0, i1, i2, i3);
+      },
+      failures);
+  Kokkos::fence();
+  if (failures != 0) {
+    throw std::runtime_error("Polar decomposition failed for " +
+                             std::to_string(failures) +
+                             " orbifold spatial links.");
+  }
+  return projected;
+}
+
+inline std::vector<Kokkos::Array<real_t, 3>>
+orbifold_wilson_loops(const OrbifoldField &field, const index_t max_r,
+                      const index_t max_t) {
+  const index_t min_spatial_extent =
+      std::min({field.dimensions[0], field.dimensions[1],
+                field.dimensions[2]});
+  if (max_r <= 0 || max_t <= 0 || max_r > min_spatial_extent / 2 ||
+      max_t > field.dimensions[3] / 2) {
+    throw std::invalid_argument(
+        "Orbifold Wilson-loop extents must be positive and no larger than "
+        "half the corresponding periodic lattice extent.");
+  }
+
+  std::vector<Kokkos::Array<index_t, 2>> pairs;
+  pairs.reserve(static_cast<size_t>(max_r) * static_cast<size_t>(max_t));
+  for (index_t r = 1; r <= max_r; ++r) {
+    for (index_t t = 1; t <= max_t; ++t) {
+      pairs.push_back(Kokkos::Array<index_t, 2>{r, t});
+    }
+  }
+
+  const auto projected = orbifold_projected_gauge_field(field);
+  std::vector<Kokkos::Array<real_t, 3>> loops;
+  loops.reserve(pairs.size());
+  WilsonLoop_temporal_raw_fused<4, 3>(projected, pairs, loops);
+  return loops;
 }
 
 // Gaussian momenta, leapfrog, and Metropolis acceptance follow Duane et al.,

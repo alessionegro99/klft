@@ -1,4 +1,5 @@
 #include "orbifold.hpp"
+#include "observables/plaquette.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -94,6 +95,29 @@ SUN<3> diagonal_gauge_matrix(const real_t angle) {
   return result;
 }
 
+SUN<3> local_gauge_matrix(const real_t scale) {
+  Kokkos::Array<real_t, 8> coefficients{};
+  coefficients[0] = 0.07 * scale;
+  coefficients[4] = -0.04 * scale;
+  coefficients[7] = 0.03 * scale;
+  return orbifold_exp_su3(orbifold_su3_algebra(coefficients));
+}
+
+void check_polar_projection() {
+  SUN<3> positive = identitySUN<3>();
+  matrix_ref(positive, 0, 0) = 1.2;
+  matrix_ref(positive, 1, 1) = 0.9;
+  matrix_ref(positive, 2, 2) = 1.1;
+  matrix_ref(positive, 0, 1) = 0.15;
+  matrix_ref(positive, 1, 0) = 0.15;
+  const SUN<3> unitary = local_gauge_matrix(1.3);
+  bool converged = false;
+  const SUN<3> projected =
+      orbifold_polar_unitary(positive * unitary, converged);
+  check(converged && matrix_distance_squared(projected, unitary) < 1.0e-24,
+        "orbifold polar projection recovers a known unitary factor");
+}
+
 OrbifoldField deterministic_field(const IndexArray<4> &dimensions,
                                    const OrbifoldActionParams &params,
                                    const char *label) {
@@ -175,6 +199,9 @@ void check_vacuum_and_temporal_normalization() {
         "orbifold vacuum action vanishes");
   orbifold_force(cold, params, force);
   check(force_norm(force) < 1.0e-12, "orbifold vacuum force vanishes");
+  const auto cold_loops = orbifold_wilson_loops(cold, 1, 1);
+  check(cold_loops.size() == 1 && close(cold_loops[0][2], 1.0),
+        "orbifold vacuum Wilson loop equals one");
 
   OrbifoldActionParams temporal_params = params;
   temporal_params.scalar_mass = 0.0;
@@ -332,20 +359,20 @@ void check_gauge_invariance(const OrbifoldActionParams &params) {
       for (index_t z = 0; z < dimensions[2]; ++z) {
         for (index_t t = 0; t < dimensions[3]; ++t) {
           const IndexArray<4> site{x, y, z, t};
-          const SUN<3> here = diagonal_gauge_matrix(
-              0.13 * (1.0 + x + 2.0 * y + 3.0 * z + 5.0 * t));
+          const SUN<3> here = local_gauge_matrix(
+              1.0 + x + 2.0 * y + 3.0 * z + 5.0 * t);
           for (index_t j = 0; j < 3; ++j) {
             const auto plus_j = shift_index_plus(site, j, 1, dimensions);
-            const SUN<3> there = diagonal_gauge_matrix(
-                0.13 * (1.0 + plus_j[0] + 2.0 * plus_j[1] +
-                        3.0 * plus_j[2] + 5.0 * plus_j[3]));
+            const SUN<3> there = local_gauge_matrix(
+                1.0 + plus_j[0] + 2.0 * plus_j[1] +
+                3.0 * plus_j[2] + 5.0 * plus_j[3]);
             output_z(x, y, z, t, j) =
                 here * input_z(x, y, z, t, j) * conj(there);
           }
           const auto plus_t = shift_index_plus(site, 3, 1, dimensions);
-          const SUN<3> later = diagonal_gauge_matrix(
-              0.13 * (1.0 + plus_t[0] + 2.0 * plus_t[1] +
-                      3.0 * plus_t[2] + 5.0 * plus_t[3]));
+          const SUN<3> later = local_gauge_matrix(
+              1.0 + plus_t[0] + 2.0 * plus_t[1] +
+              3.0 * plus_t[2] + 5.0 * plus_t[3]);
           output_u(x, y, z, t) =
               here * input_u(x, y, z, t) * conj(later);
         }
@@ -357,6 +384,11 @@ void check_gauge_invariance(const OrbifoldActionParams &params) {
   check(close(orbifold_action(source, params),
               orbifold_action(transformed, params), 2.0e-12),
         "full orbifold action is gauge invariant");
+  const auto source_loops = orbifold_wilson_loops(source, 1, 1);
+  const auto transformed_loops = orbifold_wilson_loops(transformed, 1, 1);
+  check(source_loops.size() == transformed_loops.size() &&
+            close(source_loops[0][2], transformed_loops[0][2], 2.0e-11),
+        "orbifold Wilson loop is gauge invariant");
 }
 
 void check_forces(const OrbifoldActionParams &params) {
@@ -476,6 +508,70 @@ void check_hmc(const OrbifoldActionParams &params) {
         "one orbifold HMC step preserves SU(3)");
 }
 
+void check_hot_start(const OrbifoldActionParams &params) {
+  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const SUN<3> vacuum =
+      identitySUN<3>() * std::sqrt(params.vacuum_scale_squared());
+  OrbifoldField cold(dimensions, vacuum, identitySUN<3>(),
+                      "orbifold_hot_reference");
+  auto hot = copy_orbifold_field(cold, "orbifold_hot_field");
+  Kokkos::Random_XorShift64_Pool<> rng(240831);
+  initialize_hot_orbifold_field(hot, params, 0.01, rng);
+
+  check(field_distance(hot, cold) > 0.1,
+        "orbifold hot start differs from the cold vacuum");
+  const auto errors = orbifold_temporal_group_errors(hot);
+  check(errors.unitarity < 1.0e-12 && errors.determinant < 1.0e-12,
+        "orbifold hot start has SU(3) temporal links");
+  check(std::isfinite(orbifold_action(hot, params)),
+        "orbifold hot start has finite action");
+  const auto loops = orbifold_wilson_loops(hot, 1, 1);
+  check(loops.size() == 1 && std::isfinite(loops[0][2]),
+        "orbifold hot start has a finite Wilson loop");
+}
+
+void check_constrained_wilson_limit() {
+  const IndexArray<4> dimensions{2, 2, 2, 2};
+  Kokkos::Random_XorShift64_Pool<> rng(310831);
+  typename DeviceGaugeFieldType<4, 3>::type gauge(
+      dimensions[0], dimensions[1], dimensions[2], dimensions[3], rng);
+  OrbifoldActionParams params;
+  params.spatial_spacing = 0.3;
+  params.temporal_spacing = 0.2;
+  params.coupling = 1.2;
+  params.scalar_mass = 100.0;
+  params.u1_mass = 100.0;
+  OrbifoldField field(dimensions, zeroSUN<3>(), identitySUN<3>(),
+                       "orbifold_wilson_limit");
+  const auto links = gauge;
+  const auto z = field.spatial;
+  const auto u = field.temporal;
+  const real_t scale = std::sqrt(params.vacuum_scale_squared());
+  Kokkos::parallel_for(
+      "orbifold_copy_constrained_links",
+      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
+      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
+                    const index_t i3) {
+        for (index_t j = 0; j < 3; ++j) {
+          z(i0, i1, i2, i3, j) = links(i0, i1, i2, i3, j) * scale;
+        }
+        u(i0, i1, i2, i3) = links(i0, i1, i2, i3, 3);
+      });
+  Kokkos::fence();
+
+  const auto plaquettes = GaugePlaquettes<4, 3>(gauge, false);
+  constexpr real_t sites = 16.0;
+  constexpr real_t planes_per_sector = 3.0;
+  const real_t g2 = params.coupling * params.coupling;
+  const real_t expected =
+      params.temporal_spacing / (g2 * params.spatial_spacing) *
+          (3.0 * sites * planes_per_sector - plaquettes.spatial) +
+      params.spatial_spacing / (g2 * params.temporal_spacing) *
+          (3.0 * sites * planes_per_sector - plaquettes.temporal);
+  check(close(orbifold_action(field, params), expected, 2.0e-12, 2.0e-11),
+        "constrained orbifold action equals anisotropic Wilson action");
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -487,10 +583,13 @@ int main(int argc, char **argv) {
     params.coupling = 1.1;
     params.scalar_mass = 0.35;
     params.u1_mass = 0.45;
+    check_polar_projection();
     check_vacuum_and_temporal_normalization();
     check_spatial_normalization();
     check_gauge_invariance(params);
     check_forces(params);
+    check_hot_start(params);
+    check_constrained_wilson_limit();
     check_hmc(params);
   } catch (const std::exception &error) {
     std::printf("FAIL: unexpected exception: %s\n", error.what());

@@ -48,11 +48,16 @@ default.
 
 ## Orbifold action and HMC
 
-The `orbifold` branch adds a header-only, periodic 3+1D SU(3) orbifold action
-and Hybrid Monte Carlo implementation in `include/orbifold.hpp`. It requires
-`KLFT_NDIM=4` and `KLFT_NC=3`. The generic `metropolis` and `heatbath` drivers
-below still simulate compact lattice gauge theory; they do not run the
-orbifold action.
+The `orbifold` branch adds a periodic 3+1D SU(3) orbifold action and Hybrid
+Monte Carlo implementation in `include/orbifold.hpp`. It requires
+`KLFT_NDIM=4` and `KLFT_NC=3`. Run it with the dedicated driver:
+
+```bash
+build/binaries/orbifold_hmc -f input.yaml
+```
+
+The generic `metropolis` and `heatbath` drivers below still simulate compact
+lattice gauge theory; they do not run the orbifold action.
 
 At every site, `OrbifoldField` stores three unconstrained complex 3-by-3
 spatial links `Z_j` and one compact temporal link `U_0` in SU(3). With
@@ -119,15 +124,26 @@ const OrbifoldHMCResult result = hmc.step();
 ```
 
 Run the deterministic action, force, gauge-invariance, holonomy, reversibility,
-and SU(3)-preservation checks with:
+SU(3)-preservation, polar-projection, and Wilson-loop checks with:
 
 ```bash
 ctest --test-dir build -R orbifold_deterministic --output-on-failure
 ```
 
-There is not yet an orbifold YAML driver, checkpoint format, production
-observable pipeline, gauge fixing, static-potential analysis, or Sommer-scale
-analysis.
+The `orbifold_hmc` YAML input uses one `OrbifoldHMCParams` map; see
+`docs/input.yaml` in the orbifold workspace for a complete input. Cold and hot
+starts are supported. A hot start initializes `Z_j` near
+`sqrt(a_s/(2 g^2)) SU(3)` with the requested Cartesian noise and initializes
+the explicit temporal links with random SU(3) matrices. The driver writes
+per-trajectory action and HMC diagnostics and measures every rectangular
+temporal Wilson loop through the configured maximum spatial and temporal
+extents. Spatial transporters use the unitary polar factor of `Z_j`; temporal
+transporters use the explicit `U_0`, so the observable does not impose temporal
+gauge. Output files are never overwritten. Automatic step-size tuning is not
+implemented, so `tuning_trajectories` must be zero.
+
+Checkpoint/restart I/O, gauge fixing, static-potential analysis, and
+Sommer-scale analysis are not yet implemented.
 
 ## Run a simulation
 
