@@ -131,10 +131,15 @@ ctest --test-dir build -R orbifold_deterministic --output-on-failure
 ```
 
 The `orbifold_hmc` YAML input uses one `OrbifoldHMCParams` map; see
-`docs/input.yaml` in the orbifold workspace for a complete input. Cold and hot
-starts are supported. A hot start initializes `Z_j` near
+`docs/input.yaml` in the orbifold workspace for a complete input. Set `start`
+to `cold`, `hot`, `restart`, or `compact`. A hot start initializes `Z_j` near
 `sqrt(a_s/(2 g^2)) SU(3)` with the requested Cartesian noise and initializes
-the explicit temporal links with random SU(3) matrices. The driver writes
+the explicit temporal links with random SU(3) matrices. A restart loads an
+orbifold checkpoint; a compact start loads KLFT's compact SU(3) configuration
+and embeds its spatial links at the orbifold vacuum scale. Configure
+`configuration_input`, `configuration_output`, and `checkpoint_every` for
+atomic rolling checkpoints. `diagnostic_every` and `diagnostic_output` record
+cheap action and `W(1,1)` warmup diagnostics. The driver writes
 per-trajectory action and HMC diagnostics and measures every rectangular
 temporal Wilson loop through the configured maximum spatial and temporal
 extents. Spatial transporters use the unitary polar factor of `Z_j`; temporal
@@ -142,8 +147,8 @@ transporters use the explicit `U_0`, so the observable does not impose temporal
 gauge. Output files are never overwritten. Automatic step-size tuning is not
 implemented, so `tuning_trajectories` must be zero.
 
-Checkpoint/restart I/O, gauge fixing, static-potential analysis, and
-Sommer-scale analysis are not yet implemented.
+Gauge fixing, static-potential analysis, and Sommer-scale analysis are not yet
+implemented.
 
 ## Run a simulation
 

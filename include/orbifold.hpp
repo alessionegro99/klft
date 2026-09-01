@@ -143,6 +143,34 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
   Kokkos::fence();
 }
 
+inline void initialize_orbifold_from_gauge(
+    OrbifoldField &field,
+    const typename DeviceGaugeFieldType<4, 3>::type &gauge,
+    const OrbifoldActionParams &params) {
+  params.validate();
+  if (field.dimensions != gauge.dimensions) {
+    throw std::invalid_argument(
+        "Orbifold and compact-gauge lattice extents must match.");
+  }
+  const auto links = gauge;
+  const auto z = field.spatial;
+  const auto u = field.temporal;
+  const auto dimensions = field.dimensions;
+  const real_t scale = Kokkos::sqrt(params.vacuum_scale_squared());
+  Kokkos::parallel_for(
+      "orbifold_from_compact_gauge",
+      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
+      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
+                    const index_t i3) {
+#pragma unroll
+        for (index_t j = 0; j < 3; ++j) {
+          z(i0, i1, i2, i3, j) = links(i0, i1, i2, i3, j) * scale;
+        }
+        u(i0, i1, i2, i3) = links(i0, i1, i2, i3, 3);
+      });
+  Kokkos::fence();
+}
+
 KOKKOS_FORCEINLINE_FUNCTION SUN<3>
 orbifold_spatial_at(const OrbifoldSpatialView &z, const IndexArray<4> &site,
                     const index_t j) {

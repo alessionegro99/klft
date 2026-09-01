@@ -1,3 +1,4 @@
+#include "io/orbifold_configuration.hpp"
 #include "orbifold.hpp"
 #include "observables/plaquette.hpp"
 
@@ -8,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <exception>
+#include <string>
 
 namespace {
 
@@ -530,6 +532,35 @@ void check_hot_start(const OrbifoldActionParams &params) {
         "orbifold hot start has a finite Wilson loop");
 }
 
+void check_configuration_io(const OrbifoldActionParams &params) {
+  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto source =
+      deterministic_field(dimensions, params, "orbifold_checkpoint_source");
+  const std::string filename = "/tmp/klft_orbifold_test.cfg";
+  std::remove(filename.c_str());
+  check(save_orbifold_configuration_atomic(filename, source, params),
+        "save orbifold checkpoint atomically");
+
+  OrbifoldField restored(dimensions, zeroSUN<3>(), identitySUN<3>(),
+                          "orbifold_checkpoint_restored");
+  check(load_orbifold_configuration(filename, restored, params),
+        "load orbifold checkpoint");
+  check(field_distance(source, restored) == 0.0,
+        "orbifold checkpoint preserves every matrix exactly");
+  check(orbifold_action(source, params) == orbifold_action(restored, params),
+        "orbifold checkpoint preserves the action exactly");
+  const auto source_loop = orbifold_wilson_loops(source, 1, 1);
+  const auto restored_loop = orbifold_wilson_loops(restored, 1, 1);
+  check(source_loop[0][2] == restored_loop[0][2],
+        "orbifold checkpoint preserves Wilson loops exactly");
+
+  auto wrong_params = params;
+  wrong_params.scalar_mass += 1.0;
+  check(!load_orbifold_configuration(filename, restored, wrong_params),
+        "orbifold checkpoint rejects mismatched action parameters");
+  std::remove(filename.c_str());
+}
+
 void check_constrained_wilson_limit() {
   const IndexArray<4> dimensions{2, 2, 2, 2};
   Kokkos::Random_XorShift64_Pool<> rng(310831);
@@ -543,21 +574,7 @@ void check_constrained_wilson_limit() {
   params.u1_mass = 100.0;
   OrbifoldField field(dimensions, zeroSUN<3>(), identitySUN<3>(),
                        "orbifold_wilson_limit");
-  const auto links = gauge;
-  const auto z = field.spatial;
-  const auto u = field.temporal;
-  const real_t scale = std::sqrt(params.vacuum_scale_squared());
-  Kokkos::parallel_for(
-      "orbifold_copy_constrained_links",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3) {
-        for (index_t j = 0; j < 3; ++j) {
-          z(i0, i1, i2, i3, j) = links(i0, i1, i2, i3, j) * scale;
-        }
-        u(i0, i1, i2, i3) = links(i0, i1, i2, i3, 3);
-      });
-  Kokkos::fence();
+  initialize_orbifold_from_gauge(field, gauge, params);
 
   const auto plaquettes = GaugePlaquettes<4, 3>(gauge, false);
   constexpr real_t sites = 16.0;
@@ -589,6 +606,7 @@ int main(int argc, char **argv) {
     check_gauge_invariance(params);
     check_forces(params);
     check_hot_start(params);
+    check_configuration_io(params);
     check_constrained_wilson_limit();
     check_hmc(params);
   } catch (const std::exception &error) {
