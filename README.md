@@ -264,12 +264,16 @@ uv run python analysis/plaquette_stats.py --help
 uv run python analysis/polyakov_stats.py --help
 uv run python analysis/wtemp_stats.py --help
 uv run python analysis/partition_benchmark.py --help
+uv run python analysis/orbifold_hmc_stats.py --help
 ```
 
 The first three require an explicit thermalization cut and block size; choose
 blocks longer than the measured autocorrelation scale. The partition benchmark
 uses the automatic-window autocorrelation estimate of
 [Wolff, CPC 156 (2004) 143](https://arxiv.org/abs/hep-lat/0306017).
+The orbifold helper validates complete loop vectors across independent chains,
+reports split R-hat and autocorrelation times, and saves vector-valued blocked
+and hierarchical-bootstrap samples for later correlated fits.
 
 ## Repository layout
 
