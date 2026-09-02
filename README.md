@@ -280,9 +280,16 @@ uses the automatic-window autocorrelation estimate of
 [Wolff, CPC 156 (2004) 143](https://arxiv.org/abs/hep-lat/0306017).
 The orbifold helper validates complete loop vectors across independent chains,
 reports split R-hat and autocorrelation times, and saves vector-valued blocked
-and hierarchical-bootstrap samples for correlated fits. After inspecting the
-effective-potential signal and choosing plateau ranges, extract constants with
-the complete covariance, for example:
+and hierarchical-bootstrap samples for correlated fits. It also reads compact
+heatbath chains with matching `plaquette.out` and `wilson.out` files:
+
+```bash
+uv run python analysis/orbifold_hmc_stats.py production/ --heatbath \
+  --output wilson_stats.tsv --bootstrap-samples 10000 --seed 20260902
+```
+
+After inspecting the effective-potential signal and choosing plateau ranges,
+extract constants with the complete covariance, for example:
 
 ```bash
 uv run python analysis/orbifold_static_potential.py wilson_stats.npz \

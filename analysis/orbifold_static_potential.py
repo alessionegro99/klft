@@ -7,7 +7,8 @@ Donnellan et al., Nucl. Phys. B 849 (2011) 45, arXiv:1012.3037:
     a_t V_eff(R,T+1/2) = log[W(R,T) / W(R,T+1)].
 
 Input must be the vector hierarchical-bootstrap archive written by
-``orbifold_hmc_stats.py``.  Plateau constants use its complete covariance.
+``orbifold_hmc_stats.py`` for either HMC or heatbath chains. Plateau constants
+use its complete covariance.
 """
 
 from __future__ import annotations
