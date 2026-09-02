@@ -87,6 +87,13 @@ F_jk(n) = Z_j(n) Z_k(n+j) - Z_k(n) Z_j(n+k).
 norm-equivalent transported form
 `||U_0(n) Z_j(n+t) U_0(n+j)^dagger - Z_j(n)||_F^2`.
 
+For isotropic constrained links, this normalization becomes the Wilson action
+with `beta = N_c/g^2 = 3/g^2`. The paper uses generators normalized by
+`Tr(tau_a tau_b) = delta_ab`; relative to the common
+`Tr(T_a T_b) = delta_ab/2` convention, `g_conventional = sqrt(2) g`. Thus a
+conventional `g=1` (`beta=6`) corresponds to orbifold input
+`coupling: 0.7071067811865475`, not `coupling: 1`.
+
 The temporal links remain dynamical, so the periodic Polyakov holonomy is not
 removed by imposing `U_0 = I`. Gauge fixing is not implemented.
 
@@ -147,8 +154,7 @@ transporters use the explicit `U_0`, so the observable does not impose temporal
 gauge. Output files are never overwritten. Automatic step-size tuning is not
 implemented, so `tuning_trajectories` must be zero.
 
-Gauge fixing, static-potential analysis, and Sommer-scale analysis are not yet
-implemented.
+Gauge fixing and Sommer-scale analysis are not yet implemented.
 
 ## Run a simulation
 
@@ -265,6 +271,7 @@ uv run python analysis/polyakov_stats.py --help
 uv run python analysis/wtemp_stats.py --help
 uv run python analysis/partition_benchmark.py --help
 uv run python analysis/orbifold_hmc_stats.py --help
+uv run python analysis/orbifold_static_potential.py --help
 ```
 
 The first three require an explicit thermalization cut and block size; choose
@@ -273,7 +280,19 @@ uses the automatic-window autocorrelation estimate of
 [Wolff, CPC 156 (2004) 143](https://arxiv.org/abs/hep-lat/0306017).
 The orbifold helper validates complete loop vectors across independent chains,
 reports split R-hat and autocorrelation times, and saves vector-valued blocked
-and hierarchical-bootstrap samples for later correlated fits.
+and hierarchical-bootstrap samples for correlated fits. After inspecting the
+effective-potential signal and choosing plateau ranges, extract constants with
+the complete covariance, for example:
+
+```bash
+uv run python analysis/orbifold_static_potential.py wilson_stats.npz \
+  --output static_potential.tsv --a-s 0.1 --a-t 0.1 --plateau 1:2-4
+```
+
+The plateau helper uses
+`a_t V_eff(R,T+1/2) = log[W(R,T)/W(R,T+1)]` and refuses a selected range if
+any bootstrap replica makes its logarithm undefined. It does not select
+plateaus automatically.
 
 ## Repository layout
 
