@@ -149,9 +149,15 @@ bool check_cold_configuration() {
   real_t current_t = 0.0;
   flow_to_target_time<rank, Nc>(cold, workspace, current_t, 0.25, 0.01);
 
-  const IndexArray<rank> origin{};
-  const real_t q_error =
-      cold_clover_q_error<Nc>(clover_q_mu_nu<rank, Nc>(cold, origin, 0, 1));
+  // The field can live in CUDA memory: evaluate the clover on its execution
+  // space, then copy this single test value for the host-side assertion.
+  Kokkos::View<SUN<Nc> *> q("cold_clover_q", 1);
+  Kokkos::parallel_for("cold_clover_q", 1, KOKKOS_LAMBDA(const int) {
+    const IndexArray<rank> origin{};
+    q(0) = clover_q_mu_nu<rank, Nc>(cold, origin, 0, 1);
+  });
+  const auto q_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), q);
+  const real_t q_error = cold_clover_q_error<Nc>(q_host(0));
   const real_t clover_energy = measure_clover_energy_density<rank, Nc>(cold);
   const auto errors = measure_group_errors<rank, Nc>(cold);
   ok &= check_condition(q_error < 1.0e-12,
