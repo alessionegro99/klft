@@ -194,6 +194,12 @@ The smoke uses `a_s=a_t=0.2`, `g=1`, `m=m_U1=40` (both `ma=8`), periodic
 boundaries, and no smearing. Its constrained-limit Wilson coupling is 15.
 Statistics and plateau checks are still required before quoting a potential.
 
+The qbig-specific [P100 build-and-smoke script](examples/qbig_orbifold_2p1_smoke.slurm)
+pins the source revision and requires fresh build/output directories. Stage the
+indicated clean source checkout first, inspect Slurm and actual GPU occupancy,
+then submit with one available node from `lnode13` through `lnode17`. It runs
+device tests and records provenance, but does not start production or tune HMC.
+
 For any of the nine builds, run the CLI smoke, restart, and input checks with
 the compiled dimension and group selectors, for example for 2+1D SU(2):
 
