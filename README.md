@@ -48,9 +48,9 @@ default.
 
 ## Orbifold action and HMC
 
-The `orbifold` branch adds periodic 2+1D and 3+1D SU(3) orbifold actions and Hybrid
+The `orbifold` branch adds periodic 1+1D, 2+1D, and 3+1D SU(3) orbifold actions and Hybrid
 Monte Carlo implementation in `include/orbifold.hpp`. It requires
-`KLFT_NDIM=3` or `4`, and `KLFT_NC=3`. Rebuild when changing dimension.
+`KLFT_NDIM=2`, `3`, or `4`, and `KLFT_NC=3`. Rebuild when changing dimension.
 Run it with the dedicated driver:
 
 ```bash
@@ -91,7 +91,8 @@ norm-equivalent transported form
 
 For isotropic constrained links, this normalization becomes the Wilson action
 with `beta = 3 a_s^(d-3)/g^2`: `3/g^2` in 3+1D and
-`3/(a_s g^2)` in 2+1D. The paper uses generators normalized by
+`3/(a_s g^2)` in 2+1D, and `3/(a_s^2 g^2)` in 1+1D.
+There is no spatial F term in 1+1D. The paper uses generators normalized by
 `Tr(tau_a tau_b) = delta_ab`; relative to the common
 `Tr(T_a T_b) = delta_ab/2` convention, `g_conventional = sqrt(2) g`. Thus a
 conventional 3+1D `g=1` (`beta=6`) corresponds to orbifold input
@@ -144,7 +145,7 @@ ctest --test-dir build -R orbifold_deterministic --output-on-failure
 
 The `orbifold_hmc` YAML input uses one `OrbifoldHMCParams` map; see
 [`examples/orbifold_2p1_smoke.yaml`](examples/orbifold_2p1_smoke.yaml) for a
-complete small 2+1D input. Use `L0,L1,L2` in 2+1D and also `L3` in 3+1D;
+complete small 2+1D input. Use `L0,L1` in 1+1D, add `L2` in 2+1D, and also `L3` in 3+1D;
 an extra extent is rejected to prevent using the wrong executable. Set `start`
 to `cold`, `hot`, `restart`, or `compact`. A hot start initializes `Z_j` near
 `sqrt(c) SU(3)` with the requested Cartesian noise and initializes
@@ -163,7 +164,7 @@ implemented, so `tuning_trajectories` must be zero.
 
 Checkpoint version 2 records the spacetime dimension and rejects incompatible
 builds. Legacy version-1 checkpoints remain readable in 3+1D. Run this quick
-2+1D check in a fresh directory (the ten trajectories are not thermalization):
+2+1D check in a fresh directory (ten trajectories do not establish equilibrium):
 
 ```bash
 cmake -S . -B build-2p1 -DKLFT_NDIM=3 -DKLFT_NC=3 \

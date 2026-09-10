@@ -326,14 +326,17 @@ void check_spatial_normalization() {
     const auto site =
         wilson_linear_to_site<compiled_rank>(linear, dimensions);
     orbifold_spatial_ref(f_host, site, 0) = z0;
-    orbifold_spatial_ref(f_host, site, 1) = z1;
+    if constexpr (orbifold_spatial_directions >= 2) {
+      orbifold_spatial_ref(f_host, site, 1) = z1;
+    }
     for (index_t j = 2; j < orbifold_spatial_directions; ++j) {
       orbifold_spatial_ref(f_host, site, j) = zeroSUN<3>();
     }
   }
   Kokkos::deep_copy(f_field.spatial, f_host);
   const real_t f_expected =
-      at * 2.0 * g2 / spatial_volume * volume * 8.0 * a * a * b * b;
+      orbifold_spatial_directions >= 2 ?
+      at * 2.0 * g2 / spatial_volume * volume * 8.0 * a * a * b * b : 0.0;
   check(close(orbifold_action(f_field, params), f_expected, 2.0e-13),
         "F-term normalization matches an analytic commutator case");
 
@@ -412,7 +415,7 @@ void check_forces(const OrbifoldActionParams &params) {
   const auto force_u = Kokkos::create_mirror_view_and_copy(
       Kokkos::HostSpace(), force.temporal);
   const auto site = test_site(0, 1, 0, 1);
-  constexpr index_t j = 1;
+  constexpr index_t j = orbifold_spatial_directions - 1;
   constexpr index_t row = 0;
   constexpr index_t col = 2;
   constexpr real_t h = 2.0e-6;

@@ -358,13 +358,17 @@ int run(const std::string &filename) {
       throw std::runtime_error("Could not load orbifold restart.");
     }
   } else if (params.run.start == "compact") {
+    index_t l2 = 1;
     index_t l3 = 1;
+    if constexpr (compiled_rank >= 3) {
+      l2 = params.run.dimensions[2];
+    }
     if constexpr (compiled_rank == 4) {
       l3 = params.run.dimensions[3];
     }
     auto gauge = make_identity_gauge_field<compiled_rank, 3>(
         params.run.dimensions[0], params.run.dimensions[1],
-        params.run.dimensions[2], l3);
+        l2, l3);
     if (!load_gauge_configuration<compiled_rank, 3>(
             params.run.configuration_input, gauge, false)) {
       throw std::runtime_error("Could not load compact SU(3) start.");

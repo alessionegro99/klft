@@ -1,6 +1,7 @@
-"""Check the 2+1D SU(3) CLI, restart, and dimension guard in a temporary folder.
+"""Check the SU(3) CLI, restart, and dimension guard in a temporary folder.
 
-Run with uv run --no-project tests/orbifold_driver_check.py /path/to/orbifold_hmc.
+Run with uv run --no-project tests/orbifold_driver_check.py /path/to/orbifold_hmc [rank].
+Rank defaults to 3 (2+1D); 2 and 4 select 1+1D and 3+1D builds.
 Uses only the Python standard library; no simulation output is retained.
 """
 
@@ -11,10 +12,15 @@ import sys
 import tempfile
 
 
-def run_check(executable: Path) -> None:
+def run_check(executable: Path, rank: int = 3) -> None:
     """Verify finite complete histories, checkpoint restart, and input guards."""
     fixture = Path(__file__).resolve().parents[1] / "examples/orbifold_2p1_smoke.yaml"
     text = fixture.read_text()
+    assert rank in (2, 3, 4)
+    if rank == 2:
+        text = text.replace("  L2: 4\n", "")
+    elif rank == 4:
+        text = text.replace("  L2: 4", "  L2: 4\n  L3: 4")
     with tempfile.TemporaryDirectory(prefix="klft-orbifold-driver-") as temporary:
         directory = Path(temporary)
 
@@ -36,11 +42,14 @@ def run_check(executable: Path) -> None:
                     if line and not line.startswith("#")]
             assert len(rows) == count, (name, len(rows))
             assert all(math.isfinite(value) for row in rows for value in row)
-        assert "time_direction=2" in (directory / "hmc.out").read_text()
+        assert f"time_direction={rank - 1}" in (directory / "hmc.out").read_text()
         assert (directory / "final.cfg").stat().st_size > 0
         assert "Refusing to overwrite" in run_input("again.yaml", text, False)
-        assert "incompatible with this build" in run_input(
-            "wrong-rank.yaml", text.replace("  L2: 4", "  L2: 4\n  L3: 4"), False)
+        if rank < 4:
+            assert "incompatible with this build" in run_input(
+                "wrong-rank.yaml", text.replace("  L0: 4", f"  L0: 4\n  L{rank}: 4"), False)
+        assert "Missing YAML key" in run_input(
+            "missing-extent.yaml", text.replace(f"  L{rank - 1}: 4\n", ""), False)
         assert "must be positive" in run_input(
             "nonfinite.yaml", text.replace("g: 1.0", "g: .inf"), False)
 
@@ -54,8 +63,8 @@ def run_check(executable: Path) -> None:
                                   "configuration_output: restart.cfg")
         run_input("restart.yaml", restart)
         assert (directory / "restart.cfg").stat().st_size == (directory / "final.cfg").stat().st_size
-    print("2+1D orbifold driver smoke, restart, and input guards passed")
+    print(f"{rank - 1}+1D orbifold driver smoke, restart, and input guards passed")
 
 
 if __name__ == "__main__":
-    run_check(Path(sys.argv[1]).resolve())
+    run_check(Path(sys.argv[1]).resolve(), int(sys.argv[2]) if len(sys.argv) > 2 else 3)

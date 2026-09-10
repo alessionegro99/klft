@@ -23,8 +23,8 @@ namespace klft {
 // compact SU(3) temporal links U_0. The d-dimensional normalization follows
 // Eqs. (14)--(15) of Bergner, Hanada, and Mendicelli, arXiv:2506.00755.
 // Keeping U_0 explicit retains the periodic holonomy absent after U_0 = 1.
-static_assert(compiled_rank == 3 || compiled_rank == 4,
-              "The orbifold action supports 2+1D and 3+1D builds.");
+static_assert(compiled_rank >= 2 && compiled_rank <= 4,
+              "The orbifold action supports 1+1D, 2+1D, and 3+1D builds.");
 inline constexpr index_t orbifold_spatial_directions =
     static_cast<index_t>(compiled_rank - 1);
 inline constexpr index_t orbifold_time_direction =
@@ -33,11 +33,15 @@ using OrbifoldDimensions = IndexArray<compiled_rank>;
 using OrbifoldSpatialView = std::conditional_t<
     compiled_rank == 4,
     Kokkos::View<SUN<3> ****[3], Kokkos::MemoryTraits<Kokkos::Restrict>>,
-    Kokkos::View<SUN<3> ***[2], Kokkos::MemoryTraits<Kokkos::Restrict>>>;
+    std::conditional_t<compiled_rank == 3,
+      Kokkos::View<SUN<3> ***[2], Kokkos::MemoryTraits<Kokkos::Restrict>>,
+      Kokkos::View<SUN<3> **[1], Kokkos::MemoryTraits<Kokkos::Restrict>>>>;
 using OrbifoldTemporalView = std::conditional_t<
     compiled_rank == 4,
     Kokkos::View<SUN<3> ****, Kokkos::MemoryTraits<Kokkos::Restrict>>,
-    Kokkos::View<SUN<3> ***, Kokkos::MemoryTraits<Kokkos::Restrict>>>;
+    std::conditional_t<compiled_rank == 3,
+      Kokkos::View<SUN<3> ***, Kokkos::MemoryTraits<Kokkos::Restrict>>,
+      Kokkos::View<SUN<3> **, Kokkos::MemoryTraits<Kokkos::Restrict>>>>;
 
 template <class View>
 KOKKOS_FORCEINLINE_FUNCTION decltype(auto)
@@ -45,8 +49,10 @@ orbifold_spatial_ref(const View &z, const OrbifoldDimensions &site,
                      const index_t j) {
   if constexpr (compiled_rank == 4) {
     return z(site[0], site[1], site[2], site[3], j);
-  } else {
+  } else if constexpr (compiled_rank == 3) {
     return z(site[0], site[1], site[2], j);
+  } else {
+    return z(site[0], site[1], j);
   }
 }
 
@@ -55,8 +61,10 @@ KOKKOS_FORCEINLINE_FUNCTION decltype(auto)
 orbifold_temporal_ref(const View &u, const OrbifoldDimensions &site) {
   if constexpr (compiled_rank == 4) {
     return u(site[0], site[1], site[2], site[3]);
-  } else {
+  } else if constexpr (compiled_rank == 3) {
     return u(site[0], site[1], site[2]);
+  } else {
+    return u(site[0], site[1]);
   }
 }
 
@@ -83,11 +91,14 @@ struct OrbifoldField {
       temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0],
                                       dimensions[1], dimensions[2],
                                       dimensions[3]);
-    } else {
+    } else if constexpr (compiled_rank == 3) {
       spatial = OrbifoldSpatialView(label + "_spatial", dimensions[0],
                                     dimensions[1], dimensions[2]);
       temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0],
                                       dimensions[1], dimensions[2]);
+    } else {
+      spatial = OrbifoldSpatialView(label + "_spatial", dimensions[0], dimensions[1]);
+      temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0], dimensions[1]);
     }
     initialize(spatial_init, temporal_init, label);
   }
@@ -691,12 +702,16 @@ orbifold_polar_unitary(const SUN<3> &z, bool &converged) {
 inline typename DeviceGaugeFieldType<compiled_rank, 3>::type
 orbifold_projected_gauge_field(const OrbifoldField &field) {
   const auto dimensions = field.dimensions;
+  index_t l2 = 1;
   index_t l3 = 1;
+  if constexpr (compiled_rank >= 3) {
+    l2 = dimensions[2];
+  }
   if constexpr (compiled_rank == 4) {
     l3 = dimensions[3];
   }
   auto projected = make_identity_gauge_field<compiled_rank, 3>(
-      dimensions[0], dimensions[1], dimensions[2], l3);
+      dimensions[0], dimensions[1], l2, l3);
   const auto z = field.spatial;
   const auto u = field.temporal;
   const auto links = projected;
