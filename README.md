@@ -48,9 +48,10 @@ default.
 
 ## Orbifold action and HMC
 
-The `orbifold` branch adds periodic 1+1D, 2+1D, and 3+1D SU(3) orbifold actions and Hybrid
-Monte Carlo implementation in `include/orbifold.hpp`. It requires
-`KLFT_NDIM=2`, `3`, or `4`, and `KLFT_NC=3`. Rebuild when changing dimension.
+The `orbifold` branch provides full-unfixed orbifold actions and Hybrid Monte
+Carlo in `include/orbifold.hpp` for every combination of `KLFT_NDIM=2,3,4`
+(1+1D, 2+1D, 3+1D) and `KLFT_NC=1,2,3` (U(1), SU(2), SU(3)).
+Rebuild when changing dimension or gauge group.
 Run it with the dedicated driver:
 
 ```bash
@@ -61,7 +62,9 @@ The generic `metropolis` and `heatbath` drivers below still simulate compact
 lattice gauge theory; they do not run the orbifold action.
 
 At every site, `OrbifoldField` stores `d=KLFT_NDIM-1` unconstrained complex
-3-by-3 spatial links `Z_j` and one compact temporal link `U_0` in SU(3).
+`N_c`-by-`N_c` spatial links `Z_j` and one compact temporal link `U_0` in the
+selected gauge group. Both are stored as full complex matrices; compact
+SU(2) quaternion storage cannot represent the unconstrained spatial field.
 Time is direction `d`. With `c = a_s^(d-2) / (2 g^2)`, the implementation is
 [Eqs. (14)-(15) of Bergner, Hanada, and Mendicelli](https://arxiv.org/abs/2506.00755)
 with their optional improvement parameter `gamma=0`:
@@ -73,7 +76,7 @@ S = sum_n {
         g^2/(2 a_s^d) ||D(n)||_F^2
       + 2 g^2/a_s^d sum_(j<k) ||F_jk(n)||_F^2
       + m^2 g^2/(2 a_s^(d-2)) sum_j ||Z_j(n) Z_j(n)^dagger - c I||_F^2
-      + m_U1^2 c sum_j |det(Z_j(n)) c^(-3/2) - 1|^2
+      + m_U1^2 c sum_j |det(Z_j(n)) c^(-N_c/2) - 1|^2
     ] }
 
 D(n) = sum_j [Z_j(n) Z_j(n)^dagger
@@ -81,6 +84,12 @@ D(n) = sum_j [Z_j(n) Z_j(n)^dagger
 
 F_jk(n) = Z_j(n) Z_k(n+j) - Z_k(n) Z_j(n+k).
 ```
+
+For U(1), set `u1_mass: 0`; nonzero values are rejected. Under a local U(1)
+transformation, `Z_j(n)` acquires the phase `exp(i(alpha(n)-alpha(n+j)))`, so
+pinning its determinant phase would break gauge invariance. The radial mass
+still controls its modulus. For SU(2)/SU(3), the determinant term is gauge
+invariant and `u1_mass` can be nonzero.
 
 `OrbifoldActionParams` maps `spatial_spacing` to `a_s`,
 `temporal_spacing` to `a_t`, `coupling` to `g`, `scalar_mass` to `m`, and
@@ -90,7 +99,7 @@ norm-equivalent transported form
 `||U_0(n) Z_j(n+t) U_0(n+j)^dagger - Z_j(n)||_F^2`.
 
 For isotropic constrained links, this normalization becomes the Wilson action
-with `beta = 3 a_s^(d-3)/g^2`: `3/g^2` in 3+1D and
+with `beta = N_c a_s^(d-3)/g^2`: for SU(3), `3/g^2` in 3+1D,
 `3/(a_s g^2)` in 2+1D, and `3/(a_s^2 g^2)` in 1+1D.
 There is no spatial F term in 1+1D. The paper uses generators normalized by
 `Tr(tau_a tau_b) = delta_ab`; relative to the common
@@ -102,7 +111,8 @@ The temporal links remain dynamical, so the periodic Polyakov holonomy is not
 removed by imposing `U_0 = I`. Gauge fixing is not implemented.
 
 `OrbifoldHMC` uses analytic forces, independent Gaussian momenta for the real
-and imaginary components of `Z_j`, eight Gaussian algebra components for each
+and imaginary components of `Z_j`, `N_c^2-1` Gaussian algebra components
+(one for U(1)) for each
 `U_0`, reversible leapfrog integration, and Metropolis acceptance. This is the
 standard HMC construction of
 [Duane et al., Phys. Lett. B 195 (1987) 216](https://doi.org/10.1016/0370-2693(87)91197-X).
@@ -120,12 +130,12 @@ action.spatial_spacing = 1.0;
 action.temporal_spacing = 0.25;
 action.coupling = 1.0;
 action.scalar_mass = 0.1;
-action.u1_mass = 0.1;
+action.u1_mass = compiled_nc == 1 ? 0.0 : 0.1;
 
 OrbifoldDimensions dimensions{};
 for (auto &extent : dimensions) extent = 4;
 dimensions[orbifold_time_direction] = 8;
-const auto vacuum = identitySUN<3>() *
+const auto vacuum = orbifold_identity() *
                     std::sqrt(action.vacuum_scale_squared());
 OrbifoldField field(dimensions, vacuum);
 
@@ -137,7 +147,7 @@ const OrbifoldHMCResult result = hmc.step();
 ```
 
 Run the deterministic action, force, gauge-invariance, holonomy, reversibility,
-SU(3)-preservation, polar-projection, and Wilson-loop checks with:
+group-preservation, polar-projection, and Wilson-loop checks with:
 
 ```bash
 ctest --test-dir build -R orbifold_deterministic --output-on-failure
@@ -148,22 +158,24 @@ The `orbifold_hmc` YAML input uses one `OrbifoldHMCParams` map; see
 complete small 2+1D input. Use `L0,L1` in 1+1D, add `L2` in 2+1D, and also `L3` in 3+1D;
 an extra extent is rejected to prevent using the wrong executable. Set `start`
 to `cold`, `hot`, `restart`, or `compact`. A hot start initializes `Z_j` near
-`sqrt(c) SU(3)` with the requested Cartesian noise and initializes
-the explicit temporal links with random SU(3) matrices. A restart loads an
-orbifold checkpoint; a compact start loads KLFT's compact SU(3) configuration
+`sqrt(c)` times random group matrices with the requested Cartesian noise and
+initializes the explicit temporal links with random group matrices. A restart
+loads an orbifold checkpoint; a compact start loads KLFT's compact configuration
 and embeds its spatial links at the orbifold vacuum scale. Configure
 `configuration_input`, `configuration_output`, and `checkpoint_every` for
 atomic rolling checkpoints. `diagnostic_every` and `diagnostic_output` record
 cheap action and `W(1,1)` warmup diagnostics. The driver writes
 per-trajectory action and HMC diagnostics and measures every rectangular
 temporal Wilson loop through the configured maximum spatial and temporal
-extents. Spatial transporters use the unitary polar factor of `Z_j`; temporal
+extents. Spatial transporters use the full U(`N_c`) polar factor of `Z_j`,
+including its determinant phase at finite mass; temporal
 transporters use the explicit `U_0`, so the observable does not impose temporal
 gauge. Output files are never overwritten. Automatic step-size tuning is not
 implemented, so `tuning_trajectories` must be zero.
 
-Checkpoint version 2 records the spacetime dimension and rejects incompatible
-builds. Legacy version-1 checkpoints remain readable in 3+1D. Run this quick
+Checkpoint version 3 records the spacetime dimension and gauge group and
+rejects incompatible builds. Version-2 SU(3) and version-1 3+1D SU(3)
+checkpoints remain readable. Run this quick
 2+1D check in a fresh directory (ten trajectories do not establish equilibrium):
 
 ```bash
@@ -180,6 +192,14 @@ OMP_NUM_THREADS=2 OMP_PROC_BIND=false ../build-2p1/binaries/orbifold_hmc \
 The smoke uses `a_s=a_t=0.2`, `g=1`, `m=m_U1=40` (both `ma=8`), periodic
 boundaries, and no smearing. Its constrained-limit Wilson coupling is 15.
 Statistics and plateau checks are still required before quoting a potential.
+
+For any of the nine builds, run the CLI smoke, restart, and input checks with
+the compiled dimension and group selectors, for example for 2+1D SU(2):
+
+```bash
+OMP_NUM_THREADS=2 OMP_PROC_BIND=false uv run --no-project \
+  tests/orbifold_driver_check.py /path/to/su2-2p1/orbifold_hmc 3 2
+```
 
 Gauge fixing and Sommer-scale analysis are not yet implemented.
 

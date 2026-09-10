@@ -246,14 +246,17 @@ template <size_t rank, size_t Nc, class RNG> struct WLoop_munu_heatbath {
   }
 };
 
-template <size_t rank, size_t Nc>
+template <size_t rank, size_t Nc,
+          class GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type,
+          class Matrix = SUN<Nc>>
 KOKKOS_FORCEINLINE_FUNCTION complex_t
-WilsonLoopRawAtSite(const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
+WilsonLoopRawAtSite(const GaugeFieldType &g_in,
                     const Kokkos::Array<index_t, rank> &origin,
                     const index_t mu, const index_t nu, const index_t Lmu,
-                    const index_t Lnu, const IndexArray<rank> &dimensions) {
+                    const index_t Lnu, const IndexArray<rank> &dimensions,
+                    const Matrix &identity = identitySUN<Nc>()) {
   Kokkos::Array<index_t, rank> site = origin;
-  SUN<Nc> loop = identitySUN<Nc>();
+  Matrix loop = identity;
 
   for (index_t i = 0; i < Lmu; ++i) {
     loop *= g_in(site, mu);
@@ -321,10 +324,10 @@ template <size_t rank, size_t Nc> struct WLoop_munu_raw {
   }
 };
 
-template <size_t rank, size_t Nc> struct TemporalWilsonSpatialLines {
-  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+template <size_t rank, class GaugeFieldType, class Matrix>
+struct TemporalWilsonSpatialLines {
   using TransporterView =
-      Kokkos::View<SUN<Nc> ***,
+      Kokkos::View<Matrix ***,
                    Kokkos::MemoryTraits<Kokkos::Restrict>>;
 
   const GaugeFieldType g_in;
@@ -332,20 +335,22 @@ template <size_t rank, size_t Nc> struct TemporalWilsonSpatialLines {
   const IndexArray<rank> dimensions;
   const index_t Rmax;
   const size_t nSites;
+  const Matrix identity;
 
   TemporalWilsonSpatialLines(const GaugeFieldType &g_in,
                              TransporterView &spatial_lines,
                              const IndexArray<rank> &dimensions,
-                             const index_t Rmax, const size_t nSites)
+                             const index_t Rmax, const size_t nSites,
+                             const Matrix &identity)
       : g_in(g_in), spatial_lines(spatial_lines), dimensions(dimensions),
-        Rmax(Rmax), nSites(nSites) {}
+        Rmax(Rmax), nSites(nSites), identity(identity) {}
 
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t work) const {
     const index_t idir = static_cast<index_t>(work / nSites);
     const size_t lin = work % nSites;
     auto site = wilson_linear_to_site<rank>(lin, dimensions);
     auto shifted = site;
-    SUN<Nc> line = identitySUN<Nc>();
+    Matrix line = identity;
 
     spatial_lines(idir, 0, lin) = line;
     for (index_t r = 1; r <= Rmax; ++r) {
@@ -356,23 +361,25 @@ template <size_t rank, size_t Nc> struct TemporalWilsonSpatialLines {
   }
 };
 
-template <size_t rank, size_t Nc> struct TemporalWilsonInitTransporter {
+template <class Matrix> struct TemporalWilsonInitTransporter {
   using TransporterView =
-      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+      Kokkos::View<Matrix *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
 
   TransporterView Tcurr;
+  const Matrix identity;
 
-  TemporalWilsonInitTransporter(TransporterView &Tcurr) : Tcurr(Tcurr) {}
+  TemporalWilsonInitTransporter(TransporterView &Tcurr, const Matrix &identity)
+      : Tcurr(Tcurr), identity(identity) {}
 
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const size_t lin) const {
-    Tcurr(lin) = identitySUN<Nc>();
+    Tcurr(lin) = identity;
   }
 };
 
-template <size_t rank, size_t Nc> struct TemporalWilsonUpdateTransporter {
-  using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
+template <size_t rank, class GaugeFieldType, class Matrix>
+struct TemporalWilsonUpdateTransporter {
   using TransporterView =
-      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+      Kokkos::View<Matrix *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
 
   const GaugeFieldType g_in;
   TransporterView Tcurr;
@@ -395,12 +402,12 @@ template <size_t rank, size_t Nc> struct TemporalWilsonUpdateTransporter {
   }
 };
 
-template <size_t rank, size_t Nc> struct TemporalWilsonMeasureFixedT {
+template <size_t rank, class Matrix> struct TemporalWilsonMeasureFixedT {
   using SpatialLinesView =
-      Kokkos::View<SUN<Nc> ***,
+      Kokkos::View<Matrix ***,
                    Kokkos::MemoryTraits<Kokkos::Restrict>>;
   using TransporterView =
-      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+      Kokkos::View<Matrix *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
   using AccumView =
       Kokkos::View<real_t **, Kokkos::MemoryTraits<Kokkos::Restrict>>;
 
@@ -429,7 +436,7 @@ template <size_t rank, size_t Nc> struct TemporalWilsonMeasureFixedT {
     const size_t lin_r = wilson_site_to_linear<rank>(site_r, dimensions);
     const size_t lin_t = wilson_site_to_linear<rank>(site_t, dimensions);
 
-    const SUN<Nc> loop = spatial_lines(idir, r, site_lin) * Tcurr(lin_r) *
+    const Matrix loop = spatial_lines(idir, r, site_lin) * Tcurr(lin_r) *
                          conj(spatial_lines(idir, r, lin_t)) *
                          conj(Tcurr(site_lin));
     const real_t contribution = trace(loop).real();
@@ -453,12 +460,17 @@ template <size_t rank> struct TemporalWilsonNormalize {
   }
 };
 
-template <size_t rank, size_t Nc>
+// Matrix and field may also be dense U(Nc) polar transporters. In particular,
+// their determinant phase must not be compressed into compact SU(2) storage.
+template <size_t rank, size_t Nc,
+          class GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type,
+          class Matrix = SUN<Nc>>
 void WilsonLoop_temporal_raw_fused(
-    const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
+    const GaugeFieldType &g_in,
     const std::vector<Kokkos::Array<index_t, 2>> &L_T_pairs,
     std::vector<Kokkos::Array<real_t, 3>> &Wtemporal_vals,
-    const bool normalize = true) {
+    const bool normalize = true,
+    const Matrix &identity = identitySUN<Nc>()) {
   if (L_T_pairs.empty()) {
     return;
   }
@@ -475,10 +487,10 @@ void WilsonLoop_temporal_raw_fused(
   }
 
   using SpatialLinesView =
-      Kokkos::View<SUN<Nc> ***,
+      Kokkos::View<Matrix ***,
                    Kokkos::MemoryTraits<Kokkos::Restrict>>;
   using TransporterView =
-      Kokkos::View<SUN<Nc> *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+      Kokkos::View<Matrix *, Kokkos::MemoryTraits<Kokkos::Restrict>>;
   using AccumView =
       Kokkos::View<real_t **, Kokkos::MemoryTraits<Kokkos::Restrict>>;
 
@@ -491,13 +503,13 @@ void WilsonLoop_temporal_raw_fused(
       "TemporalWilsonSpatialLines",
       Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(
           0, static_cast<size_t>(spatial_dirs) * nSites),
-      TemporalWilsonSpatialLines<rank, Nc>(g_in, spatial_lines, dimensions,
-                                           Rmax, nSites));
+      TemporalWilsonSpatialLines<rank, GaugeFieldType, Matrix>(
+          g_in, spatial_lines, dimensions, Rmax, nSites, identity));
 
   Kokkos::parallel_for(
       "TemporalWilsonInitTransporter",
       Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nSites),
-      TemporalWilsonInitTransporter<rank, Nc>(Tcurr));
+      TemporalWilsonInitTransporter<Matrix>(Tcurr, identity));
 
   Kokkos::deep_copy(W_accum, real_t(0.0));
 
@@ -506,14 +518,14 @@ void WilsonLoop_temporal_raw_fused(
     Kokkos::parallel_for(
         "TemporalWilsonUpdateTransporter",
         Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>(0, nSites),
-        TemporalWilsonUpdateTransporter<rank, Nc>(g_in, Tcurr, dimensions,
-                                                  t - 1));
+        TemporalWilsonUpdateTransporter<rank, GaugeFieldType, Matrix>(
+            g_in, Tcurr, dimensions, t - 1));
 
     Kokkos::parallel_for(
         "TemporalWilsonMeasureFixedT",
         Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
             {1, 0, 0}, {Rmax + 1, spatial_dirs, nSitesIndex}),
-        TemporalWilsonMeasureFixedT<rank, Nc>(spatial_lines, Tcurr, W_accum,
+        TemporalWilsonMeasureFixedT<rank, Matrix>(spatial_lines, Tcurr, W_accum,
                                               dimensions, t));
   }
 

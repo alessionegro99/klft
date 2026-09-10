@@ -19,12 +19,42 @@
 
 namespace klft {
 
-// The orbifold variables are arbitrary complex 3x3 spatial links Z_j and
-// compact SU(3) temporal links U_0. The d-dimensional normalization follows
+// Spatial Z_j are arbitrary complex Nc-by-Nc matrices, including for SU(2):
+// its compact quaternion representation cannot store the noncompact field.
+// Temporal links are in U(1) or SU(Nc). The spatial-d normalization follows
 // Eqs. (14)--(15) of Bergner, Hanada, and Mendicelli, arXiv:2506.00755.
 // Keeping U_0 explicit retains the periodic holonomy absent after U_0 = 1.
 static_assert(compiled_rank >= 2 && compiled_rank <= 4,
               "The orbifold action supports 1+1D, 2+1D, and 3+1D builds.");
+inline constexpr index_t orbifold_colors = static_cast<index_t>(compiled_nc);
+inline constexpr index_t orbifold_algebra_dimensions =
+    compiled_nc == 1 ? 1 : compiled_nc * compiled_nc - 1;
+inline constexpr const char *orbifold_group_name =
+    compiled_nc == 1 ? "U(1)" : (compiled_nc == 2 ? "SU(2)" : "SU(3)");
+using OrbifoldMatrix = SUNMatrix<compiled_nc>;
+
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix orbifold_zero() {
+  return make_zero_sun_matrix<compiled_nc>();
+}
+
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix orbifold_identity() {
+  auto result = orbifold_zero();
+  for (index_t i = 0; i < orbifold_colors; ++i) {
+    matrix_ref(result, i, i) = 1.0;
+  }
+  return result;
+}
+
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
+orbifold_from_compact(const SUN<compiled_nc> &link) {
+  auto result = orbifold_zero();
+  for (index_t row = 0; row < orbifold_colors; ++row) {
+    for (index_t col = 0; col < orbifold_colors; ++col) {
+      matrix_ref(result, row, col) = matrix_element(link, row, col);
+    }
+  }
+  return result;
+}
 inline constexpr index_t orbifold_spatial_directions =
     static_cast<index_t>(compiled_rank - 1);
 inline constexpr index_t orbifold_time_direction =
@@ -32,16 +62,16 @@ inline constexpr index_t orbifold_time_direction =
 using OrbifoldDimensions = IndexArray<compiled_rank>;
 using OrbifoldSpatialView = std::conditional_t<
     compiled_rank == 4,
-    Kokkos::View<SUN<3> ****[3], Kokkos::MemoryTraits<Kokkos::Restrict>>,
+    Kokkos::View<OrbifoldMatrix ****[3], Kokkos::MemoryTraits<Kokkos::Restrict>>,
     std::conditional_t<compiled_rank == 3,
-      Kokkos::View<SUN<3> ***[2], Kokkos::MemoryTraits<Kokkos::Restrict>>,
-      Kokkos::View<SUN<3> **[1], Kokkos::MemoryTraits<Kokkos::Restrict>>>>;
+      Kokkos::View<OrbifoldMatrix ***[2], Kokkos::MemoryTraits<Kokkos::Restrict>>,
+      Kokkos::View<OrbifoldMatrix **[1], Kokkos::MemoryTraits<Kokkos::Restrict>>>>;
 using OrbifoldTemporalView = std::conditional_t<
     compiled_rank == 4,
-    Kokkos::View<SUN<3> ****, Kokkos::MemoryTraits<Kokkos::Restrict>>,
+    Kokkos::View<OrbifoldMatrix ****, Kokkos::MemoryTraits<Kokkos::Restrict>>,
     std::conditional_t<compiled_rank == 3,
-      Kokkos::View<SUN<3> ***, Kokkos::MemoryTraits<Kokkos::Restrict>>,
-      Kokkos::View<SUN<3> **, Kokkos::MemoryTraits<Kokkos::Restrict>>>>;
+      Kokkos::View<OrbifoldMatrix ***, Kokkos::MemoryTraits<Kokkos::Restrict>>,
+      Kokkos::View<OrbifoldMatrix **, Kokkos::MemoryTraits<Kokkos::Restrict>>>>;
 
 template <class View>
 KOKKOS_FORCEINLINE_FUNCTION decltype(auto)
@@ -73,10 +103,17 @@ struct OrbifoldField {
   OrbifoldTemporalView temporal;
   OrbifoldDimensions dimensions;
 
+  KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix &
+  operator()(const OrbifoldDimensions &site, const index_t direction) const {
+    return direction == orbifold_time_direction
+        ? orbifold_temporal_ref(temporal, site)
+        : orbifold_spatial_ref(spatial, site, direction);
+  }
+
   explicit OrbifoldField(
       const OrbifoldDimensions &dims,
-      const SUN<3> &spatial_init = zeroSUN<3>(),
-      const SUN<3> &temporal_init = identitySUN<3>(),
+      const OrbifoldMatrix &spatial_init = orbifold_zero(),
+      const OrbifoldMatrix &temporal_init = orbifold_identity(),
       const std::string &label = "orbifold")
       : dimensions(dims) {
     for (const index_t extent : dimensions) {
@@ -103,7 +140,7 @@ struct OrbifoldField {
     initialize(spatial_init, temporal_init, label);
   }
 
-  void initialize(const SUN<3> &spatial_init, const SUN<3> &temporal_init,
+  void initialize(const OrbifoldMatrix &spatial_init, const OrbifoldMatrix &temporal_init,
                   const std::string &label) {
     const auto z = spatial;
     const auto u = temporal;
@@ -125,7 +162,7 @@ struct OrbifoldField {
 
 inline OrbifoldField copy_orbifold_field(const OrbifoldField &source,
                                          const std::string &label) {
-  OrbifoldField copy(source.dimensions, zeroSUN<3>(), zeroSUN<3>(), label);
+  OrbifoldField copy(source.dimensions, orbifold_zero(), orbifold_zero(), label);
   Kokkos::deep_copy(copy.spatial, source.spatial);
   Kokkos::deep_copy(copy.temporal, source.temporal);
   Kokkos::fence();
@@ -148,6 +185,12 @@ struct OrbifoldActionParams {
       throw std::invalid_argument(
           "Orbifold spacings and coupling must be positive; masses must be "
           "non-negative.");
+    }
+    // det Z is invariant under SU(N), but not under local U(1). Pinning its
+    // phase would remove the U(1) gauge field instead of a scalar mode.
+    if (compiled_nc == 1 && u1_mass != 0.0) {
+      throw std::invalid_argument(
+          "U(1) requires u1_mass=0: determinant pinning breaks gauge invariance.");
     }
   }
 
@@ -181,13 +224,14 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
         auto generator = pool.get_state();
 #pragma unroll
         for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
-          SUN<3> value;
-          rand_matrix(value, generator);
+          SUN<compiled_nc> compact;
+          rand_matrix(compact, generator);
+          OrbifoldMatrix value = orbifold_from_compact(compact);
           value *= vacuum_scale;
 #pragma unroll
-          for (index_t row = 0; row < 3; ++row) {
+          for (index_t row = 0; row < orbifold_colors; ++row) {
 #pragma unroll
-            for (index_t col = 0; col < 3; ++col) {
+            for (index_t col = 0; col < orbifold_colors; ++col) {
               matrix_ref(value, row, col) +=
                   complex_t(generator.normal(0.0, complex_noise),
                             generator.normal(0.0, complex_noise));
@@ -195,9 +239,9 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
           }
           orbifold_spatial_ref(z, site, j) = value;
         }
-        SUN<3> temporal;
+        SUN<compiled_nc> temporal;
         rand_matrix(temporal, generator);
-        orbifold_temporal_ref(u, site) = temporal;
+        orbifold_temporal_ref(u, site) = orbifold_from_compact(temporal);
         pool.free_state(generator);
       });
   Kokkos::fence();
@@ -205,7 +249,7 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
 
 inline void initialize_orbifold_from_gauge(
     OrbifoldField &field,
-    const typename DeviceGaugeFieldType<compiled_rank, 3>::type &gauge,
+    const typename DeviceGaugeFieldType<compiled_rank, compiled_nc>::type &gauge,
     const OrbifoldActionParams &params) {
   params.validate();
   if (field.dimensions != gauge.dimensions) {
@@ -225,34 +269,35 @@ inline void initialize_orbifold_from_gauge(
             wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
         for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
-          orbifold_spatial_ref(z, site, j) = links(site, j) * scale;
+          orbifold_spatial_ref(z, site, j) =
+              orbifold_from_compact(links(site, j)) * scale;
         }
         orbifold_temporal_ref(u, site) =
-            links(site, orbifold_time_direction);
+            orbifold_from_compact(links(site, orbifold_time_direction));
       });
   Kokkos::fence();
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
 orbifold_spatial_at(const OrbifoldSpatialView &z,
                     const OrbifoldDimensions &site,
                     const index_t j) {
   return orbifold_spatial_ref(z, site, j);
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
 orbifold_temporal_at(const OrbifoldTemporalView &u,
                      const OrbifoldDimensions &site) {
   return orbifold_temporal_ref(u, site);
 }
 
 KOKKOS_FORCEINLINE_FUNCTION real_t orbifold_matrix_norm_squared(
-    const SUN<3> &a) {
+    const OrbifoldMatrix &a) {
   real_t result = 0.0;
 #pragma unroll
-  for (index_t row = 0; row < 3; ++row) {
+  for (index_t row = 0; row < orbifold_colors; ++row) {
 #pragma unroll
-    for (index_t col = 0; col < 3; ++col) {
+    for (index_t col = 0; col < orbifold_colors; ++col) {
       const complex_t value = matrix_ref(a, row, col);
       result += value.real() * value.real() + value.imag() * value.imag();
     }
@@ -260,18 +305,24 @@ KOKKOS_FORCEINLINE_FUNCTION real_t orbifold_matrix_norm_squared(
   return result;
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_matrix_scale(const SUN<3> &a, const complex_t scale) {
-  SUN<3> result = zeroSUN<3>();
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
+orbifold_matrix_scale(const OrbifoldMatrix &a, const complex_t scale) {
+  OrbifoldMatrix result = orbifold_zero();
 #pragma unroll
-  for (index_t i = 0; i < 9; ++i) {
+  for (index_t i = 0; i < orbifold_colors * orbifold_colors; ++i) {
     result.comp[i] = a.comp[i] * scale;
   }
   return result;
 }
 
 KOKKOS_FORCEINLINE_FUNCTION complex_t
-orbifold_determinant(const SUN<3> &a) {
+orbifold_determinant(const OrbifoldMatrix &a) {
+  if constexpr (compiled_nc == 1) {
+    return matrix_ref(a, 0, 0);
+  } else if constexpr (compiled_nc == 2) {
+    return matrix_ref(a, 0, 0) * matrix_ref(a, 1, 1) -
+           matrix_ref(a, 0, 1) * matrix_ref(a, 1, 0);
+  }
   return matrix_ref(a, 0, 0) * matrix_ref(a, 1, 1) * matrix_ref(a, 2, 2) +
          matrix_ref(a, 0, 1) * matrix_ref(a, 1, 2) * matrix_ref(a, 2, 0) +
          matrix_ref(a, 0, 2) * matrix_ref(a, 1, 0) * matrix_ref(a, 2, 1) -
@@ -280,13 +331,22 @@ orbifold_determinant(const SUN<3> &a) {
          matrix_ref(a, 0, 0) * matrix_ref(a, 1, 2) * matrix_ref(a, 2, 1);
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_conjugate_cofactor(const SUN<3> &a) {
-  SUN<3> result = zeroSUN<3>();
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
+orbifold_conjugate_cofactor(const OrbifoldMatrix &a) {
+  OrbifoldMatrix result = orbifold_zero();
+  if constexpr (compiled_nc == 1) {
+    return orbifold_identity();
+  } else if constexpr (compiled_nc == 2) {
+    matrix_ref(result, 0, 0) = Kokkos::conj(matrix_ref(a, 1, 1));
+    matrix_ref(result, 0, 1) = -Kokkos::conj(matrix_ref(a, 1, 0));
+    matrix_ref(result, 1, 0) = -Kokkos::conj(matrix_ref(a, 0, 1));
+    matrix_ref(result, 1, 1) = Kokkos::conj(matrix_ref(a, 0, 0));
+    return result;
+  }
 #pragma unroll
-  for (index_t row = 0; row < 3; ++row) {
+  for (index_t row = 0; row < orbifold_colors; ++row) {
 #pragma unroll
-    for (index_t col = 0; col < 3; ++col) {
+    for (index_t col = 0; col < orbifold_colors; ++col) {
       IndexArray<2> rows{};
       IndexArray<2> cols{};
       index_t ri = 0;
@@ -317,22 +377,22 @@ orbifold_conjugate_cofactor(const SUN<3> &a) {
   return result;
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
 orbifold_d_term(const OrbifoldSpatialView &z,
                  const OrbifoldDimensions &site,
                  const OrbifoldDimensions &dimensions) {
-  SUN<3> result = zeroSUN<3>();
+  OrbifoldMatrix result = orbifold_zero();
 #pragma unroll
   for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
     const auto minus_j = shift_index_minus(site, j, 1, dimensions);
-    const SUN<3> here = orbifold_spatial_at(z, site, j);
-    const SUN<3> behind = orbifold_spatial_at(z, minus_j, j);
+    const OrbifoldMatrix here = orbifold_spatial_at(z, site, j);
+    const OrbifoldMatrix behind = orbifold_spatial_at(z, minus_j, j);
     result += here * conj(here) - conj(behind) * behind;
   }
   return result;
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
 orbifold_f_term(const OrbifoldSpatialView &z,
                  const OrbifoldDimensions &site,
                  const index_t j, const index_t k,
@@ -345,7 +405,7 @@ orbifold_f_term(const OrbifoldSpatialView &z,
              orbifold_spatial_at(z, plus_k, j);
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3> orbifold_temporal_difference(
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix orbifold_temporal_difference(
     const OrbifoldSpatialView &z, const OrbifoldTemporalView &u,
     const OrbifoldDimensions &site, const index_t j,
     const OrbifoldDimensions &dimensions) {
@@ -377,7 +437,7 @@ inline real_t orbifold_action(const OrbifoldField &field,
       params.scalar_mass * params.scalar_mass * g2 /
       (2.0 * radial_spacing);
   const real_t factor_det = params.u1_mass * params.u1_mass * c;
-  const real_t determinant_scale = 1.0 / Kokkos::sqrt(c * c * c);
+  const real_t determinant_scale = std::pow(c, -0.5 * orbifold_colors);
   const size_t sites = wilson_site_count<compiled_rank>(dimensions);
 
   real_t result = 0.0;
@@ -394,9 +454,9 @@ inline real_t orbifold_action(const OrbifoldField &field,
         for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           temporal += orbifold_matrix_norm_squared(
               orbifold_temporal_difference(z, u, site, j, dimensions));
-          const SUN<3> zj = orbifold_spatial_at(z, site, j);
-          const SUN<3> radial =
-              zj * conj(zj) - identitySUN<3>() * c;
+          const OrbifoldMatrix zj = orbifold_spatial_at(z, site, j);
+          const OrbifoldMatrix radial =
+              zj * conj(zj) - orbifold_identity() * c;
           spatial += factor_mass * orbifold_matrix_norm_squared(radial);
           const complex_t determinant_constraint =
               orbifold_determinant(zj) * determinant_scale -
@@ -419,12 +479,13 @@ inline real_t orbifold_action(const OrbifoldField &field,
   return result;
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_antihermitian_traceless(const SUN<3> &a) {
-  SUN<3> result = (a - conj(a)) * 0.5;
-  const complex_t mean_trace = trace(result) / 3.0;
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
+orbifold_project_algebra(const OrbifoldMatrix &a) {
+  OrbifoldMatrix result = (a - conj(a)) * 0.5;
+  const complex_t mean_trace = compiled_nc == 1 ? complex_t(0.0, 0.0) :
+                                                trace(result) / orbifold_colors;
 #pragma unroll
-  for (index_t i = 0; i < 3; ++i) {
+  for (index_t i = 0; i < orbifold_colors; ++i) {
     matrix_ref(result, i, i) -= mean_trace;
   }
   return result;
@@ -456,7 +517,7 @@ inline void orbifold_force(const OrbifoldField &field,
       params.scalar_mass * params.scalar_mass * g2 /
       (2.0 * radial_spacing);
   const real_t factor_det = params.u1_mass * params.u1_mass * c;
-  const real_t determinant_scale = 1.0 / Kokkos::sqrt(c * c * c);
+  const real_t determinant_scale = std::pow(c, -0.5 * orbifold_colors);
   const size_t sites = wilson_site_count<compiled_rank>(dimensions);
 
   Kokkos::parallel_for(
@@ -466,20 +527,20 @@ inline void orbifold_force(const OrbifoldField &field,
             wilson_linear_to_site<compiled_rank>(linear, dimensions);
         const auto minus_t =
             shift_index_minus(site, orbifold_time_direction, 1, dimensions);
-        const SUN<3> d_here = orbifold_d_term(z, site, dimensions);
-        Kokkos::Array<SUN<3>, compiled_rank - 1> dzstar;
+        const OrbifoldMatrix d_here = orbifold_d_term(z, site, dimensions);
+        Kokkos::Array<OrbifoldMatrix, compiled_rank - 1> dzstar;
 #pragma unroll
         for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           const auto plus_j = shift_index_plus(site, j, 1, dimensions);
           const auto minus_t_plus_j =
               shift_index_plus(minus_t, j, 1, dimensions);
-          const SUN<3> zj = orbifold_spatial_at(z, site, j);
-          const SUN<3> b_here =
+          const OrbifoldMatrix zj = orbifold_spatial_at(z, site, j);
+          const OrbifoldMatrix b_here =
               orbifold_temporal_difference(z, u, site, j, dimensions);
-          const SUN<3> b_behind =
+          const OrbifoldMatrix b_behind =
               orbifold_temporal_difference(z, u, minus_t, j, dimensions);
-          const SUN<3> temporal_gradient =
-              (zeroSUN<3>() - b_here +
+          const OrbifoldMatrix temporal_gradient =
+              (orbifold_zero() - b_here +
                conj(orbifold_temporal_at(u, minus_t)) * b_behind *
                    orbifold_temporal_at(u, minus_t_plus_j)) *
               (2.0 / at);
@@ -488,8 +549,8 @@ inline void orbifold_force(const OrbifoldField &field,
               (d_here * zj -
                zj * orbifold_d_term(z, plus_j, dimensions)) *
               (2.0 * factor_d);
-          const SUN<3> radial =
-              zj * conj(zj) - identitySUN<3>() * c;
+          const OrbifoldMatrix radial =
+              zj * conj(zj) - orbifold_identity() * c;
           dzstar[j] += radial * zj * (2.0 * factor_mass);
           const complex_t determinant_constraint =
               orbifold_determinant(zj) * determinant_scale -
@@ -508,7 +569,7 @@ inline void orbifold_force(const OrbifoldField &field,
             const auto plus_k = shift_index_plus(site, k, 1, dimensions);
             const auto minus_j = shift_index_minus(site, j, 1, dimensions);
             const auto minus_k = shift_index_minus(site, k, 1, dimensions);
-            const SUN<3> f_here =
+            const OrbifoldMatrix f_here =
                 orbifold_f_term(z, site, j, k, dimensions);
             dzstar[j] +=
                 (f_here * conj(orbifold_spatial_at(z, plus_j, k)) -
@@ -516,7 +577,7 @@ inline void orbifold_force(const OrbifoldField &field,
                      orbifold_f_term(z, minus_k, j, k, dimensions)) *
                 factor_f;
             dzstar[k] +=
-                ((zeroSUN<3>() - f_here) *
+                ((orbifold_zero() - f_here) *
                      conj(orbifold_spatial_at(z, plus_k, j)) +
                  conj(orbifold_spatial_at(z, minus_j, j)) *
                      orbifold_f_term(z, minus_j, j, k, dimensions)) *
@@ -525,12 +586,12 @@ inline void orbifold_force(const OrbifoldField &field,
         }
 #pragma unroll
         for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
-          const SUN<3> current = orbifold_spatial_ref(gz, site, j);
+          const OrbifoldMatrix current = orbifold_spatial_ref(gz, site, j);
           orbifold_spatial_ref(gz, site, j) =
               current + dzstar[j] * (2.0 * at);
         }
 
-        SUN<3> temporal_force = zeroSUN<3>();
+        OrbifoldMatrix temporal_force = orbifold_zero();
 #pragma unroll
         for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           const auto plus_t =
@@ -540,31 +601,43 @@ inline void orbifold_force(const OrbifoldField &field,
           const auto minus_j_plus_t =
               shift_index_plus(minus_j, orbifold_time_direction, 1,
                                dimensions);
-          const SUN<3> transported =
+          const OrbifoldMatrix transported =
               orbifold_temporal_at(u, site) *
               orbifold_spatial_at(z, plus_t, j) *
               conj(orbifold_temporal_at(u, plus_j));
-          const SUN<3> difference =
+          const OrbifoldMatrix difference =
               transported - orbifold_spatial_at(z, site, j);
-          const SUN<3> transported_behind =
+          const OrbifoldMatrix transported_behind =
               orbifold_temporal_at(u, minus_j) *
               orbifold_spatial_at(z, minus_j_plus_t, j) *
               conj(orbifold_temporal_at(u, site));
-          const SUN<3> difference_behind =
+          const OrbifoldMatrix difference_behind =
               transported_behind - orbifold_spatial_at(z, minus_j, j);
           temporal_force += transported * conj(difference) -
                             conj(difference_behind) * transported_behind;
         }
         orbifold_temporal_ref(gu, site) =
-            orbifold_antihermitian_traceless(temporal_force) * (1.0 / at);
+            orbifold_project_algebra(temporal_force) * (1.0 / at);
       });
   Kokkos::fence();
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_su3_algebra(const Kokkos::Array<real_t, 8> &a) {
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
+orbifold_algebra(const Kokkos::Array<real_t, orbifold_algebra_dimensions> &a) {
   constexpr real_t sqrt3_inverse = 0.57735026918962576451;
-  SUN<3> result = zeroSUN<3>();
+  OrbifoldMatrix result = orbifold_zero();
+  // Antihermitian generators satisfy -Tr(t_a t_b)=delta_ab/2, so
+  // -Tr(P^2)=sum_a p_a^2/2 for independent unit-variance Gaussian p_a.
+  if constexpr (compiled_nc == 1) {
+    matrix_ref(result, 0, 0) = complex_t(0.0, a[0] / Kokkos::sqrt(2.0));
+    return result;
+  } else if constexpr (compiled_nc == 2) {
+    matrix_ref(result, 0, 0) = complex_t(0.0, 0.5 * a[2]);
+    matrix_ref(result, 1, 1) = complex_t(0.0, -0.5 * a[2]);
+    matrix_ref(result, 0, 1) = complex_t(0.5 * a[1], 0.5 * a[0]);
+    matrix_ref(result, 1, 0) = complex_t(-0.5 * a[1], 0.5 * a[0]);
+    return result;
+  }
   matrix_ref(result, 0, 0) =
       complex_t(0.0, 0.5 * (a[2] + sqrt3_inverse * a[7]));
   matrix_ref(result, 0, 1) = complex_t(0.5 * a[1], 0.5 * a[0]);
@@ -579,19 +652,19 @@ orbifold_su3_algebra(const Kokkos::Array<real_t, 8> &a) {
   return result;
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3> orbifold_exp_su3(const SUN<3> &a) {
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix orbifold_exp_group(const OrbifoldMatrix &a) {
   // Scaling and squaring with a Taylor polynomial; N. J. Higham,
   // SIAM J. Matrix Anal. Appl. 26 (2005) 1179, doi:10.1137/04061101X.
   real_t norm = Kokkos::sqrt(orbifold_matrix_norm_squared(a));
-  SUN<3> x = a;
+  OrbifoldMatrix x = a;
   index_t squarings = 0;
   while (norm > 0.5 && squarings < 60) {
     x *= 0.5;
     norm *= 0.5;
     ++squarings;
   }
-  SUN<3> term = identitySUN<3>();
-  SUN<3> result = term;
+  OrbifoldMatrix term = orbifold_identity();
+  OrbifoldMatrix result = term;
 #pragma unroll
   for (index_t order = 1; order <= 24; ++order) {
     term = term * x * (1.0 / static_cast<real_t>(order));
@@ -638,8 +711,8 @@ orbifold_temporal_group_errors(const OrbifoldField &field) {
       KOKKOS_LAMBDA(const size_t linear, real_t &maximum) {
         const auto site =
             wilson_linear_to_site<compiled_rank>(linear, dimensions);
-        const SUN<3> link = orbifold_temporal_at(u, site);
-        const SUN<3> check = conj(link) * link - identitySUN<3>();
+        const OrbifoldMatrix link = orbifold_temporal_at(u, site);
+        const OrbifoldMatrix check = conj(link) * link - orbifold_identity();
         maximum = Kokkos::max(maximum,
                               Kokkos::sqrt(orbifold_matrix_norm_squared(check)));
       },
@@ -650,9 +723,9 @@ orbifold_temporal_group_errors(const OrbifoldField &field) {
       KOKKOS_LAMBDA(const size_t linear, real_t &maximum) {
         const auto site =
             wilson_linear_to_site<compiled_rank>(linear, dimensions);
-        const complex_t error =
-            orbifold_determinant(orbifold_temporal_at(u, site)) -
-                                complex_t(1.0, 0.0);
+        const complex_t det = orbifold_determinant(orbifold_temporal_at(u, site));
+        const complex_t error = (compiled_nc == 1 ? det * Kokkos::conj(det) : det)
+                                - complex_t(1.0, 0.0);
         maximum = Kokkos::max(
             maximum,
             Kokkos::sqrt(error.real() * error.real() +
@@ -663,8 +736,8 @@ orbifold_temporal_group_errors(const OrbifoldField &field) {
   return OrbifoldGroupErrors{unitarity, determinant};
 }
 
-KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_polar_unitary(const SUN<3> &z, bool &converged) {
+KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
+orbifold_polar_unitary(const OrbifoldMatrix &z, bool &converged) {
   // Newton's polar iteration computes the unitary U in Z = H U.  Unlike
   // Gram--Schmidt projection, it is equivariant under both endpoint gauge
   // transformations, as required for Wilson loops; see Higham (1986),
@@ -674,23 +747,23 @@ orbifold_polar_unitary(const SUN<3> &z, bool &converged) {
   converged = false;
   const real_t norm_squared = orbifold_matrix_norm_squared(z);
   if (!(norm_squared > singular_tolerance)) {
-    return zeroSUN<3>();
+    return orbifold_zero();
   }
 
-  SUN<3> x = z * Kokkos::sqrt(3.0 / norm_squared);
+  OrbifoldMatrix x = z * Kokkos::sqrt(orbifold_colors / norm_squared);
   for (index_t iteration = 0; iteration < 50; ++iteration) {
     const complex_t determinant = orbifold_determinant(x);
     const real_t determinant_norm_squared =
         determinant.real() * determinant.real() +
         determinant.imag() * determinant.imag();
     if (!(determinant_norm_squared > singular_tolerance)) {
-      return zeroSUN<3>();
+      return orbifold_zero();
     }
-    const SUN<3> inverse_dagger = orbifold_matrix_scale(
+    const OrbifoldMatrix inverse_dagger = orbifold_matrix_scale(
         orbifold_conjugate_cofactor(x),
         complex_t(1.0, 0.0) / Kokkos::conj(determinant));
     x = (x + inverse_dagger) * 0.5;
-    const SUN<3> residual = conj(x) * x - identitySUN<3>();
+    const OrbifoldMatrix residual = conj(x) * x - orbifold_identity();
     if (orbifold_matrix_norm_squared(residual) <= tolerance_squared) {
       converged = true;
       return x;
@@ -699,19 +772,13 @@ orbifold_polar_unitary(const SUN<3> &z, bool &converged) {
   return x;
 }
 
-inline typename DeviceGaugeFieldType<compiled_rank, 3>::type
+inline OrbifoldField
 orbifold_projected_gauge_field(const OrbifoldField &field) {
   const auto dimensions = field.dimensions;
-  index_t l2 = 1;
-  index_t l3 = 1;
-  if constexpr (compiled_rank >= 3) {
-    l2 = dimensions[2];
-  }
-  if constexpr (compiled_rank == 4) {
-    l3 = dimensions[3];
-  }
-  auto projected = make_identity_gauge_field<compiled_rank, 3>(
-      dimensions[0], dimensions[1], l2, l3);
+  // The polar factor lies in U(Nc), even for an SU(Nc) gauge theory at finite
+  // mass. Keep its determinant phase; compact SU(2) storage would discard it.
+  OrbifoldField projected(dimensions, orbifold_identity(), orbifold_identity(),
+                           "orbifold_projected");
   const auto z = field.spatial;
   const auto u = field.temporal;
   const auto links = projected;
@@ -770,7 +837,8 @@ orbifold_wilson_loops(const OrbifoldField &field, const index_t max_r,
   const auto projected = orbifold_projected_gauge_field(field);
   std::vector<Kokkos::Array<real_t, 3>> loops;
   loops.reserve(pairs.size());
-  WilsonLoop_temporal_raw_fused<compiled_rank, 3>(projected, pairs, loops);
+  WilsonLoop_temporal_raw_fused<compiled_rank, compiled_nc>(
+      projected, pairs, loops, true, orbifold_identity());
   return loops;
 }
 
@@ -782,11 +850,11 @@ public:
   OrbifoldHMC(OrbifoldField &field, const OrbifoldActionParams &action_params,
               const OrbifoldHMCParams &hmc_params, const uint64_t seed)
       : field_(field), action_params_(action_params), hmc_params_(hmc_params),
-        momentum_(field.dimensions, zeroSUN<3>(), zeroSUN<3>(),
+        momentum_(field.dimensions, orbifold_zero(), orbifold_zero(),
                   "orbifold_momentum"),
-        force_(field.dimensions, zeroSUN<3>(), zeroSUN<3>(),
+        force_(field.dimensions, orbifold_zero(), orbifold_zero(),
                "orbifold_force_buffer"),
-        backup_(field.dimensions, zeroSUN<3>(), zeroSUN<3>(),
+        backup_(field.dimensions, orbifold_zero(), orbifold_zero(),
                 "orbifold_backup"),
         momentum_rng_(seed), host_rng_(seed), uniform_(0.0, 1.0) {
     action_params_.validate();
@@ -807,11 +875,11 @@ public:
           auto generator = rng.get_state();
 #pragma unroll
           for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
-            SUN<3> value = zeroSUN<3>();
+            OrbifoldMatrix value = orbifold_zero();
 #pragma unroll
-            for (index_t row = 0; row < 3; ++row) {
+            for (index_t row = 0; row < orbifold_colors; ++row) {
 #pragma unroll
-              for (index_t col = 0; col < 3; ++col) {
+              for (index_t col = 0; col < orbifold_colors; ++col) {
                 matrix_ref(value, row, col) =
                     complex_t(generator.normal(0.0, 1.0),
                               generator.normal(0.0, 1.0));
@@ -819,13 +887,13 @@ public:
             }
             orbifold_spatial_ref(pz, site, j) = value;
           }
-          Kokkos::Array<real_t, 8> coefficients;
+          Kokkos::Array<real_t, orbifold_algebra_dimensions> coefficients;
 #pragma unroll
-          for (index_t a = 0; a < 8; ++a) {
+          for (index_t a = 0; a < orbifold_algebra_dimensions; ++a) {
             coefficients[a] = generator.normal(0.0, 1.0);
           }
           orbifold_temporal_ref(pu, site) =
-              orbifold_su3_algebra(coefficients);
+              orbifold_algebra(coefficients);
           rng.free_state(generator);
         });
     Kokkos::fence();
@@ -847,7 +915,7 @@ public:
             local += 0.5 * orbifold_matrix_norm_squared(
                                orbifold_spatial_ref(pz, site, j));
           }
-          const SUN<3> p = orbifold_temporal_ref(pu, site);
+          const OrbifoldMatrix p = orbifold_temporal_ref(pu, site);
           local -= trace(p * p).real();
         },
         result);
@@ -948,7 +1016,7 @@ public:
                 orbifold_spatial_ref(pz, site, j) * step;
           }
           orbifold_temporal_ref(u, site) =
-              orbifold_exp_su3(orbifold_temporal_ref(pu, site) * step) *
+              orbifold_exp_group(orbifold_temporal_ref(pu, site) * step) *
               orbifold_temporal_ref(u, site);
         });
     Kokkos::fence();

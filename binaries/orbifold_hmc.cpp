@@ -269,7 +269,7 @@ void refuse_existing_output(const std::string &filename) {
 
 void write_metadata(std::ostream &output, const InputParams &params) {
   output << std::setprecision(17)
-         << "# theory SU(3) orbifold, " << orbifold_spatial_directions
+         << "# theory " << orbifold_group_name << " orbifold, " << orbifold_spatial_directions
          << "+1D, periodic, time_direction=" << orbifold_time_direction
          << "\n# dimensions";
   for (const index_t extent : params.run.dimensions) {
@@ -343,9 +343,9 @@ int run(const std::string &filename) {
         << "# trajectory production_trajectory action W11\n";
   }
 
-  const SUN<3> vacuum = identitySUN<3>() *
+  const OrbifoldMatrix vacuum = orbifold_identity() *
                         std::sqrt(params.action.vacuum_scale_squared());
-  OrbifoldField field(params.run.dimensions, vacuum, identitySUN<3>(),
+  OrbifoldField field(params.run.dimensions, vacuum, orbifold_identity(),
                        "orbifold_chain");
   if (params.run.start == "hot") {
     Kokkos::Random_XorShift64_Pool<> initialization_rng(params.run.seed);
@@ -366,12 +366,12 @@ int run(const std::string &filename) {
     if constexpr (compiled_rank == 4) {
       l3 = params.run.dimensions[3];
     }
-    auto gauge = make_identity_gauge_field<compiled_rank, 3>(
+    auto gauge = make_identity_gauge_field<compiled_rank, compiled_nc>(
         params.run.dimensions[0], params.run.dimensions[1],
         l2, l3);
-    if (!load_gauge_configuration<compiled_rank, 3>(
+    if (!load_gauge_configuration<compiled_rank, compiled_nc>(
             params.run.configuration_input, gauge, false)) {
-      throw std::runtime_error("Could not load compact SU(3) start.");
+      throw std::runtime_error("Could not load compact gauge start.");
     }
     initialize_orbifold_from_gauge(field, gauge, params.action);
   }
