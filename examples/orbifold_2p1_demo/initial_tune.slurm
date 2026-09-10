@@ -24,10 +24,10 @@ export OMP_PLACES=cores
 
 root=/qbigwork2/negro/orbifold
 campaign="${root}/campaigns/orbifold_2p1_demo_20260910"
-source_dir="${root}/src/klft-772db3d"
-executable="${root}/build/klft-772db3d-su3-2p1-p100/binaries/orbifold_hmc"
-smoke="${root}/data/orbifold_2p1_demo_20260910/gpu_smoke_cuda_fix"
-expected_commit=772db3d2bd3dbdda0a42686e3f545a3ee326373c
+source_dir="${root}/src/klft-1104e1a"
+executable="${root}/build/klft-1104e1a-su3-2p1-p100/binaries/orbifold_hmc"
+smoke="${root}/data/orbifold_2p1_demo_20260910/gpu_smoke_1104e1a"
+expected_commit=1104e1af3fa39838d1ae6fdb9c2620f7b423b134
 case "${SLURM_ARRAY_TASK_ID}" in
   1) label=h0005; expected_input_sha=4611c9ed126291c5c65cc2356aab6d879565b181ecc2378f8423e40e4d4c4fe3 ;;
   2) label=h0010; expected_input_sha=9b72c45956affa742155d0f902dbc19a576313016fd33db8d03ffb4249743445 ;;

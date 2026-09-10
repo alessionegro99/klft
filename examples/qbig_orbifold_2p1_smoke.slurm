@@ -35,10 +35,10 @@ done
 export CPATH="${clean_cpath}"
 
 root=/qbigwork2/negro/orbifold
-expected_commit=772db3d2bd3dbdda0a42686e3f545a3ee326373c
-source_dir="${root}/src/klft-772db3d"
-build="${root}/build/klft-772db3d-su3-2p1-p100"
-run_dir="${root}/data/orbifold_2p1_demo_20260910/gpu_smoke_cuda_fix"
+expected_commit=1104e1af3fa39838d1ae6fdb9c2620f7b423b134
+source_dir="${root}/src/klft-1104e1a"
+build="${root}/build/klft-1104e1a-su3-2p1-p100"
+run_dir="${root}/data/orbifold_2p1_demo_20260910/gpu_smoke_1104e1a"
 uv=/qbigwork2/negro/dirichlet/bin/uv
 export UV_CACHE_DIR="${root}/.uv-cache"
 
