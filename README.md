@@ -187,6 +187,7 @@ mkdir smoke-2p1
 cd smoke-2p1
 OMP_NUM_THREADS=2 OMP_PROC_BIND=false ../build-2p1/binaries/orbifold_hmc \
   -f ../examples/orbifold_2p1_smoke.yaml
+cd ..
 ```
 
 The smoke uses `a_s=a_t=0.2`, `g=1`, `m=m_U1=40` (both `ma=8`), periodic
