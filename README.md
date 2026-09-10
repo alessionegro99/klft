@@ -48,9 +48,10 @@ default.
 
 ## Orbifold action and HMC
 
-The `orbifold` branch adds a periodic 3+1D SU(3) orbifold action and Hybrid
+The `orbifold` branch adds periodic 2+1D and 3+1D SU(3) orbifold actions and Hybrid
 Monte Carlo implementation in `include/orbifold.hpp`. It requires
-`KLFT_NDIM=4` and `KLFT_NC=3`. Run it with the dedicated driver:
+`KLFT_NDIM=3` or `4`, and `KLFT_NC=3`. Rebuild when changing dimension.
+Run it with the dedicated driver:
 
 ```bash
 build/binaries/orbifold_hmc -f input.yaml
@@ -59,18 +60,19 @@ build/binaries/orbifold_hmc -f input.yaml
 The generic `metropolis` and `heatbath` drivers below still simulate compact
 lattice gauge theory; they do not run the orbifold action.
 
-At every site, `OrbifoldField` stores three unconstrained complex 3-by-3
-spatial links `Z_j` and one compact temporal link `U_0` in SU(3). With
-`c = a_s / (2 g^2)`, the implementation is
-[Eq. (12) of Bergner et al.](https://arxiv.org/abs/2401.12045):
+At every site, `OrbifoldField` stores `d=KLFT_NDIM-1` unconstrained complex
+3-by-3 spatial links `Z_j` and one compact temporal link `U_0` in SU(3).
+Time is direction `d`. With `c = a_s^(d-2) / (2 g^2)`, the implementation is
+[Eqs. (14)-(15) of Bergner, Hanada, and Mendicelli](https://arxiv.org/abs/2506.00755)
+with their optional improvement parameter `gamma=0`:
 
 ```text
 S = sum_n {
       (1/a_t) sum_j ||U_0(n) Z_j(n+t) - Z_j(n) U_0(n+j)||_F^2
     + a_t [
-        g^2/(2 a_s^3) ||D(n)||_F^2
-      + 2 g^2/a_s^3 sum_(j<k) ||F_jk(n)||_F^2
-      + m^2 g^2/(2 a_s) sum_j ||Z_j(n) Z_j(n)^dagger - c I||_F^2
+        g^2/(2 a_s^d) ||D(n)||_F^2
+      + 2 g^2/a_s^d sum_(j<k) ||F_jk(n)||_F^2
+      + m^2 g^2/(2 a_s^(d-2)) sum_j ||Z_j(n) Z_j(n)^dagger - c I||_F^2
       + m_U1^2 c sum_j |det(Z_j(n)) c^(-3/2) - 1|^2
     ] }
 
@@ -88,10 +90,11 @@ norm-equivalent transported form
 `||U_0(n) Z_j(n+t) U_0(n+j)^dagger - Z_j(n)||_F^2`.
 
 For isotropic constrained links, this normalization becomes the Wilson action
-with `beta = N_c/g^2 = 3/g^2`. The paper uses generators normalized by
+with `beta = 3 a_s^(d-3)/g^2`: `3/g^2` in 3+1D and
+`3/(a_s g^2)` in 2+1D. The paper uses generators normalized by
 `Tr(tau_a tau_b) = delta_ab`; relative to the common
 `Tr(T_a T_b) = delta_ab/2` convention, `g_conventional = sqrt(2) g`. Thus a
-conventional `g=1` (`beta=6`) corresponds to orbifold input
+conventional 3+1D `g=1` (`beta=6`) corresponds to orbifold input
 `coupling: 0.7071067811865475`, not `coupling: 1`.
 
 The temporal links remain dynamical, so the periodic Polyakov holonomy is not
@@ -118,7 +121,9 @@ action.coupling = 1.0;
 action.scalar_mass = 0.1;
 action.u1_mass = 0.1;
 
-const IndexArray<4> dimensions{4, 4, 4, 8};
+OrbifoldDimensions dimensions{};
+for (auto &extent : dimensions) extent = 4;
+dimensions[orbifold_time_direction] = 8;
 const auto vacuum = identitySUN<3>() *
                     std::sqrt(action.vacuum_scale_squared());
 OrbifoldField field(dimensions, vacuum);
@@ -138,9 +143,11 @@ ctest --test-dir build -R orbifold_deterministic --output-on-failure
 ```
 
 The `orbifold_hmc` YAML input uses one `OrbifoldHMCParams` map; see
-`docs/input.yaml` in the orbifold workspace for a complete input. Set `start`
+[`examples/orbifold_2p1_smoke.yaml`](examples/orbifold_2p1_smoke.yaml) for a
+complete small 2+1D input. Use `L0,L1,L2` in 2+1D and also `L3` in 3+1D;
+an extra extent is rejected to prevent using the wrong executable. Set `start`
 to `cold`, `hot`, `restart`, or `compact`. A hot start initializes `Z_j` near
-`sqrt(a_s/(2 g^2)) SU(3)` with the requested Cartesian noise and initializes
+`sqrt(c) SU(3)` with the requested Cartesian noise and initializes
 the explicit temporal links with random SU(3) matrices. A restart loads an
 orbifold checkpoint; a compact start loads KLFT's compact SU(3) configuration
 and embeds its spatial links at the orbifold vacuum scale. Configure
@@ -153,6 +160,25 @@ extents. Spatial transporters use the unitary polar factor of `Z_j`; temporal
 transporters use the explicit `U_0`, so the observable does not impose temporal
 gauge. Output files are never overwritten. Automatic step-size tuning is not
 implemented, so `tuning_trajectories` must be zero.
+
+Checkpoint version 2 records the spacetime dimension and rejects incompatible
+builds. Legacy version-1 checkpoints remain readable in 3+1D. Run this quick
+2+1D check in a fresh directory (the ten trajectories are not thermalization):
+
+```bash
+cmake -S . -B build-2p1 -DKLFT_NDIM=3 -DKLFT_NC=3 \
+  -DKokkos_ENABLE_OPENMP=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build-2p1 -j4
+OMP_NUM_THREADS=2 OMP_PROC_BIND=false ctest --test-dir build-2p1 --output-on-failure
+mkdir smoke-2p1
+cd smoke-2p1
+OMP_NUM_THREADS=2 OMP_PROC_BIND=false ../build-2p1/binaries/orbifold_hmc \
+  -f ../examples/orbifold_2p1_smoke.yaml
+```
+
+The smoke uses `a_s=a_t=0.2`, `g=1`, `m=m_U1=40` (both `ma=8`), periodic
+boundaries, and no smearing. Its constrained-limit Wilson coupling is 15.
+Statistics and plateau checks are still required before quoting a potential.
 
 Gauge fixing and Sommer-scale analysis are not yet implemented.
 

@@ -23,7 +23,7 @@ namespace {
 using namespace klft;
 
 struct RunParams {
-  IndexArray<4> dimensions;
+  OrbifoldDimensions dimensions;
   uint64_t seed;
   size_t thermalization_trajectories;
   size_t production_trajectories;
@@ -93,11 +93,17 @@ InputParams parse_input(const std::string &filename) {
   const auto input = required_section(config, "OrbifoldHMCParams");
   const char *section = "OrbifoldHMCParams";
   constexpr const char *extent_keys[4] = {"L0", "L1", "L2", "L3"};
-  for (size_t d = 0; d < 4; ++d) {
+  for (size_t d = 0; d < compiled_rank; ++d) {
     params.run.dimensions[d] =
         required_value<index_t>(input, section, extent_keys[d]);
     if (params.run.dimensions[d] <= 0) {
       throw std::runtime_error("Lattice extents must be positive.");
+    }
+  }
+  for (size_t d = compiled_rank; d < 4; ++d) {
+    if (input[extent_keys[d]]) {
+      throw std::runtime_error(std::string("Lattice extent ") + extent_keys[d] +
+          " is incompatible with this build; check KLFT_NDIM.");
     }
   }
   params.run.seed = required_value<uint64_t>(input, section, "seed");
@@ -146,7 +152,8 @@ InputParams parse_input(const std::string &filename) {
   }
   params.run.initialization_noise =
       required_value<real_t>(input, section, "initialization_noise");
-  if (params.run.initialization_noise < 0.0) {
+  if (params.run.initialization_noise < 0.0 ||
+      !std::isfinite(params.run.initialization_noise)) {
     throw std::runtime_error(
         "OrbifoldHMCParams.initialization_noise must be non-negative.");
   }
@@ -191,7 +198,8 @@ InputParams parse_input(const std::string &filename) {
       required_value<real_t>(input, section, "trajectory_length");
   const real_t initial_step_size =
       required_value<real_t>(input, section, "initial_step_size");
-  if (!(trajectory_length > 0.0) || !(initial_step_size > 0.0)) {
+  if (!(trajectory_length > 0.0) || !(initial_step_size > 0.0) ||
+      !std::isfinite(trajectory_length) || !std::isfinite(initial_step_size)) {
     throw std::runtime_error(
         "Orbifold trajectory length and step size must be positive.");
   }
@@ -216,12 +224,15 @@ InputParams parse_input(const std::string &filename) {
   params.observables.diagnostic_filename =
       input["diagnostic_output"].as<std::string>("");
 
-  const index_t min_spatial_extent =
-      std::min({params.run.dimensions[0], params.run.dimensions[1],
-                params.run.dimensions[2]});
+  index_t min_spatial_extent = params.run.dimensions[0];
+  for (index_t j = 1; j < orbifold_spatial_directions; ++j) {
+    min_spatial_extent =
+        std::min(min_spatial_extent, params.run.dimensions[j]);
+  }
   if (params.observables.max_r <= 0 || params.observables.max_t <= 0 ||
       params.observables.max_r > min_spatial_extent / 2 ||
-      params.observables.max_t > params.run.dimensions[3] / 2) {
+      params.observables.max_t >
+          params.run.dimensions[orbifold_time_direction] / 2) {
     throw std::runtime_error(
         "Wilson-loop extents must be positive and no larger than half the "
         "corresponding periodic lattice extent.");
@@ -258,11 +269,13 @@ void refuse_existing_output(const std::string &filename) {
 
 void write_metadata(std::ostream &output, const InputParams &params) {
   output << std::setprecision(17)
-         << "# theory SU(3) orbifold, 3+1D, periodic, time_direction=3\n"
-         << "# dimensions " << params.run.dimensions[0] << " "
-         << params.run.dimensions[1] << " " << params.run.dimensions[2]
-         << " " << params.run.dimensions[3] << "\n"
-         << "# spatial_spacing " << params.action.spatial_spacing << "\n"
+         << "# theory SU(3) orbifold, " << orbifold_spatial_directions
+         << "+1D, periodic, time_direction=" << orbifold_time_direction
+         << "\n# dimensions";
+  for (const index_t extent : params.run.dimensions) {
+    output << " " << extent;
+  }
+  output << "\n# spatial_spacing " << params.action.spatial_spacing << "\n"
          << "# temporal_spacing " << params.action.temporal_spacing << "\n"
          << "# coupling " << params.action.coupling << "\n"
          << "# scalar_mass " << params.action.scalar_mass << "\n"
@@ -345,11 +358,15 @@ int run(const std::string &filename) {
       throw std::runtime_error("Could not load orbifold restart.");
     }
   } else if (params.run.start == "compact") {
-    auto gauge = make_identity_gauge_field<4, 3>(
+    index_t l3 = 1;
+    if constexpr (compiled_rank == 4) {
+      l3 = params.run.dimensions[3];
+    }
+    auto gauge = make_identity_gauge_field<compiled_rank, 3>(
         params.run.dimensions[0], params.run.dimensions[1],
-        params.run.dimensions[2], params.run.dimensions[3]);
-    if (!load_gauge_configuration<4, 3>(params.run.configuration_input, gauge,
-                                        false)) {
+        params.run.dimensions[2], l3);
+    if (!load_gauge_configuration<compiled_rank, 3>(
+            params.run.configuration_input, gauge, false)) {
       throw std::runtime_error("Could not load compact SU(3) start.");
     }
     initialize_orbifold_from_gauge(field, gauge, params.action);

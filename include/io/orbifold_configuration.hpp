@@ -15,7 +15,7 @@ namespace klft {
 namespace orbifold_configuration_detail {
 
 constexpr std::array<char, 8> magic{{'K', 'L', 'F', 'T', 'O', 'R', 'B', '1'}};
-constexpr std::uint32_t format_version = 1;
+constexpr std::uint32_t format_version = 2;
 
 inline bool finite_matrix(const SUN<3> &matrix) {
   for (index_t row = 0; row < 3; ++row) {
@@ -83,16 +83,18 @@ inline bool save_orbifold_configuration(const std::string &filename,
   file.write(orbifold_configuration_detail::magic.data(),
              orbifold_configuration_detail::magic.size());
   const std::uint32_t scalar_bytes = sizeof(real_t);
+  const std::uint32_t rank = compiled_rank;
   bool ok = gauge_configuration_detail::write_scalar(
                 file, orbifold_configuration_detail::format_version) &&
-            gauge_configuration_detail::write_scalar(file, scalar_bytes);
-  for (index_t d = 0; ok && d < 4; ++d) {
+            gauge_configuration_detail::write_scalar(file, scalar_bytes) &&
+            gauge_configuration_detail::write_scalar(file, rank);
+  for (size_t d = 0; ok && d < compiled_rank; ++d) {
     const std::int64_t extent = field.dimensions[d];
     ok &= gauge_configuration_detail::write_scalar(file, extent);
   }
   ok &= orbifold_configuration_detail::write_action(file, params);
   const std::uint64_t nsites =
-      gauge_configuration_detail::site_count<4>(field.dimensions);
+      gauge_configuration_detail::site_count<compiled_rank>(field.dimensions);
   ok &= gauge_configuration_detail::write_scalar(file, nsites);
 
   const auto spatial = Kokkos::create_mirror_view_and_copy(
@@ -100,15 +102,14 @@ inline bool save_orbifold_configuration(const std::string &filename,
   const auto temporal = Kokkos::create_mirror_view_and_copy(
       Kokkos::HostSpace(), field.temporal);
   for (size_t linear = 0; ok && linear < nsites; ++linear) {
-    const auto site = gauge_configuration_detail::linear_to_site<4>(
+    const auto site = gauge_configuration_detail::linear_to_site<compiled_rank>(
         linear, field.dimensions);
-    for (index_t j = 0; ok && j < 3; ++j) {
-      const SUN<3> &link =
-          spatial(site[0], site[1], site[2], site[3], j);
+    for (index_t j = 0; ok && j < orbifold_spatial_directions; ++j) {
+      const SUN<3> &link = orbifold_spatial_ref(spatial, site, j);
       ok = orbifold_configuration_detail::finite_matrix(link) &&
            gauge_configuration_detail::write_link<3>(file, link);
     }
-    const SUN<3> &link = temporal(site[0], site[1], site[2], site[3]);
+    const SUN<3> &link = orbifold_temporal_ref(temporal, site);
     ok = ok && orbifold_configuration_detail::valid_temporal_link(link) &&
          gauge_configuration_detail::write_link<3>(file, link);
   }
@@ -158,13 +159,27 @@ inline bool load_orbifold_configuration(const std::string &filename,
             gauge_configuration_detail::read_scalar(file, version) &&
             gauge_configuration_detail::read_scalar(file, scalar_bytes);
   if (!ok || magic != orbifold_configuration_detail::magic ||
-      version != orbifold_configuration_detail::format_version ||
+      (version != 1 && version != orbifold_configuration_detail::format_version) ||
       scalar_bytes != sizeof(real_t)) {
     std::printf("Error: incompatible orbifold checkpoint header in '%s'\n",
                 filename.c_str());
     return false;
   }
-  for (index_t d = 0; d < 4; ++d) {
+  if (version == 1 && compiled_rank != 4) {
+    std::printf("Error: legacy orbifold checkpoints are 4D only: '%s'\n",
+                filename.c_str());
+    return false;
+  }
+  if (version == orbifold_configuration_detail::format_version) {
+    std::uint32_t rank = 0;
+    if (!gauge_configuration_detail::read_scalar(file, rank) ||
+        rank != compiled_rank) {
+      std::printf("Error: incompatible orbifold checkpoint rank in '%s'\n",
+                  filename.c_str());
+      return false;
+    }
+  }
+  for (size_t d = 0; d < compiled_rank; ++d) {
     std::int64_t extent = 0;
     if (!gauge_configuration_detail::read_scalar(file, extent) ||
         extent != field.dimensions[d]) {
@@ -179,7 +194,7 @@ inline bool load_orbifold_configuration(const std::string &filename,
     return false;
   }
   const size_t expected_sites =
-      gauge_configuration_detail::site_count<4>(field.dimensions);
+      gauge_configuration_detail::site_count<compiled_rank>(field.dimensions);
   std::uint64_t nsites = 0;
   if (!gauge_configuration_detail::read_scalar(file, nsites) ||
       nsites != expected_sites) {
@@ -191,10 +206,10 @@ inline bool load_orbifold_configuration(const std::string &filename,
   auto spatial = Kokkos::create_mirror_view(field.spatial);
   auto temporal = Kokkos::create_mirror_view(field.temporal);
   for (size_t linear = 0; linear < nsites; ++linear) {
-    const auto site = gauge_configuration_detail::linear_to_site<4>(
+    const auto site = gauge_configuration_detail::linear_to_site<compiled_rank>(
         linear, field.dimensions);
-    for (index_t j = 0; j < 3; ++j) {
-      SUN<3> &link = spatial(site[0], site[1], site[2], site[3], j);
+    for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+      SUN<3> &link = orbifold_spatial_ref(spatial, site, j);
       if (!gauge_configuration_detail::read_link<3>(file, link) ||
           !orbifold_configuration_detail::finite_matrix(link)) {
         std::printf("Error: invalid spatial link in checkpoint '%s'\n",
@@ -202,7 +217,7 @@ inline bool load_orbifold_configuration(const std::string &filename,
         return false;
       }
     }
-    SUN<3> &link = temporal(site[0], site[1], site[2], site[3]);
+    SUN<3> &link = orbifold_temporal_ref(temporal, site);
     if (!gauge_configuration_detail::read_link<3>(file, link) ||
         !orbifold_configuration_detail::valid_temporal_link(link)) {
       std::printf("Error: invalid temporal link in checkpoint '%s'\n",

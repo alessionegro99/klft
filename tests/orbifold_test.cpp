@@ -8,7 +8,9 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <exception>
+#include <iterator>
 #include <string>
 
 namespace {
@@ -32,6 +34,32 @@ bool close(const real_t left, const real_t right,
              relative_tolerance * std::max(std::abs(left), std::abs(right));
 }
 
+OrbifoldDimensions test_dimensions(const index_t l0, const index_t l1,
+                                    const index_t l2, const index_t lt) {
+  OrbifoldDimensions result{};
+  result[0] = l0;
+  result[1] = l1;
+  result[orbifold_time_direction] = lt;
+  if constexpr (compiled_rank == 4) {
+    result[2] = l2;
+  }
+  return result;
+}
+
+OrbifoldDimensions test_site(const index_t x, const index_t y,
+                             const index_t z, const index_t t) {
+  return test_dimensions(x, y, z, t);
+}
+
+real_t site_value(const OrbifoldDimensions &site) {
+  constexpr std::array<real_t, 4> weights{1.0, 2.0, 3.0, 5.0};
+  real_t result = 1.0;
+  for (size_t d = 0; d < compiled_rank; ++d) {
+    result += weights[d] * site[d];
+  }
+  return result;
+}
+
 real_t matrix_distance_squared(const SUN<3> &left, const SUN<3> &right) {
   return orbifold_matrix_norm_squared(left - right);
 }
@@ -46,22 +74,20 @@ real_t field_distance(const OrbifoldField &left, const OrbifoldField &right) {
   const auto ru = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                        right.temporal);
   real_t maximum = 0.0;
-  for (index_t x = 0; x < left.dimensions[0]; ++x) {
-    for (index_t y = 0; y < left.dimensions[1]; ++y) {
-      for (index_t z = 0; z < left.dimensions[2]; ++z) {
-        for (index_t t = 0; t < left.dimensions[3]; ++t) {
-          maximum = std::max(
-              maximum,
-              std::sqrt(matrix_distance_squared(lu(x, y, z, t),
-                                                ru(x, y, z, t))));
-          for (index_t j = 0; j < 3; ++j) {
-            maximum = std::max(
-                maximum,
-                std::sqrt(matrix_distance_squared(lz(x, y, z, t, j),
-                                                  rz(x, y, z, t, j))));
-          }
-        }
-      }
+  const size_t sites = wilson_site_count<compiled_rank>(left.dimensions);
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, left.dimensions);
+    maximum = std::max(
+        maximum,
+        std::sqrt(matrix_distance_squared(orbifold_temporal_ref(lu, site),
+                                          orbifold_temporal_ref(ru, site))));
+    for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+      maximum = std::max(
+          maximum,
+          std::sqrt(matrix_distance_squared(
+              orbifold_spatial_ref(lz, site, j),
+              orbifold_spatial_ref(rz, site, j))));
     }
   }
   return maximum;
@@ -73,16 +99,14 @@ real_t force_norm(const OrbifoldField &force) {
   const auto u = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                       force.temporal);
   real_t result = 0.0;
-  for (index_t x = 0; x < force.dimensions[0]; ++x) {
-    for (index_t y = 0; y < force.dimensions[1]; ++y) {
-      for (index_t zz = 0; zz < force.dimensions[2]; ++zz) {
-        for (index_t t = 0; t < force.dimensions[3]; ++t) {
-          result += orbifold_matrix_norm_squared(u(x, y, zz, t));
-          for (index_t j = 0; j < 3; ++j) {
-            result += orbifold_matrix_norm_squared(z(x, y, zz, t, j));
-          }
-        }
-      }
+  const size_t sites = wilson_site_count<compiled_rank>(force.dimensions);
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, force.dimensions);
+    result += orbifold_matrix_norm_squared(orbifold_temporal_ref(u, site));
+    for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+      result +=
+          orbifold_matrix_norm_squared(orbifold_spatial_ref(z, site, j));
     }
   }
   return std::sqrt(result);
@@ -120,7 +144,7 @@ void check_polar_projection() {
         "orbifold polar projection recovers a known unitary factor");
 }
 
-OrbifoldField deterministic_field(const IndexArray<4> &dimensions,
+OrbifoldField deterministic_field(const OrbifoldDimensions &dimensions,
                                    const OrbifoldActionParams &params,
                                    const char *label) {
   const real_t vacuum = std::sqrt(params.vacuum_scale_squared());
@@ -130,31 +154,27 @@ OrbifoldField deterministic_field(const IndexArray<4> &dimensions,
                                                 field.spatial);
   auto u = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                 field.temporal);
-  for (index_t x = 0; x < dimensions[0]; ++x) {
-    for (index_t y = 0; y < dimensions[1]; ++y) {
-      for (index_t zz = 0; zz < dimensions[2]; ++zz) {
-        for (index_t t = 0; t < dimensions[3]; ++t) {
-          const real_t site_value =
-              1.0 + x + 2.0 * y + 3.0 * zz + 5.0 * t;
-          Kokkos::Array<real_t, 8> coefficients{};
-          coefficients[(x + y + zz + t) % 8] = 0.025 * site_value;
-          u(x, y, zz, t) = orbifold_exp_su3(
-              orbifold_su3_algebra(coefficients));
-          for (index_t j = 0; j < 3; ++j) {
-            SUN<3> value = identitySUN<3>() * vacuum;
-            for (index_t row = 0; row < 3; ++row) {
-              for (index_t col = 0; col < 3; ++col) {
-                const real_t component =
-                    site_value + 7.0 * j + 3.0 * row + col;
-                matrix_ref(value, row, col) +=
-                    complex_t(0.002 * component,
-                              0.001 * (component + row - col));
-              }
-            }
-            z(x, y, zz, t, j) = value;
-          }
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, dimensions);
+    const real_t value_at_site = site_value(site);
+    Kokkos::Array<real_t, 8> coefficients{};
+    coefficients[linear % 8] = 0.025 * value_at_site;
+    orbifold_temporal_ref(u, site) =
+        orbifold_exp_su3(orbifold_su3_algebra(coefficients));
+    for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+      SUN<3> value = identitySUN<3>() * vacuum;
+      for (index_t row = 0; row < 3; ++row) {
+        for (index_t col = 0; col < 3; ++col) {
+          const real_t component =
+              value_at_site + 7.0 * j + 3.0 * row + col;
+          matrix_ref(value, row, col) +=
+              complex_t(0.002 * component,
+                        0.001 * (component + row - col));
         }
       }
+      orbifold_spatial_ref(z, site, j) = value;
     }
   }
   Kokkos::deep_copy(field.spatial, z);
@@ -163,29 +183,28 @@ OrbifoldField deterministic_field(const IndexArray<4> &dimensions,
   return field;
 }
 
-void perturb_spatial(OrbifoldField &field, const IndexArray<4> &site,
+void perturb_spatial(OrbifoldField &field, const OrbifoldDimensions &site,
                      const index_t j, const index_t row, const index_t col,
                      const complex_t change) {
   auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                    field.spatial);
-  matrix_ref(host(site[0], site[1], site[2], site[3], j), row, col) += change;
+  matrix_ref(orbifold_spatial_ref(host, site, j), row, col) += change;
   Kokkos::deep_copy(field.spatial, host);
   Kokkos::fence();
 }
 
-void perturb_temporal(OrbifoldField &field, const IndexArray<4> &site,
+void perturb_temporal(OrbifoldField &field, const OrbifoldDimensions &site,
                       const SUN<3> &generator, const real_t step) {
   auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                    field.temporal);
-  host(site[0], site[1], site[2], site[3]) =
-      orbifold_exp_su3(generator * step) *
-      host(site[0], site[1], site[2], site[3]);
+  orbifold_temporal_ref(host, site) =
+      orbifold_exp_su3(generator * step) * orbifold_temporal_ref(host, site);
   Kokkos::deep_copy(field.temporal, host);
   Kokkos::fence();
 }
 
 void check_vacuum_and_temporal_normalization() {
-  const IndexArray<4> dimensions{2, 2, 2, 4};
+  const auto dimensions = test_dimensions(2, 2, 2, 4);
   OrbifoldActionParams params;
   params.spatial_spacing = 0.7;
   params.temporal_spacing = 0.2;
@@ -212,25 +231,24 @@ void check_vacuum_and_temporal_normalization() {
                                 "orbifold_temporal_normalization");
   auto z = Kokkos::create_mirror_view(temporal_field.spatial);
   const std::array<real_t, 4> q{0.7, 1.1, 0.9, 1.4};
-  for (index_t x = 0; x < dimensions[0]; ++x) {
-    for (index_t y = 0; y < dimensions[1]; ++y) {
-      for (index_t zz = 0; zz < dimensions[2]; ++zz) {
-        for (index_t t = 0; t < dimensions[3]; ++t) {
-          for (index_t j = 0; j < 3; ++j) {
-            z(x, y, zz, t, j) = identitySUN<3>() * q[t];
-          }
-        }
-      }
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, dimensions);
+    for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+      orbifold_spatial_ref(z, site, j) =
+          identitySUN<3>() * q[site[orbifold_time_direction]];
     }
   }
   Kokkos::deep_copy(temporal_field.spatial, z);
   real_t time_difference = 0.0;
-  for (index_t t = 0; t < dimensions[3]; ++t) {
-    const real_t delta = q[(t + 1) % dimensions[3]] - q[t];
+  const index_t nt = dimensions[orbifold_time_direction];
+  for (index_t t = 0; t < nt; ++t) {
+    const real_t delta = q[(t + 1) % nt] - q[t];
     time_difference += delta * delta;
   }
   const real_t expected =
-      dimensions[0] * dimensions[1] * dimensions[2] * 3.0 * 3.0 *
+      static_cast<real_t>(sites / nt) * orbifold_spatial_directions * 3.0 *
       time_difference / temporal_params.temporal_spacing;
   check(close(orbifold_action(temporal_field, temporal_params), expected,
               2.0e-13),
@@ -239,11 +257,11 @@ void check_vacuum_and_temporal_normalization() {
   auto u = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
                                                 cold.temporal);
   const SUN<3> holonomy = diagonal_gauge_matrix(0.4);
-  for (index_t x = 0; x < dimensions[0]; ++x) {
-    for (index_t y = 0; y < dimensions[1]; ++y) {
-      for (index_t zz = 0; zz < dimensions[2]; ++zz) {
-        u(x, y, zz, 0) = holonomy;
-      }
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, dimensions);
+    if (site[orbifold_time_direction] == 0) {
+      orbifold_temporal_ref(u, site) = holonomy;
     }
   }
   Kokkos::deep_copy(cold.temporal, u);
@@ -254,7 +272,7 @@ void check_vacuum_and_temporal_normalization() {
 }
 
 void check_spatial_normalization() {
-  const IndexArray<4> dimensions{3, 2, 2, 2};
+  const auto dimensions = test_dimensions(3, 2, 2, 2);
   OrbifoldActionParams params;
   params.spatial_spacing = 0.7;
   params.temporal_spacing = 0.3;
@@ -262,22 +280,21 @@ void check_spatial_normalization() {
   const real_t as = params.spatial_spacing;
   const real_t at = params.temporal_spacing;
   const real_t g2 = params.coupling * params.coupling;
-  const real_t volume = dimensions[0] * dimensions[1] * dimensions[2] *
-                        dimensions[3];
+  const real_t spatial_volume =
+      std::pow(as, static_cast<real_t>(orbifold_spatial_directions));
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
+  const real_t volume = static_cast<real_t>(sites);
 
   OrbifoldField d_field(dimensions, zeroSUN<3>(), identitySUN<3>(),
                          "orbifold_d_normalization");
   auto d_host = Kokkos::create_mirror_view(d_field.spatial);
   const std::array<real_t, 3> q{0.4, 0.8, 1.1};
-  for (index_t x = 0; x < dimensions[0]; ++x) {
-    for (index_t y = 0; y < dimensions[1]; ++y) {
-      for (index_t z = 0; z < dimensions[2]; ++z) {
-        for (index_t t = 0; t < dimensions[3]; ++t) {
-          d_host(x, y, z, t, 0) = identitySUN<3>() * q[x];
-          d_host(x, y, z, t, 1) = zeroSUN<3>();
-          d_host(x, y, z, t, 2) = zeroSUN<3>();
-        }
-      }
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, dimensions);
+    orbifold_spatial_ref(d_host, site, 0) = identitySUN<3>() * q[site[0]];
+    for (index_t j = 1; j < orbifold_spatial_directions; ++j) {
+      orbifold_spatial_ref(d_host, site, j) = zeroSUN<3>();
     }
   }
   Kokkos::deep_copy(d_field.spatial, d_host);
@@ -289,8 +306,8 @@ void check_spatial_normalization() {
     d_sum += difference * difference;
   }
   const real_t d_expected =
-      at * g2 / (2.0 * as * as * as) * 3.0 * dimensions[1] *
-      dimensions[2] * dimensions[3] * d_sum;
+      at * g2 / (2.0 * spatial_volume) * 3.0 *
+      (volume / dimensions[0]) * d_sum;
   check(close(orbifold_action(d_field, params), d_expected, 2.0e-13),
         "D-term normalization matches an analytic scalar-link case");
 
@@ -305,20 +322,18 @@ void check_spatial_normalization() {
   matrix_ref(z0, 1, 0) = a;
   matrix_ref(z1, 0, 1) = complex_t(0.0, -b);
   matrix_ref(z1, 1, 0) = complex_t(0.0, b);
-  for (index_t x = 0; x < dimensions[0]; ++x) {
-    for (index_t y = 0; y < dimensions[1]; ++y) {
-      for (index_t z = 0; z < dimensions[2]; ++z) {
-        for (index_t t = 0; t < dimensions[3]; ++t) {
-          f_host(x, y, z, t, 0) = z0;
-          f_host(x, y, z, t, 1) = z1;
-          f_host(x, y, z, t, 2) = zeroSUN<3>();
-        }
-      }
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, dimensions);
+    orbifold_spatial_ref(f_host, site, 0) = z0;
+    orbifold_spatial_ref(f_host, site, 1) = z1;
+    for (index_t j = 2; j < orbifold_spatial_directions; ++j) {
+      orbifold_spatial_ref(f_host, site, j) = zeroSUN<3>();
     }
   }
   Kokkos::deep_copy(f_field.spatial, f_host);
   const real_t f_expected =
-      at * 2.0 * g2 / (as * as * as) * volume * 8.0 * a * a * b * b;
+      at * 2.0 * g2 / spatial_volume * volume * 8.0 * a * a * b * b;
   check(close(orbifold_action(f_field, params), f_expected, 2.0e-13),
         "F-term normalization matches an analytic commutator case");
 
@@ -331,13 +346,14 @@ void check_spatial_normalization() {
                                  "orbifold_potential_normalization");
   const real_t c = params.vacuum_scale_squared();
   const real_t factor_mass =
-      params.scalar_mass * params.scalar_mass * g2 / (2.0 * as);
+      params.scalar_mass * params.scalar_mass * g2 /
+      (2.0 * std::pow(as, orbifold_spatial_directions - 2));
   const real_t factor_det = params.u1_mass * params.u1_mass * c;
   const real_t radial = uniform_q * uniform_q - c;
   const real_t determinant =
       uniform_q * uniform_q * uniform_q / std::sqrt(c * c * c) - 1.0;
   const real_t potential_expected =
-      at * volume * 3.0 *
+      at * volume * orbifold_spatial_directions *
       (factor_mass * 3.0 * radial * radial +
        factor_det * determinant * determinant);
   check(close(orbifold_action(potential_field, params), potential_expected,
@@ -346,7 +362,7 @@ void check_spatial_normalization() {
 }
 
 void check_gauge_invariance(const OrbifoldActionParams &params) {
-  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto dimensions = test_dimensions(2, 2, 2, 2);
   const auto source = deterministic_field(dimensions, params, "orbifold_gauge");
   OrbifoldField transformed(dimensions, zeroSUN<3>(), identitySUN<3>(),
                              "orbifold_gauge_transformed");
@@ -356,30 +372,22 @@ void check_gauge_invariance(const OrbifoldActionParams &params) {
       Kokkos::HostSpace(), source.temporal);
   auto output_z = Kokkos::create_mirror_view(transformed.spatial);
   auto output_u = Kokkos::create_mirror_view(transformed.temporal);
-  for (index_t x = 0; x < dimensions[0]; ++x) {
-    for (index_t y = 0; y < dimensions[1]; ++y) {
-      for (index_t z = 0; z < dimensions[2]; ++z) {
-        for (index_t t = 0; t < dimensions[3]; ++t) {
-          const IndexArray<4> site{x, y, z, t};
-          const SUN<3> here = local_gauge_matrix(
-              1.0 + x + 2.0 * y + 3.0 * z + 5.0 * t);
-          for (index_t j = 0; j < 3; ++j) {
-            const auto plus_j = shift_index_plus(site, j, 1, dimensions);
-            const SUN<3> there = local_gauge_matrix(
-                1.0 + plus_j[0] + 2.0 * plus_j[1] +
-                3.0 * plus_j[2] + 5.0 * plus_j[3]);
-            output_z(x, y, z, t, j) =
-                here * input_z(x, y, z, t, j) * conj(there);
-          }
-          const auto plus_t = shift_index_plus(site, 3, 1, dimensions);
-          const SUN<3> later = local_gauge_matrix(
-              1.0 + plus_t[0] + 2.0 * plus_t[1] +
-              3.0 * plus_t[2] + 5.0 * plus_t[3]);
-          output_u(x, y, z, t) =
-              here * input_u(x, y, z, t) * conj(later);
-        }
-      }
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
+  for (size_t linear = 0; linear < sites; ++linear) {
+    const auto site =
+        wilson_linear_to_site<compiled_rank>(linear, dimensions);
+    const SUN<3> here = local_gauge_matrix(site_value(site));
+    for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+      const auto plus_j = shift_index_plus(site, j, 1, dimensions);
+      const SUN<3> there = local_gauge_matrix(site_value(plus_j));
+      orbifold_spatial_ref(output_z, site, j) =
+          here * orbifold_spatial_ref(input_z, site, j) * conj(there);
     }
+    const auto plus_t =
+        shift_index_plus(site, orbifold_time_direction, 1, dimensions);
+    const SUN<3> later = local_gauge_matrix(site_value(plus_t));
+    orbifold_temporal_ref(output_u, site) =
+        here * orbifold_temporal_ref(input_u, site) * conj(later);
   }
   Kokkos::deep_copy(transformed.spatial, output_z);
   Kokkos::deep_copy(transformed.temporal, output_u);
@@ -394,7 +402,7 @@ void check_gauge_invariance(const OrbifoldActionParams &params) {
 }
 
 void check_forces(const OrbifoldActionParams &params) {
-  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto dimensions = test_dimensions(2, 2, 2, 2);
   const auto field = deterministic_field(dimensions, params, "orbifold_fd");
   OrbifoldField force(dimensions, zeroSUN<3>(), zeroSUN<3>(),
                        "orbifold_fd_force");
@@ -403,7 +411,7 @@ void check_forces(const OrbifoldActionParams &params) {
       Kokkos::HostSpace(), force.spatial);
   const auto force_u = Kokkos::create_mirror_view_and_copy(
       Kokkos::HostSpace(), force.temporal);
-  const IndexArray<4> site{0, 1, 0, 1};
+  const auto site = test_site(0, 1, 0, 1);
   constexpr index_t j = 1;
   constexpr index_t row = 0;
   constexpr index_t col = 2;
@@ -417,8 +425,7 @@ void check_forces(const OrbifoldActionParams &params) {
       (orbifold_action(plus, params) - orbifold_action(minus, params)) /
       (2.0 * h);
   check(close(real_fd,
-              matrix_ref(force_z(site[0], site[1], site[2], site[3], j), row,
-                         col)
+              matrix_ref(orbifold_spatial_ref(force_z, site, j), row, col)
                   .real(),
               3.0e-6, 3.0e-8),
         "spatial real force matches a central difference");
@@ -431,8 +438,7 @@ void check_forces(const OrbifoldActionParams &params) {
       (orbifold_action(plus, params) - orbifold_action(minus, params)) /
       (2.0 * h);
   check(close(imag_fd,
-              matrix_ref(force_z(site[0], site[1], site[2], site[3], j), row,
-                         col)
+              matrix_ref(orbifold_spatial_ref(force_z, site, j), row, col)
                   .imag(),
               3.0e-6, 3.0e-8),
         "spatial imaginary force matches a central difference");
@@ -450,7 +456,7 @@ void check_forces(const OrbifoldActionParams &params) {
       (2.0 * h);
   const real_t group_expected =
       2.0 *
-      trace(force_u(site[0], site[1], site[2], site[3]) * generator).real();
+      trace(orbifold_temporal_ref(force_u, site) * generator).real();
   if (!close(group_fd, group_expected, 3.0e-6, 3.0e-8)) {
     std::printf("group force: finite difference %.16e, analytic %.16e\n",
                 group_fd, group_expected);
@@ -460,7 +466,7 @@ void check_forces(const OrbifoldActionParams &params) {
 }
 
 void check_hmc(const OrbifoldActionParams &params) {
-  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto dimensions = test_dimensions(2, 2, 2, 2);
   auto field = deterministic_field(dimensions, params, "orbifold_hmc_field");
   const auto initial = copy_orbifold_field(field, "orbifold_hmc_initial");
   OrbifoldHMCParams hmc_params;
@@ -511,7 +517,7 @@ void check_hmc(const OrbifoldActionParams &params) {
 }
 
 void check_hot_start(const OrbifoldActionParams &params) {
-  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto dimensions = test_dimensions(2, 2, 2, 2);
   const SUN<3> vacuum =
       identitySUN<3>() * std::sqrt(params.vacuum_scale_squared());
   OrbifoldField cold(dimensions, vacuum, identitySUN<3>(),
@@ -533,10 +539,11 @@ void check_hot_start(const OrbifoldActionParams &params) {
 }
 
 void check_configuration_io(const OrbifoldActionParams &params) {
-  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto dimensions = test_dimensions(2, 2, 2, 2);
   const auto source =
       deterministic_field(dimensions, params, "orbifold_checkpoint_source");
-  const std::string filename = "/tmp/klft_orbifold_test.cfg";
+  const std::string filename = "klft_orbifold_test_" +
+                               std::to_string(compiled_rank) + ".cfg";
   std::remove(filename.c_str());
   check(save_orbifold_configuration_atomic(filename, source, params),
         "save orbifold checkpoint atomically");
@@ -558,14 +565,40 @@ void check_configuration_io(const OrbifoldActionParams &params) {
   wrong_params.scalar_mass += 1.0;
   check(!load_orbifold_configuration(filename, restored, wrong_params),
         "orbifold checkpoint rejects mismatched action parameters");
+
+  // Version 1 had no rank field and was exclusively 4D SU(3).
+  std::ifstream input(filename, std::ios::binary);
+  std::vector<char> bytes{std::istreambuf_iterator<char>(input),
+                          std::istreambuf_iterator<char>()};
+  input.close();
+  const std::uint32_t legacy_version = 1;
+  std::memcpy(bytes.data() + 8, &legacy_version, sizeof(legacy_version));
+  bytes.erase(bytes.begin() + 16, bytes.begin() + 20);
+  const std::string legacy_filename = filename + ".legacy";
+  {
+    std::ofstream legacy(legacy_filename, std::ios::binary);
+    legacy.write(bytes.data(), bytes.size());
+  }
+  check(load_orbifold_configuration(legacy_filename, restored, params) ==
+            (compiled_rank == 4),
+        "legacy checkpoint is accepted only in its original 4D theory");
+  std::remove(legacy_filename.c_str());
+
+  {
+    std::fstream file(filename, std::ios::in | std::ios::out | std::ios::binary);
+    const std::uint32_t wrong_rank = compiled_rank == 3 ? 4 : 3;
+    file.seekp(16);
+    file.write(reinterpret_cast<const char *>(&wrong_rank), sizeof(wrong_rank));
+  }
+  check(!load_orbifold_configuration(filename, restored, params),
+        "orbifold checkpoint rejects mismatched spacetime rank");
   std::remove(filename.c_str());
 }
 
 void check_constrained_wilson_limit() {
-  const IndexArray<4> dimensions{2, 2, 2, 2};
+  const auto dimensions = test_dimensions(2, 2, 2, 2);
   Kokkos::Random_XorShift64_Pool<> rng(310831);
-  typename DeviceGaugeFieldType<4, 3>::type gauge(
-      dimensions[0], dimensions[1], dimensions[2], dimensions[3], rng);
+  auto gauge = make_hot_gauge_field<compiled_rank, 3>(2, 2, 2, 2, rng);
   OrbifoldActionParams params;
   params.spatial_spacing = 0.3;
   params.temporal_spacing = 0.2;
@@ -576,15 +609,18 @@ void check_constrained_wilson_limit() {
                        "orbifold_wilson_limit");
   initialize_orbifold_from_gauge(field, gauge, params);
 
-  const auto plaquettes = GaugePlaquettes<4, 3>(gauge, false);
-  constexpr real_t sites = 16.0;
-  constexpr real_t planes_per_sector = 3.0;
+  const auto plaquettes = GaugePlaquettes<compiled_rank, 3>(gauge, false);
+  const real_t sites = wilson_site_count<compiled_rank>(dimensions);
+  constexpr real_t d = orbifold_spatial_directions;
   const real_t g2 = params.coupling * params.coupling;
+  // Substitute Z = sqrt(a_s^(d-2)/(2g^2)) U into the full action.
+  // Each squared plaquette difference is 2(Nc - ReTr U_p).
   const real_t expected =
-      params.temporal_spacing / (g2 * params.spatial_spacing) *
-          (3.0 * sites * planes_per_sector - plaquettes.spatial) +
-      params.spatial_spacing / (g2 * params.temporal_spacing) *
-          (3.0 * sites * planes_per_sector - plaquettes.temporal);
+      params.temporal_spacing * std::pow(params.spatial_spacing, d - 4) / g2 *
+          (3.0 * sites * d * (d - 1) / 2 - plaquettes.spatial) +
+      std::pow(params.spatial_spacing, d - 2) /
+          (g2 * params.temporal_spacing) *
+          (3.0 * sites * d - plaquettes.temporal);
   check(close(orbifold_action(field, params), expected, 2.0e-12, 2.0e-11),
         "constrained orbifold action equals anisotropic Wilson action");
 }

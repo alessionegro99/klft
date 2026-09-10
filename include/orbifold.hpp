@@ -1,7 +1,7 @@
 #pragma once
 
+#include "core/compiled_theory.hpp"
 #include "core/indexing.hpp"
-#include "fields/field_type_traits.hpp"
 #include "groups/group_ops.hpp"
 #include "observables/wilson_loop.hpp"
 
@@ -14,26 +14,60 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace klft {
 
 // The orbifold variables are arbitrary complex 3x3 spatial links Z_j and
-// compact SU(3) temporal links U_0.  The normalization is Eq. (12) of
-// Bergner et al., arXiv:2401.12045, with Z = (X + iY)/sqrt(2).  Keeping U_0
-// explicit retains the periodic holonomy absent after the U_0 = 1 gauge choice.
-using OrbifoldSpatialView = Kokkos::View<
-    SUN<3> ****[3], Kokkos::MemoryTraits<Kokkos::Restrict>>;
-using OrbifoldTemporalView =
-    Kokkos::View<SUN<3> ****, Kokkos::MemoryTraits<Kokkos::Restrict>>;
+// compact SU(3) temporal links U_0. The d-dimensional normalization follows
+// Eqs. (14)--(15) of Bergner, Hanada, and Mendicelli, arXiv:2506.00755.
+// Keeping U_0 explicit retains the periodic holonomy absent after U_0 = 1.
+static_assert(compiled_rank == 3 || compiled_rank == 4,
+              "The orbifold action supports 2+1D and 3+1D builds.");
+inline constexpr index_t orbifold_spatial_directions =
+    static_cast<index_t>(compiled_rank - 1);
+inline constexpr index_t orbifold_time_direction =
+    orbifold_spatial_directions;
+using OrbifoldDimensions = IndexArray<compiled_rank>;
+using OrbifoldSpatialView = std::conditional_t<
+    compiled_rank == 4,
+    Kokkos::View<SUN<3> ****[3], Kokkos::MemoryTraits<Kokkos::Restrict>>,
+    Kokkos::View<SUN<3> ***[2], Kokkos::MemoryTraits<Kokkos::Restrict>>>;
+using OrbifoldTemporalView = std::conditional_t<
+    compiled_rank == 4,
+    Kokkos::View<SUN<3> ****, Kokkos::MemoryTraits<Kokkos::Restrict>>,
+    Kokkos::View<SUN<3> ***, Kokkos::MemoryTraits<Kokkos::Restrict>>>;
+
+template <class View>
+KOKKOS_FORCEINLINE_FUNCTION decltype(auto)
+orbifold_spatial_ref(const View &z, const OrbifoldDimensions &site,
+                     const index_t j) {
+  if constexpr (compiled_rank == 4) {
+    return z(site[0], site[1], site[2], site[3], j);
+  } else {
+    return z(site[0], site[1], site[2], j);
+  }
+}
+
+template <class View>
+KOKKOS_FORCEINLINE_FUNCTION decltype(auto)
+orbifold_temporal_ref(const View &u, const OrbifoldDimensions &site) {
+  if constexpr (compiled_rank == 4) {
+    return u(site[0], site[1], site[2], site[3]);
+  } else {
+    return u(site[0], site[1], site[2]);
+  }
+}
 
 struct OrbifoldField {
   OrbifoldSpatialView spatial;
   OrbifoldTemporalView temporal;
-  IndexArray<4> dimensions;
+  OrbifoldDimensions dimensions;
 
   explicit OrbifoldField(
-      const IndexArray<4> &dims, const SUN<3> &spatial_init = zeroSUN<3>(),
+      const OrbifoldDimensions &dims,
+      const SUN<3> &spatial_init = zeroSUN<3>(),
       const SUN<3> &temporal_init = identitySUN<3>(),
       const std::string &label = "orbifold")
       : dimensions(dims) {
@@ -43,10 +77,18 @@ struct OrbifoldField {
             "OrbifoldField requires positive lattice extents.");
       }
     }
-    spatial = OrbifoldSpatialView(label + "_spatial", dimensions[0],
-                                  dimensions[1], dimensions[2], dimensions[3]);
-    temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0],
+    if constexpr (compiled_rank == 4) {
+      spatial = OrbifoldSpatialView(label + "_spatial", dimensions[0],
                                     dimensions[1], dimensions[2], dimensions[3]);
+      temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0],
+                                      dimensions[1], dimensions[2],
+                                      dimensions[3]);
+    } else {
+      spatial = OrbifoldSpatialView(label + "_spatial", dimensions[0],
+                                    dimensions[1], dimensions[2]);
+      temporal = OrbifoldTemporalView(label + "_temporal", dimensions[0],
+                                      dimensions[1], dimensions[2]);
+    }
     initialize(spatial_init, temporal_init, label);
   }
 
@@ -54,15 +96,17 @@ struct OrbifoldField {
                   const std::string &label) {
     const auto z = spatial;
     const auto u = temporal;
+    const auto dims = dimensions;
+    const size_t sites = wilson_site_count<compiled_rank>(dims);
     Kokkos::parallel_for(
-        label + "_initialize", Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-        KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                      const index_t i3) {
+        label + "_initialize", Kokkos::RangePolicy<>(0, sites),
+        KOKKOS_LAMBDA(const size_t linear) {
+          const auto site = wilson_linear_to_site<compiled_rank>(linear, dims);
 #pragma unroll
-          for (index_t j = 0; j < 3; ++j) {
-            z(i0, i1, i2, i3, j) = spatial_init;
+          for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+            orbifold_spatial_ref(z, site, j) = spatial_init;
           }
-          u(i0, i1, i2, i3) = temporal_init;
+          orbifold_temporal_ref(u, site) = temporal_init;
         });
     Kokkos::fence();
   }
@@ -86,7 +130,10 @@ struct OrbifoldActionParams {
 
   void validate() const {
     if (!(spatial_spacing > 0.0) || !(temporal_spacing > 0.0) ||
-        !(coupling > 0.0) || scalar_mass < 0.0 || u1_mass < 0.0) {
+        !(coupling > 0.0) || scalar_mass < 0.0 || u1_mass < 0.0 ||
+        !std::isfinite(spatial_spacing) || !std::isfinite(temporal_spacing) ||
+        !std::isfinite(coupling) || !std::isfinite(scalar_mass) ||
+        !std::isfinite(u1_mass)) {
       throw std::invalid_argument(
           "Orbifold spacings and coupling must be positive; masses must be "
           "non-negative.");
@@ -94,7 +141,8 @@ struct OrbifoldActionParams {
   }
 
   real_t vacuum_scale_squared() const {
-    return spatial_spacing / (2.0 * coupling * coupling);
+    return std::pow(spatial_spacing, orbifold_spatial_directions - 2) /
+           (2.0 * coupling * coupling);
   }
 };
 
@@ -113,14 +161,15 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
   const real_t vacuum_scale = Kokkos::sqrt(params.vacuum_scale_squared());
   const real_t complex_noise = noise / Kokkos::sqrt(2.0);
   auto pool = rng;
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
   Kokkos::parallel_for(
-      "orbifold_hot_start",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3) {
+      "orbifold_hot_start", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
         auto generator = pool.get_state();
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           SUN<3> value;
           rand_matrix(value, generator);
           value *= vacuum_scale;
@@ -133,11 +182,11 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
                             generator.normal(0.0, complex_noise));
             }
           }
-          z(i0, i1, i2, i3, j) = value;
+          orbifold_spatial_ref(z, site, j) = value;
         }
         SUN<3> temporal;
         rand_matrix(temporal, generator);
-        u(i0, i1, i2, i3) = temporal;
+        orbifold_temporal_ref(u, site) = temporal;
         pool.free_state(generator);
       });
   Kokkos::fence();
@@ -145,7 +194,7 @@ inline void initialize_hot_orbifold_field(OrbifoldField &field,
 
 inline void initialize_orbifold_from_gauge(
     OrbifoldField &field,
-    const typename DeviceGaugeFieldType<4, 3>::type &gauge,
+    const typename DeviceGaugeFieldType<compiled_rank, 3>::type &gauge,
     const OrbifoldActionParams &params) {
   params.validate();
   if (field.dimensions != gauge.dimensions) {
@@ -157,30 +206,33 @@ inline void initialize_orbifold_from_gauge(
   const auto u = field.temporal;
   const auto dimensions = field.dimensions;
   const real_t scale = Kokkos::sqrt(params.vacuum_scale_squared());
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
   Kokkos::parallel_for(
-      "orbifold_from_compact_gauge",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3) {
+      "orbifold_from_compact_gauge", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
-          z(i0, i1, i2, i3, j) = links(i0, i1, i2, i3, j) * scale;
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+          orbifold_spatial_ref(z, site, j) = links(site, j) * scale;
         }
-        u(i0, i1, i2, i3) = links(i0, i1, i2, i3, 3);
+        orbifold_temporal_ref(u, site) =
+            links(site, orbifold_time_direction);
       });
   Kokkos::fence();
 }
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_spatial_at(const OrbifoldSpatialView &z, const IndexArray<4> &site,
+orbifold_spatial_at(const OrbifoldSpatialView &z,
+                    const OrbifoldDimensions &site,
                     const index_t j) {
-  return z(site[0], site[1], site[2], site[3], j);
+  return orbifold_spatial_ref(z, site, j);
 }
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3>
 orbifold_temporal_at(const OrbifoldTemporalView &u,
-                     const IndexArray<4> &site) {
-  return u(site[0], site[1], site[2], site[3]);
+                     const OrbifoldDimensions &site) {
+  return orbifold_temporal_ref(u, site);
 }
 
 KOKKOS_FORCEINLINE_FUNCTION real_t orbifold_matrix_norm_squared(
@@ -255,11 +307,12 @@ orbifold_conjugate_cofactor(const SUN<3> &a) {
 }
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_d_term(const OrbifoldSpatialView &z, const IndexArray<4> &site,
-                 const IndexArray<4> &dimensions) {
+orbifold_d_term(const OrbifoldSpatialView &z,
+                 const OrbifoldDimensions &site,
+                 const OrbifoldDimensions &dimensions) {
   SUN<3> result = zeroSUN<3>();
 #pragma unroll
-  for (index_t j = 0; j < 3; ++j) {
+  for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
     const auto minus_j = shift_index_minus(site, j, 1, dimensions);
     const SUN<3> here = orbifold_spatial_at(z, site, j);
     const SUN<3> behind = orbifold_spatial_at(z, minus_j, j);
@@ -269,9 +322,10 @@ orbifold_d_term(const OrbifoldSpatialView &z, const IndexArray<4> &site,
 }
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3>
-orbifold_f_term(const OrbifoldSpatialView &z, const IndexArray<4> &site,
+orbifold_f_term(const OrbifoldSpatialView &z,
+                 const OrbifoldDimensions &site,
                  const index_t j, const index_t k,
-                 const IndexArray<4> &dimensions) {
+                 const OrbifoldDimensions &dimensions) {
   const auto plus_j = shift_index_plus(site, j, 1, dimensions);
   const auto plus_k = shift_index_plus(site, k, 1, dimensions);
   return orbifold_spatial_at(z, site, j) *
@@ -282,11 +336,10 @@ orbifold_f_term(const OrbifoldSpatialView &z, const IndexArray<4> &site,
 
 KOKKOS_FORCEINLINE_FUNCTION SUN<3> orbifold_temporal_difference(
     const OrbifoldSpatialView &z, const OrbifoldTemporalView &u,
-    const IndexArray<4> &site, const index_t j,
-    const IndexArray<4> &dimensions) {
-  constexpr index_t time_direction = 3;
+    const OrbifoldDimensions &site, const index_t j,
+    const OrbifoldDimensions &dimensions) {
   const auto plus_t =
-      shift_index_plus(site, time_direction, 1, dimensions);
+      shift_index_plus(site, orbifold_time_direction, 1, dimensions);
   const auto plus_j = shift_index_plus(site, j, 1, dimensions);
   return orbifold_temporal_at(u, site) * orbifold_spatial_at(z, plus_t, j) *
              conj(orbifold_temporal_at(u, plus_j)) -
@@ -303,26 +356,31 @@ inline real_t orbifold_action(const OrbifoldField &field,
   const real_t at = params.temporal_spacing;
   const real_t g2 = params.coupling * params.coupling;
   const real_t c = params.vacuum_scale_squared();
-  const real_t factor_d = g2 / (2.0 * as * as * as);
-  const real_t factor_f = 2.0 * g2 / (as * as * as);
+  const real_t spatial_volume =
+      std::pow(as, static_cast<int>(orbifold_spatial_directions));
+  const real_t radial_spacing = std::pow(
+      as, static_cast<int>(orbifold_spatial_directions - 2));
+  const real_t factor_d = g2 / (2.0 * spatial_volume);
+  const real_t factor_f = 2.0 * g2 / spatial_volume;
   const real_t factor_mass =
-      params.scalar_mass * params.scalar_mass * g2 / (2.0 * as);
+      params.scalar_mass * params.scalar_mass * g2 /
+      (2.0 * radial_spacing);
   const real_t factor_det = params.u1_mass * params.u1_mass * c;
   const real_t determinant_scale = 1.0 / Kokkos::sqrt(c * c * c);
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
 
   real_t result = 0.0;
   Kokkos::parallel_reduce(
-      "orbifold_action",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3, real_t &local) {
-        const IndexArray<4> site{i0, i1, i2, i3};
+      "orbifold_action", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear, real_t &local) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
         real_t temporal = 0.0;
         real_t spatial = factor_d *
                          orbifold_matrix_norm_squared(
                              orbifold_d_term(z, site, dimensions));
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           temporal += orbifold_matrix_norm_squared(
               orbifold_temporal_difference(z, u, site, j, dimensions));
           const SUN<3> zj = orbifold_spatial_at(z, site, j);
@@ -337,7 +395,7 @@ inline real_t orbifold_action(const OrbifoldField &field,
               (determinant_constraint.real() * determinant_constraint.real() +
                determinant_constraint.imag() * determinant_constraint.imag());
 #pragma unroll
-          for (index_t k = j + 1; k < 3; ++k) {
+          for (index_t k = j + 1; k < orbifold_spatial_directions; ++k) {
             spatial += factor_f * orbifold_matrix_norm_squared(
                                       orbifold_f_term(z, site, j, k,
                                                        dimensions));
@@ -377,26 +435,30 @@ inline void orbifold_force(const OrbifoldField &field,
   const real_t at = params.temporal_spacing;
   const real_t g2 = params.coupling * params.coupling;
   const real_t c = params.vacuum_scale_squared();
-  const real_t factor_d = g2 / (2.0 * as * as * as);
-  const real_t factor_f = 2.0 * g2 / (as * as * as);
+  const real_t spatial_volume =
+      std::pow(as, static_cast<int>(orbifold_spatial_directions));
+  const real_t radial_spacing = std::pow(
+      as, static_cast<int>(orbifold_spatial_directions - 2));
+  const real_t factor_d = g2 / (2.0 * spatial_volume);
+  const real_t factor_f = 2.0 * g2 / spatial_volume;
   const real_t factor_mass =
-      params.scalar_mass * params.scalar_mass * g2 / (2.0 * as);
+      params.scalar_mass * params.scalar_mass * g2 /
+      (2.0 * radial_spacing);
   const real_t factor_det = params.u1_mass * params.u1_mass * c;
   const real_t determinant_scale = 1.0 / Kokkos::sqrt(c * c * c);
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
 
   Kokkos::parallel_for(
-      "orbifold_force",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3) {
-        constexpr index_t time_direction = 3;
-        const IndexArray<4> site{i0, i1, i2, i3};
+      "orbifold_force", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
         const auto minus_t =
-            shift_index_minus(site, time_direction, 1, dimensions);
+            shift_index_minus(site, orbifold_time_direction, 1, dimensions);
         const SUN<3> d_here = orbifold_d_term(z, site, dimensions);
-        Kokkos::Array<SUN<3>, 3> dzstar;
+        Kokkos::Array<SUN<3>, compiled_rank - 1> dzstar;
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           const auto plus_j = shift_index_plus(site, j, 1, dimensions);
           const auto minus_t_plus_j =
               shift_index_plus(minus_t, j, 1, dimensions);
@@ -424,13 +486,13 @@ inline void orbifold_force(const OrbifoldField &field,
           dzstar[j] += orbifold_matrix_scale(
               orbifold_conjugate_cofactor(zj),
               factor_det * determinant_scale * determinant_constraint);
-          gz(i0, i1, i2, i3, j) = temporal_gradient;
+          orbifold_spatial_ref(gz, site, j) = temporal_gradient;
         }
 
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
 #pragma unroll
-          for (index_t k = j + 1; k < 3; ++k) {
+          for (index_t k = j + 1; k < orbifold_spatial_directions; ++k) {
             const auto plus_j = shift_index_plus(site, j, 1, dimensions);
             const auto plus_k = shift_index_plus(site, k, 1, dimensions);
             const auto minus_j = shift_index_minus(site, j, 1, dimensions);
@@ -451,20 +513,22 @@ inline void orbifold_force(const OrbifoldField &field,
           }
         }
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
-          const SUN<3> current = gz(i0, i1, i2, i3, j);
-          gz(i0, i1, i2, i3, j) = current + dzstar[j] * (2.0 * at);
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+          const SUN<3> current = orbifold_spatial_ref(gz, site, j);
+          orbifold_spatial_ref(gz, site, j) =
+              current + dzstar[j] * (2.0 * at);
         }
 
         SUN<3> temporal_force = zeroSUN<3>();
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           const auto plus_t =
-              shift_index_plus(site, time_direction, 1, dimensions);
+              shift_index_plus(site, orbifold_time_direction, 1, dimensions);
           const auto plus_j = shift_index_plus(site, j, 1, dimensions);
           const auto minus_j = shift_index_minus(site, j, 1, dimensions);
           const auto minus_j_plus_t =
-              shift_index_plus(minus_j, time_direction, 1, dimensions);
+              shift_index_plus(minus_j, orbifold_time_direction, 1,
+                               dimensions);
           const SUN<3> transported =
               orbifold_temporal_at(u, site) *
               orbifold_spatial_at(z, plus_t, j) *
@@ -480,7 +544,7 @@ inline void orbifold_force(const OrbifoldField &field,
           temporal_force += transported * conj(difference) -
                             conj(difference_behind) * transported_behind;
         }
-        gu(i0, i1, i2, i3) =
+        orbifold_temporal_ref(gu, site) =
             orbifold_antihermitian_traceless(temporal_force) * (1.0 / at);
       });
   Kokkos::fence();
@@ -533,7 +597,7 @@ struct OrbifoldHMCParams {
   index_t steps = 10;
 
   void validate() const {
-    if (!(step_size > 0.0) || steps <= 0) {
+    if (!(step_size > 0.0) || !std::isfinite(step_size) || steps <= 0) {
       throw std::invalid_argument(
           "Orbifold HMC step size and step count must be positive.");
     }
@@ -556,13 +620,14 @@ inline OrbifoldGroupErrors
 orbifold_temporal_group_errors(const OrbifoldField &field) {
   const auto u = field.temporal;
   const auto dimensions = field.dimensions;
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
   real_t unitarity = 0.0;
   Kokkos::parallel_reduce(
-      "orbifold_temporal_unitarity",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3, real_t &maximum) {
-        const SUN<3> link = u(i0, i1, i2, i3);
+      "orbifold_temporal_unitarity", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear, real_t &maximum) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
+        const SUN<3> link = orbifold_temporal_at(u, site);
         const SUN<3> check = conj(link) * link - identitySUN<3>();
         maximum = Kokkos::max(maximum,
                               Kokkos::sqrt(orbifold_matrix_norm_squared(check)));
@@ -570,11 +635,12 @@ orbifold_temporal_group_errors(const OrbifoldField &field) {
       Kokkos::Max<real_t>(unitarity));
   real_t determinant = 0.0;
   Kokkos::parallel_reduce(
-      "orbifold_temporal_determinant",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3, real_t &maximum) {
-        const complex_t error = orbifold_determinant(u(i0, i1, i2, i3)) -
+      "orbifold_temporal_determinant", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear, real_t &maximum) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
+        const complex_t error =
+            orbifold_determinant(orbifold_temporal_at(u, site)) -
                                 complex_t(1.0, 0.0);
         maximum = Kokkos::max(
             maximum,
@@ -622,31 +688,37 @@ orbifold_polar_unitary(const SUN<3> &z, bool &converged) {
   return x;
 }
 
-inline typename DeviceGaugeFieldType<4, 3>::type
+inline typename DeviceGaugeFieldType<compiled_rank, 3>::type
 orbifold_projected_gauge_field(const OrbifoldField &field) {
   const auto dimensions = field.dimensions;
-  typename DeviceGaugeFieldType<4, 3>::type projected(
-      dimensions[0], dimensions[1], dimensions[2], dimensions[3],
-      identitySUN<3>());
+  index_t l3 = 1;
+  if constexpr (compiled_rank == 4) {
+    l3 = dimensions[3];
+  }
+  auto projected = make_identity_gauge_field<compiled_rank, 3>(
+      dimensions[0], dimensions[1], dimensions[2], l3);
   const auto z = field.spatial;
   const auto u = field.temporal;
   const auto links = projected;
+  const size_t sites = wilson_site_count<compiled_rank>(dimensions);
   size_t failures = 0;
   Kokkos::parallel_reduce(
-      "orbifold_polar_projection",
-      Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-      KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                    const index_t i3, size_t &local_failures) {
+      "orbifold_polar_projection", Kokkos::RangePolicy<>(0, sites),
+      KOKKOS_LAMBDA(const size_t linear, size_t &local_failures) {
+        const auto site =
+            wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
-        for (index_t j = 0; j < 3; ++j) {
+        for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
           bool converged = false;
-          links(i0, i1, i2, i3, j) =
-              orbifold_polar_unitary(z(i0, i1, i2, i3, j), converged);
+          links(site, j) =
+              orbifold_polar_unitary(orbifold_spatial_at(z, site, j),
+                                     converged);
           if (!converged) {
             ++local_failures;
           }
         }
-        links(i0, i1, i2, i3, 3) = u(i0, i1, i2, i3);
+        links(site, orbifold_time_direction) =
+            orbifold_temporal_at(u, site);
       },
       failures);
   Kokkos::fence();
@@ -661,11 +733,12 @@ orbifold_projected_gauge_field(const OrbifoldField &field) {
 inline std::vector<Kokkos::Array<real_t, 3>>
 orbifold_wilson_loops(const OrbifoldField &field, const index_t max_r,
                       const index_t max_t) {
-  const index_t min_spatial_extent =
-      std::min({field.dimensions[0], field.dimensions[1],
-                field.dimensions[2]});
+  index_t min_spatial_extent = field.dimensions[0];
+  for (index_t j = 1; j < orbifold_spatial_directions; ++j) {
+    min_spatial_extent = std::min(min_spatial_extent, field.dimensions[j]);
+  }
   if (max_r <= 0 || max_t <= 0 || max_r > min_spatial_extent / 2 ||
-      max_t > field.dimensions[3] / 2) {
+      max_t > field.dimensions[orbifold_time_direction] / 2) {
     throw std::invalid_argument(
         "Orbifold Wilson-loop extents must be positive and no larger than "
         "half the corresponding periodic lattice extent.");
@@ -682,7 +755,7 @@ orbifold_wilson_loops(const OrbifoldField &field, const index_t max_r,
   const auto projected = orbifold_projected_gauge_field(field);
   std::vector<Kokkos::Array<real_t, 3>> loops;
   loops.reserve(pairs.size());
-  WilsonLoop_temporal_raw_fused<4, 3>(projected, pairs, loops);
+  WilsonLoop_temporal_raw_fused<compiled_rank, 3>(projected, pairs, loops);
   return loops;
 }
 
@@ -710,14 +783,15 @@ public:
     const auto pu = momentum_.temporal;
     const auto dimensions = field_.dimensions;
     auto rng = momentum_rng_;
+    const size_t sites = wilson_site_count<compiled_rank>(dimensions);
     Kokkos::parallel_for(
-        "orbifold_randomize_momenta",
-        Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-        KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                      const index_t i3) {
+        "orbifold_randomize_momenta", Kokkos::RangePolicy<>(0, sites),
+        KOKKOS_LAMBDA(const size_t linear) {
+          const auto site =
+              wilson_linear_to_site<compiled_rank>(linear, dimensions);
           auto generator = rng.get_state();
 #pragma unroll
-          for (index_t j = 0; j < 3; ++j) {
+          for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
             SUN<3> value = zeroSUN<3>();
 #pragma unroll
             for (index_t row = 0; row < 3; ++row) {
@@ -728,14 +802,15 @@ public:
                               generator.normal(0.0, 1.0));
               }
             }
-            pz(i0, i1, i2, i3, j) = value;
+            orbifold_spatial_ref(pz, site, j) = value;
           }
           Kokkos::Array<real_t, 8> coefficients;
 #pragma unroll
           for (index_t a = 0; a < 8; ++a) {
             coefficients[a] = generator.normal(0.0, 1.0);
           }
-          pu(i0, i1, i2, i3) = orbifold_su3_algebra(coefficients);
+          orbifold_temporal_ref(pu, site) =
+              orbifold_su3_algebra(coefficients);
           rng.free_state(generator);
         });
     Kokkos::fence();
@@ -745,18 +820,19 @@ public:
     const auto pz = momentum_.spatial;
     const auto pu = momentum_.temporal;
     const auto dimensions = field_.dimensions;
+    const size_t sites = wilson_site_count<compiled_rank>(dimensions);
     real_t result = 0.0;
     Kokkos::parallel_reduce(
-        "orbifold_kinetic_energy",
-        Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-        KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                      const index_t i3, real_t &local) {
+        "orbifold_kinetic_energy", Kokkos::RangePolicy<>(0, sites),
+        KOKKOS_LAMBDA(const size_t linear, real_t &local) {
+          const auto site =
+              wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
-          for (index_t j = 0; j < 3; ++j) {
+          for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
             local += 0.5 * orbifold_matrix_norm_squared(
-                               pz(i0, i1, i2, i3, j));
+                               orbifold_spatial_ref(pz, site, j));
           }
-          const SUN<3> p = pu(i0, i1, i2, i3);
+          const SUN<3> p = orbifold_temporal_ref(pu, site);
           local -= trace(p * p).real();
         },
         result);
@@ -779,16 +855,17 @@ public:
     const auto pz = momentum_.spatial;
     const auto pu = momentum_.temporal;
     const auto dimensions = field_.dimensions;
+    const size_t sites = wilson_site_count<compiled_rank>(dimensions);
     Kokkos::parallel_for(
-        "orbifold_negate_momenta",
-        Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-        KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                      const index_t i3) {
+        "orbifold_negate_momenta", Kokkos::RangePolicy<>(0, sites),
+        KOKKOS_LAMBDA(const size_t linear) {
+          const auto site =
+              wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
-          for (index_t j = 0; j < 3; ++j) {
-            pz(i0, i1, i2, i3, j) *= -1.0;
+          for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+            orbifold_spatial_ref(pz, site, j) *= -1.0;
           }
-          pu(i0, i1, i2, i3) *= -1.0;
+          orbifold_temporal_ref(pu, site) *= -1.0;
         });
     Kokkos::fence();
   }
@@ -821,17 +898,19 @@ public:
     const auto gz = force_.spatial;
     const auto gu = force_.temporal;
     const auto dimensions = field_.dimensions;
+    const size_t sites = wilson_site_count<compiled_rank>(dimensions);
     Kokkos::parallel_for(
-        "orbifold_update_momenta",
-        Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-        KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                      const index_t i3) {
+        "orbifold_update_momenta", Kokkos::RangePolicy<>(0, sites),
+        KOKKOS_LAMBDA(const size_t linear) {
+          const auto site =
+              wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
-          for (index_t j = 0; j < 3; ++j) {
-            pz(i0, i1, i2, i3, j) -=
-                gz(i0, i1, i2, i3, j) * step;
+          for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+            orbifold_spatial_ref(pz, site, j) -=
+                orbifold_spatial_ref(gz, site, j) * step;
           }
-          pu(i0, i1, i2, i3) += gu(i0, i1, i2, i3) * step;
+          orbifold_temporal_ref(pu, site) +=
+              orbifold_temporal_ref(gu, site) * step;
         });
     Kokkos::fence();
   }
@@ -842,19 +921,20 @@ public:
     const auto pz = momentum_.spatial;
     const auto pu = momentum_.temporal;
     const auto dimensions = field_.dimensions;
+    const size_t sites = wilson_site_count<compiled_rank>(dimensions);
     Kokkos::parallel_for(
-        "orbifold_update_positions",
-        Policy<4>(IndexArray<4>{0, 0, 0, 0}, dimensions),
-        KOKKOS_LAMBDA(const index_t i0, const index_t i1, const index_t i2,
-                      const index_t i3) {
+        "orbifold_update_positions", Kokkos::RangePolicy<>(0, sites),
+        KOKKOS_LAMBDA(const size_t linear) {
+          const auto site =
+              wilson_linear_to_site<compiled_rank>(linear, dimensions);
 #pragma unroll
-          for (index_t j = 0; j < 3; ++j) {
-            z(i0, i1, i2, i3, j) +=
-                pz(i0, i1, i2, i3, j) * step;
+          for (index_t j = 0; j < orbifold_spatial_directions; ++j) {
+            orbifold_spatial_ref(z, site, j) +=
+                orbifold_spatial_ref(pz, site, j) * step;
           }
-          u(i0, i1, i2, i3) =
-              orbifold_exp_su3(pu(i0, i1, i2, i3) * step) *
-              u(i0, i1, i2, i3);
+          orbifold_temporal_ref(u, site) =
+              orbifold_exp_su3(orbifold_temporal_ref(pu, site) * step) *
+              orbifold_temporal_ref(u, site);
         });
     Kokkos::fence();
   }

@@ -1,0 +1,32 @@
+# SU(3), periodic 2+1D; requires KLFT_NDIM=3, KLFT_NC=3.
+# A quick correctness check, not an equilibrated potential ensemble.
+# Run in an empty directory: orbifold_hmc -f /path/to/this/input.yaml
+OrbifoldHMCParams:
+  L0: 4
+  L1: 4
+  L2: 4
+  seed: 26091001
+  a_s: 0.2
+  a_t: 0.2
+  g: 1.0
+  mass: 40.0
+  u1_mass: 40.0
+  start: hot
+  initialization_noise: 0.005
+  trajectory_length: 0.02
+  initial_step_size: 0.001
+  tuning_trajectories: 0
+  maximum_tuning_rounds: 1
+  target_acceptance_min: 0.60
+  target_acceptance_max: 0.85
+  thermalization_trajectories: 5
+  production_trajectories: 5
+  measure_every: 1
+  max_spatial_separation: 2
+  max_temporal_extent: 2
+  hmc_output: hmc.out
+  wilson_loop_output: wilson.out
+  diagnostic_every: 1
+  diagnostic_output: diagnostic.out
+  checkpoint_every: 5
+  configuration_output: final.cfg
