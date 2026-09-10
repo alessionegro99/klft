@@ -482,8 +482,10 @@ inline real_t orbifold_action(const OrbifoldField &field,
 KOKKOS_FORCEINLINE_FUNCTION OrbifoldMatrix
 orbifold_project_algebra(const OrbifoldMatrix &a) {
   OrbifoldMatrix result = (a - conj(a)) * 0.5;
+  // Pass a scalar value: Kokkos complex division takes a reference, and CUDA
+  // cannot bind it to the host-side namespace constexpr orbifold_colors.
   const complex_t mean_trace = compiled_nc == 1 ? complex_t(0.0, 0.0) :
-                                                trace(result) / orbifold_colors;
+      trace(result) / static_cast<real_t>(compiled_nc);
 #pragma unroll
   for (index_t i = 0; i < orbifold_colors; ++i) {
     matrix_ref(result, i, i) -= mean_trace;
