@@ -28,3 +28,13 @@ checking thermalization should Wilson-loop production begin. The intended
 measurement range is `R,T<=16`; a modest-statistics curve at several resolved
 separations suffices, with autocorrelation-aware uncertainties and stable
 time plateaus. Do not accept these initial tuning diagnostics as that curve.
+
+The initial pilot completed with zero accepted proposals at all three steps;
+none of its checkpoints is an equilibrated state. The next, explicitly
+small-step attempt is `warmup_initial.slurm` with its three
+`warmup_initial_chain*.yaml` inputs. It uses fresh independent hot seeds
+`26092101`, `26092201`, `26092301`, `tau=0.1`, step `0.0001`, and 50
+unmeasured trajectories per chain. It retains checkpoints every ten
+trajectories, with diagnostics every trajectory. Inspect acceptance and
+action evolution before extending or increasing the step; this initial
+stage is not a tuned production input either.
