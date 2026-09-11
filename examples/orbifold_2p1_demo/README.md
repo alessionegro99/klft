@@ -73,3 +73,11 @@ Monitor acceptance during running. The completion marker verifies execution,
 finite complete histories and 70--90% measured-stage acceptance, not physics.
 Accept a potential only after chainwise thermalization, autocorrelation-aware
 blocking and correlated plateau/window-stability checks on the measured loops.
+
+Submit `analyze_pilot.slurm` with `--dependency=afterok:PILOT_ARRAY_JOB_ID`
+after the pilot. It validates completed histories and hashes, uses the locked
+qbig uv environment, and writes chainwise autocorrelation, split R-hat and
+vector hierarchical-bootstrap tables/covariances for additional cuts of
+0, 75 and 150 measurement vectors. Raw histories stay on qbig. Inspect those
+diagnostics and time ratios before choosing plateau windows; the analysis
+completion marker alone is not acceptance of a static-potential curve.
