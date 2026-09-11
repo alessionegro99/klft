@@ -49,3 +49,15 @@ counts are 100, 80, 67, 57, and 50. These calibration trajectories are not
 independent production chains. Select a setting in the requested range from
 the measured acceptance, then monitor and retune during further warmup if it
 exceeds 90%. Freeze the final integrator before retained measurements.
+
+The warmed-field scan completed: acceptance for 100/80/67/57/50 steps was
+85/89/85/78/61 percent. Select 57 steps (`h=0.1/57`, requested YAML step
+`0.00175`): both 50-trajectory halves accepted 78%. The next stage is
+`equilibrate.slurm` with `equilibrate_chain*.yaml`, continuing the three
+original independent 50-trajectory checkpoints, not the calibration clones.
+It runs 1,000 unmeasured trajectories per chain with fresh momentum seeds
+26094101/26094201/26094301, diagnostics every ten and checkpoints every 100.
+The script checks each restart hash and requires 70--90% overall acceptance.
+Inspect rolling acceptance during warmup; sustained values outside that range
+require retuning. Check action and loop stationarity separately before
+production: passing the script's acceptance gate does not prove equilibrium.
