@@ -61,3 +61,15 @@ The script checks each restart hash and requires 70--90% overall acceptance.
 Inspect rolling acceptance during warmup; sustained values outside that range
 require retuning. Check action and loop stationarity separately before
 production: passing the script's acceptance gate does not prove equilibrium.
+
+That 1,000-trajectory warmup completed with acceptance 75.7/75.9/77.1%.
+Late W11 is near 0.8085, with much less drift than startup. The first
+measured pilot is `pilot.slurm` with `pilot_chain*.yaml`: restart these
+independent endpoints, discard another 500 trajectories, then measure all
+256 unsmeared loops `R,T<=16` every ten trajectories for 3,000 trajectories
+(300 loop vectors per chain). Seeds are 26095101/26095201/26095301. The
+integrator is fixed at tau=0.1 with 57 steps; checkpoint spacing is 500.
+Monitor acceptance during running. The completion marker verifies execution,
+finite complete histories and 70--90% measured-stage acceptance, not physics.
+Accept a potential only after chainwise thermalization, autocorrelation-aware
+blocking and correlated plateau/window-stability checks on the measured loops.
