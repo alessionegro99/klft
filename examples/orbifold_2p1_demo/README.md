@@ -38,3 +38,14 @@ unmeasured trajectories per chain. It retains checkpoints every ten
 trajectories, with diagnostics every trajectory. Inspect acceptance and
 action evolution before extending or increasing the step; this initial
 stage is not a tuned production input either.
+
+That 50-trajectory startup completed with 98%, 98%, and 100% acceptance;
+the fields still show thermalization drift. Do not reuse its tiny step for
+sustained runs. The user's target is 70--80% acceptance, with 90% the upper
+limit. Before extending, `postwarm_tune.slurm` compares five step sizes from
+the same checksum-verified chain-1 endpoint at fixed `tau=0.1`. Each candidate
+runs 100 diagnostic-only trajectories with its own seed. The effective step
+counts are 100, 80, 67, 57, and 50. These calibration trajectories are not
+independent production chains. Select a setting in the requested range from
+the measured acceptance, then monitor and retune during further warmup if it
+exceeds 90%. Freeze the final integrator before retained measurements.

@@ -1,0 +1,33 @@
+# SU(3), periodic 2+1D; requires KLFT_NDIM=3, KLFT_NC=3.
+# Short acceptance calibration on a saved warmup field; not production.
+# Run in an empty directory: orbifold_hmc -f /path/to/this/input.yaml
+OrbifoldHMCParams:
+  L0: 32
+  L1: 32
+  L2: 32
+  seed: 26093101
+  a_s: 0.2
+  a_t: 0.2
+  g: 1.0
+  mass: 40.0
+  u1_mass: 40.0
+  start: restart
+  configuration_input: /qbigwork2/negro/orbifold/data/orbifold_2p1_demo_20260910/initial_warmup/chain01/final.cfg
+  initialization_noise: 0.005
+  trajectory_length: 0.1
+  initial_step_size: 0.001
+  tuning_trajectories: 0
+  maximum_tuning_rounds: 1
+  target_acceptance_min: 0.70
+  target_acceptance_max: 0.90
+  thermalization_trajectories: 100
+  production_trajectories: 0
+  measure_every: 1
+  max_spatial_separation: 16
+  max_temporal_extent: 16
+  hmc_output: hmc.out
+  wilson_loop_output: wilson.out
+  diagnostic_every: 10
+  diagnostic_output: diagnostic.out
+  checkpoint_every: 100
+  configuration_output: final.cfg
