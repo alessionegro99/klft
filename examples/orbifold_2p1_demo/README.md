@@ -1,83 +1,102 @@
-# Finite-mass SU(3), 2+1D demonstration campaign
+# Finite-mass SU(3), 2+1D demonstration
 
-This directory starts the requested unsmeared `32^3` orbifold-HMC campaign.
-It is not yet a calibrated production recipe or a delivered potential.
-All directions are periodic; directions 0,1 are spatial and 2 is time.
-The full unfixed action uses `a_s=a_t=0.2`, `g=1`, `m=m_U1=40`, so both
-bare masses satisfy `ma=8` and the constrained-limit Wilson coupling is 15.
-These are finite-mass orbifold runs, not compact Wilson heatbath runs.
+The first unsmeared `32^3` orbifold-HMC demonstration is complete. It uses
+the **full unfixed orbifold action and HMC**, not compact Wilson heatbath.
+Measured-stage acceptance is **75.5%, 75.6%, 75.93%** in three independent
+chains. Target 70--80%; sustained acceptance outside 70--90% requires retuning
+during warmup, then a fixed integrator for retained measurements.
 
-First run `../qbig_orbifold_2p1_smoke.slurm` with its clean pinned source
-checkout. After its GPU deterministic and smoke/restart checks pass, stage
-the three `initial_*.yaml` files and `initial_tune.slurm` under
+## Physics and measured result
+
+All directions are periodic; 0,1 are spatial and 2 is Euclidean time.
+Parameters are `a_s=a_t=0.2`, `g=1`, `m=m_U1=40`, `gamma=0`:
+both bare `ma=8`, with constrained-limit Wilson coupling 15.
+Spatial matrices remain noncompact; normalized loops use their full U(3)
+polar factors and the explicit dynamical SU(3) temporal links. No smearing
+or temporal gauge fixing is used.
+
+Each chain has 1,550 unmeasured trajectories across restart stages, followed
+by 3,000 measured-stage trajectories, measuring all `R,T=1,...,16` every ten.
+The final analysis uses 288 of the 300 loop vectors per chain, in nine
+32-vector blocks (320 trajectories each). Independent chains are kept
+separate, with 10,000 vector hierarchical-bootstrap samples, seed 26091107.
+
+Full-covariance constant fits to
+`a_t V_eff(R,T+1/2)=log[W(R,T)/W(R,T+1)]` at the common late window
+`T=7,8,9` give:
+
+| R | a_t V | Bootstrap SE |
+|---|---:|---:|
+| 1 | 0.17535 | 0.00018 |
+| 2 | 0.28573 | 0.00071 |
+| 3 | 0.37034 | 0.00130 |
+| 4 | 0.44768 | 0.00365 |
+| 5 | 0.51724 | 0.00465 |
+| 6 | 0.58087 | 0.00939 |
+| 7 | 0.64627 | 0.01618 |
+
+This is a modest-statistics implementation/physics demonstration, not a
+precision or continuum result. Neighboring time windows and extra
+thermalization cuts shift values by up to about two quoted main-fit errors;
+these shifts are diagnostics, not separately estimated systematic errors.
+Doubling blocks from 16 to 32 vectors changes values by at most 0.16 main-fit
+SE. Do not claim a plateau at R>=8: conservative bootstrap positivity fails.
+No mass, lattice-spacing or volume extrapolation, string-tension fit, or
+Sommer scale is claimed.
+
+## Validated workflow
+
+The immutable campaign stages are:
+
+1. `../qbig_orbifold_2p1_smoke.slurm`: clean pinned CUDA/P100 build,
+   deterministic tests, CLI smoke/restart and input guards. Accepted source
+   `1104e1af3fa39838d1ae6fdb9c2620f7b423b134`; job 289558.
+2. `warmup_initial.slurm`: three independent 50-trajectory hot-start
+   preconditioning runs. Its tiny step gave 98--100% acceptance; it is
+   **not a sustained or production setting**.
+3. `postwarm_tune.slurm`: warmed-field diagnostic scan, selecting
+   `tau=0.1`, 57 leapfrog steps (`h=0.1/57`, YAML request `0.00175`).
+   The selected candidate accepted 78%. Calibration clones are not
+   independent production chains.
+4. `equilibrate.slurm` and `equilibrate_chain*.yaml`: 1,000 more
+   unmeasured trajectories per original independent chain, acceptance
+   75.7/75.9/77.1%; job array 289570.
+5. `pilot.slurm` and `pilot_chain*.yaml`: another 500 unmeasured
+   trajectories, then the 3,000-trajectory measured pilot; array 289573.
+   Momentum seeds are 26095101/26095201/26095301; fixed integrator as above.
+6. `analyze_pilot.slurm`: checksum-guarded, locked-uv analysis of three
+   extra thermalization cuts; job 289576.
+7. `extract_pilot.slurm`: longer-block and neighboring-window checks,
+   then the seven late-time plateaus; job 289577.
+
+The earlier `initial_tune.slurm` hot-start attempts had zero acceptance;
+they remain diagnostic history, not valid starting states.
+
+## Run and reproduce
+
+These inputs are pinned to the existing qbig campaign:
 `/qbigwork2/negro/orbifold/campaigns/orbifold_2p1_demo_20260910/`.
-Inspect Slurm and GPU occupancy, then submit the array on one available
-P100 node, for example `sbatch --nodelist=lnode14 initial_tune.slurm`.
+Raw histories/checkpoints remain under the corresponding remote `data/`
+directory. Final tables, covariance, and provenance are under
+`analysis/orbifold_2p1_demo_20260910/measured_pilot/potential/` on qbig.
 
-The pilot tests `tau=0.02` at steps `0.0005`, `0.001`, and `0.002`, using
-distinct hot-start seeds `26091101`, `26091201`, and `26091301` (the HMC
-momentum seed is the input seed plus one). Each runs 60 unmeasured
-trajectories, writes action and W(1,1) diagnostics every trajectory, and
-saves a final checkpoint. The script refuses existing run directories,
-checks input/executable hashes and the GPU smoke completion marker, and
-keeps all histories on qbig.
+For a new chain, use a new working/output directory and independent seed.
+A [measured input](pilot_chain01.yaml) requires a compatible **orbifold**
+checkpoint, not a compact-Wilson checkpoint. Update its restart path.
+The scripts refuse existing outputs and verify source, executable, input
+and restart hashes. Do not edit already-run campaign files in place.
+Inspect Slurm/GPU occupancy and request one typed Pascal GPU before running
+on qbig; never run production on the login node.
 
-Choose a stable initial integrator from these results, warm up independent
-chains, then retune toward 70% acceptance on the warmed fields. Only after
-checking thermalization should Wilson-loop production begin. The intended
-measurement range is `R,T<=16`; a modest-statistics curve at several resolved
-separations suffices, with autocorrelation-aware uncertainties and stable
-time plateaus. Do not accept these initial tuning diagnostics as that curve.
+Plot the compact result tables with the shared Bonn plotting dependency
+and a uv environment containing numpy/matplotlib:
 
-The initial pilot completed with zero accepted proposals at all three steps;
-none of its checkpoints is an equilibrated state. The next, explicitly
-small-step attempt is `warmup_initial.slurm` with its three
-`warmup_initial_chain*.yaml` inputs. It uses fresh independent hot seeds
-`26092101`, `26092201`, `26092301`, `tau=0.1`, step `0.0001`, and 50
-unmeasured trajectories per chain. It retains checkpoints every ten
-trajectories, with diagnostics every trajectory. Inspect acceptance and
-action evolution before extending or increasing the step; this initial
-stage is not a tuned production input either.
+```bash
+uv run --frozen --project /path/to/plot-environment python \
+  analysis/plot_orbifold_2p1_demo.py /path/to/static_potential.tsv \
+  --style-dir /path/to/statanalysis-Bonn --effective-r 4
+```
 
-That 50-trajectory startup completed with 98%, 98%, and 100% acceptance;
-the fields still show thermalization drift. Do not reuse its tiny step for
-sustained runs. The user's target is 70--80% acceptance, with 90% the upper
-limit. Before extending, `postwarm_tune.slurm` compares five step sizes from
-the same checksum-verified chain-1 endpoint at fixed `tau=0.1`. Each candidate
-runs 100 diagnostic-only trajectories with its own seed. The effective step
-counts are 100, 80, 67, 57, and 50. These calibration trajectories are not
-independent production chains. Select a setting in the requested range from
-the measured acceptance, then monitor and retune during further warmup if it
-exceeds 90%. Freeze the final integrator before retained measurements.
-
-The warmed-field scan completed: acceptance for 100/80/67/57/50 steps was
-85/89/85/78/61 percent. Select 57 steps (`h=0.1/57`, requested YAML step
-`0.00175`): both 50-trajectory halves accepted 78%. The next stage is
-`equilibrate.slurm` with `equilibrate_chain*.yaml`, continuing the three
-original independent 50-trajectory checkpoints, not the calibration clones.
-It runs 1,000 unmeasured trajectories per chain with fresh momentum seeds
-26094101/26094201/26094301, diagnostics every ten and checkpoints every 100.
-The script checks each restart hash and requires 70--90% overall acceptance.
-Inspect rolling acceptance during warmup; sustained values outside that range
-require retuning. Check action and loop stationarity separately before
-production: passing the script's acceptance gate does not prove equilibrium.
-
-That 1,000-trajectory warmup completed with acceptance 75.7/75.9/77.1%.
-Late W11 is near 0.8085, with much less drift than startup. The first
-measured pilot is `pilot.slurm` with `pilot_chain*.yaml`: restart these
-independent endpoints, discard another 500 trajectories, then measure all
-256 unsmeared loops `R,T<=16` every ten trajectories for 3,000 trajectories
-(300 loop vectors per chain). Seeds are 26095101/26095201/26095301. The
-integrator is fixed at tau=0.1 with 57 steps; checkpoint spacing is 500.
-Monitor acceptance during running. The completion marker verifies execution,
-finite complete histories and 70--90% measured-stage acceptance, not physics.
-Accept a potential only after chainwise thermalization, autocorrelation-aware
-blocking and correlated plateau/window-stability checks on the measured loops.
-
-Submit `analyze_pilot.slurm` with `--dependency=afterok:PILOT_ARRAY_JOB_ID`
-after the pilot. It validates completed histories and hashes, uses the locked
-qbig uv environment, and writes chainwise autocorrelation, split R-hat and
-vector hierarchical-bootstrap tables/covariances for additional cuts of
-0, 75 and 150 measurement vectors. Raw histories stay on qbig. Inspect those
-diagnostics and time ratios before choosing plateau windows; the analysis
-completion marker alone is not acceptance of a static-potential curve.
+This makes one potential PDF and one R=4 plateau PDF, each a single plot
+on an uncropped 16:9 canvas with LaTeX text. The accompanying
+`static_potential.effective.tsv` must be beside the main table.
