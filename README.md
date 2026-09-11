@@ -194,6 +194,11 @@ The smoke uses `a_s=a_t=0.2`, `g=1`, `m=m_U1=40` (both `ma=8`), periodic
 boundaries, and no smearing. Its constrained-limit Wilson coupling is 15.
 Statistics and plateau checks are still required before quoting a potential.
 
+For a completed physics demonstration, see the
+[finite-mass 32^3 orbifold-HMC campaign](examples/orbifold_2p1_demo/README.md).
+It includes tested restart inputs, 75.5--75.9% measured acceptance, a
+seven-separation unsmeared potential, and its block/window checks and limits.
+
 The qbig-specific [P100 build-and-smoke script](examples/qbig_orbifold_2p1_smoke.slurm)
 pins the source revision and requires fresh build/output directories. Stage the
 indicated clean source checkout first, inspect Slurm and actual GPU occupancy,
