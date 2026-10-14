@@ -1,0 +1,6 @@
+klft_commit f47421d895469b72d4af8a9b8479807f2b09a692
+heatbath_sha256 1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8
+node lnode19
+gpu_uuid GPU-439f10b2-3f2f-c6d2-12cc-deca128ca0f2
+ctest passed
+cuda_memcheck passed

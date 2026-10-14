@@ -1,0 +1,27 @@
+klft_commit f47421d895469b72d4af8a9b8479807f2b09a692
+source_path /qbigwork2/negro/dirichlet/src/klft
+build_path /qbigwork2/negro/dirichlet/build/klft-a100
+node lnode19
+gpu_uuid GPU-439f10b2-3f2f-c6d2-12cc-deca128ca0f2
+slab_boundary_flag 3
+cmake_options Release;-Wall -Wextra;KLFT_NDIM=3;KLFT_NC=2;CUDA=ON;CUDA_LAMBDA=ON;OpenMP=ON;AMPERE80=ON;statistical_tests=ON
+cmake version 3.29.3
+c++ (GCC) 13.3.0
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2024 NVIDIA Corporation
+Built on Fri_Jun_14_16:34:21_PDT_2024
+Cuda compilation tools, release 12.6, V12.6.20
+Build cuda_12.6.r12.6/compiler.34431801_0
+ 6e357fa03b1e01454dd0fcac01f7af57e9db20c4 thirdparty/kokkos/kokkos (post-formating-10237-g6e357fa03)
+ 28f93bdec6387d42332220afa9558060c8016795 thirdparty/yaml-cpp (0.8.0-72-g28f93bd)
+heatbath_sha256 1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8
+c20fcaefd52b899bd05c2a8cd12f3b61c707ca12c3e7e61e64d208c52fd6c799  /qbigwork2/negro/dirichlet/build/klft-a100/CMakeCache.txt
+b0e250a7e003107062eb24156c8758b1eb997382df4b6f64f0ebc9f43ffcb019  /qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/test_open_slab_a100.sh
+e582356d957a54f9ddffcb349c809c9b8d63d3bf5618b7724c899bf8c67aef67  /qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/mg_nt_fixed_a100_test.py
+62caae6cc25807f1dbf9490efea9a2c270d2457c67ca5decc70d5f22ab580ef9  /qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/mg_nt_fixed_nt1_run.py
+artifact_sha256 1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8  /qbigwork2/negro/dirichlet/build/klft-a100/binaries/heatbath
+artifact_sha256 429df49ae8a4a6701823ee7deb5b60dbb6fe0cd64829542512766145f66e1d9a  /qbigwork2/negro/dirichlet/build/klft-a100/binaries/gradient_flow_check
+artifact_sha256 ac3e35837afc4cd89e9144f590cedbd45622467dc757f531cf7587ac5da09ac7  /qbigwork2/negro/dirichlet/build/klft-a100/tests/partitioning_test
+artifact_sha256 2abf5bce88c3a3b02727a118757424379b1deddce847a730802feb4f0f79df9e  /qbigwork2/negro/dirichlet/build/klft-a100/tests/dirichlet_test
+artifact_sha256 cdc0b07db3b149f21006189bfa08c5fcc19acba903cd15021eb79847e0d151e0  /qbigwork2/negro/dirichlet/build/klft-a100/tests/dirichlet_statistical_test
+artifact_sha256 437effa548189565001e802dddccd7ebdea1e3d4af5370c41dbf9fbc34189522  /qbigwork2/negro/dirichlet/build/klft-a100/tests/orbifold_test

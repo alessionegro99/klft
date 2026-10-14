@@ -1,0 +1,4 @@
+pid 3180518
+node lnode19
+gpu_uuid GPU-439f10b2-3f2f-c6d2-12cc-deca128ca0f2
+klft_commit f47421d895469b72d4af8a9b8479807f2b09a692
