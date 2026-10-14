@@ -1,5 +1,66 @@
 # Running simulations
 
+## A100 open-slab test — completed successfully
+
+The user authorized a direct-node test on lnode18/19. At preflight, lnode18
+was occupied; lnode19 GPUs 3--6 had no compute processes. The test uses only
+lnode19 GPU 3, UUID `GPU-439f10b2-3f2f-c6d2-12cc-deca128ca0f2`, with an
+occupancy recheck before each GPU stage. Its separate native 3D SU(2) build
+is `/qbigwork2/negro/dirichlet/build/klft-a100`, from pushed revision
+`f47421d895469b72d4af8a9b8479807f2b09a692`, CUDA 12.6/GCC 13.3 and AMPERE80.
+The established environment order is `setup_qbig3.sh`, then
+`load_modules_qbig3.sh`. The P100 build and queued validation `290995` remain
+unchanged.
+
+Scope: all six CTests, CUDA memory checking, one eight-sweep Nt=1 smoke test
+(Ns=4, seed 1468374202), then 100 sweeps at each exact matched beta, increasing
+Ns: 128/seed 1739874403, 512/seed 683869512, 2048/seed 1012559264. Inputs are
+in the canonical physics/seed tree and listed in
+[a100_test_manifest.json](data/mg_nt_fixed/a100_test_manifest.json). Each uses
+five overrelaxations, holonomy cadence 1 and profile cadence 5. All four seeds
+are new. No production is authorized by this test; no mass or bootstrap is
+computed. A100 timings cannot replace the P100 timing gate.
+
+The direct test is bounded to 45 minutes, one GPU and CPU affinity 32--35,
+with four build workers and one OpenMP thread for tests/runs. The launcher
+refuses existing test outputs and an occupied GPU. Remote records and log:
+`campaigns/mg_nt_fixed/open_slab_a100_*` and `logs/dir-open-a100.out`.
+
+Launched at 17:18:24 CEST on 14 October, manager PID `3180516`, worker
+`3180518`. The first live inspection found the native build running normally.
+Code commit: `afb6881`; immutable-input commit: `0e03f21`. All five A100 setup
+tests and nineteen shared Nt=1 input/execution tests pass. Input manifest SHA256:
+`d12394b5a3e8d75d7e50f304ae90d2be0f5de96256d1e2f39e406f752cd2c3cf`.
+The remote launcher, runner and manifest hashes match their local originals.
+
+The manager and worker have exited with code 0. All six native GPU CTests
+passed (16.62 s total), including the statistical test (13.88 s). CUDA
+compute-sanitizer reports zero errors. Its deliberate invalid-input/checkpoint
+rejection messages are negative-test output; the deterministic test passed.
+All four short runs passed measurement-count, cadence, C_G(0), exact-surface
+and physical-checkpoint checks. The largest squared SU(2) norm error was
+4.44e-16. GPU 3 was released after completion; unrelated GPU processes on
+devices 0--2 remained running. No production was launched.
+
+| Ns | beta | Sweeps | Heatbath process time | Projected time for 8,000 sweeps |
+| ---: | ---: | ---: | ---: | ---: |
+| 4 | 2.989543168360997 | 8 | 0.616 s | smoke only |
+| 128 | 1.962386866460073 | 100 | 0.917 s | 1.22 min |
+| 512 | 2.5044558261064154 | 100 | 1.868 s | 2.49 min |
+| 2048 | 2.989543168360997 | 100 | 40.634 s | 54.18 min |
+
+The timings include process startup, all measurement output and final
+checkpoint writing. Linear projection gives 3.859 A100 GPU-hours for four
+8,000-sweep chains at each beta. These are planning estimates from short hot
+starts; thermalization, statistics and physical volumes remain unvalidated.
+Native heatbath SHA256:
+`1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8`.
+Compact [build](data/mg_nt_fixed/open_slab_a100_build.txt),
+[validation](data/mg_nt_fixed/open_slab_a100_validation.txt) and
+[run/timing records](data/mg_nt_fixed/open_slab_a100_runs.json) are local;
+raw histories remain on qbig. The P100 binary checksum is unchanged. A100
+production requires approval beyond this bounded test.
+
 ## Open Dirichlet geometry and Nt=1 matched-beta runs — P100 validation queued
 
 KLFT `f47421d895469b72d4af8a9b8479807f2b09a692` is committed and pushed to

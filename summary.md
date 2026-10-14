@@ -18,6 +18,19 @@ gate. The canonical report is
 
 ## Local removal of the auxiliary wrapping sector
 
+An additional user-authorized native A100 test completed successfully on
+lnode19 GPU 3 (manager PID `3180516`, exit 0), using the separate
+`build/klft-a100` directory, CUDA 12.6/GCC 13.3 and AMPERE80. All six GPU CTests
+passed in 16.62 s and CUDA memory checking found zero errors. The eight-sweep
+Nt=1 smoke run and 100-sweep tests at Ns=128, 512 and 2048 passed all output
+and physical-checkpoint checks. Their measured times project to 3.859 A100
+GPU-hours for twelve 8,000-sweep chains (54.18 minutes for the largest chain).
+These short hot starts establish execution integrity and timing only; masses,
+thermalization and finite-volume effects remain unmeasured. Compact results
+are saved in [open_slab_a100_runs.json](data/mg_nt_fixed/open_slab_a100_runs.json).
+No production was launched. The P100 executable and queued validation remain
+unchanged; see [the execution record](running_simulations.md).
+
 KLFT commits `c78efbd1ed6c60fc809db54ac9309fa532854982` (open storage) and
 `f47421d895469b72d4af8a9b8479807f2b09a692` (CUDA 11.5 compatibility) are
 committed and pushed to `origin/orbifold`. Dirichlet fields now allocate only physical links:
