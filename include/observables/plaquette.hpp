@@ -8,6 +8,9 @@ namespace klft {
 struct GaugePlaquetteComponents {
   real_t spatial;
   real_t temporal;
+  // Fraction of stored sites supporting a temporal plaquette. Spatial
+  // plaquettes include both fixed boundary planes; temporal ones span Nt links.
+  real_t temporal_site_fraction = 1.0;
 };
 
 // Accumulate spatial-spatial and spatial-temporal plaquettes separately over
@@ -17,8 +20,11 @@ template <size_t rank, size_t Nc> struct GaugePlaq {
   using GaugeFieldType = typename DeviceGaugeFieldType<rank, Nc>::type;
   const GaugeFieldType g_in;
   const IndexArray<rank> dimensions;
-  GaugePlaq(const GaugeFieldType &g_in, const IndexArray<rank> &dimensions)
-      : g_in(g_in), dimensions(dimensions) {}
+  const bool temporal_dirichlet;
+  GaugePlaq(const GaugeFieldType &g_in, const IndexArray<rank> &dimensions,
+            const bool temporal_dirichlet = false)
+      : g_in(g_in), dimensions(dimensions),
+        temporal_dirichlet(temporal_dirichlet) {}
 
   KOKKOS_FORCEINLINE_FUNCTION void
   contribute(const Kokkos::Array<index_t, rank> &site, real_t &spatial_sum,
@@ -29,6 +35,10 @@ template <size_t rank, size_t Nc> struct GaugePlaq {
     for (index_t mu = 0; mu < Nd; ++mu) {
 #pragma unroll
       for (index_t nu = mu + 1; nu < Nd; ++nu) {
+        if (temporal_dirichlet && nu == static_cast<index_t>(rank - 1) &&
+            site[rank - 1] == dimensions[rank - 1] - 1) {
+          continue;
+        }
         lmu = g_in(site, mu) *
               g_in(shift_index_plus<rank, index_t>(site, mu, 1, dimensions),
                    nu);
@@ -79,10 +89,11 @@ template <size_t rank, size_t Nc> struct GaugePlaq {
 template <size_t rank, size_t Nc>
 GaugePlaquetteComponents GaugePlaquettes(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
-    const bool normalize = true) {
+    const bool normalize = true, const bool temporal_dirichlet = false) {
   real_t spatial = 0.0;
   real_t temporal = 0.0;
   const auto dimensions = g_in.dimensions;
+  const bool open_time = temporal_dirichlet || gauge_uses_open_time(g_in);
   IndexArray<rank> start;
   IndexArray<rank> end;
   size_t nSites = 1;
@@ -94,7 +105,10 @@ GaugePlaquetteComponents GaugePlaquettes(
 
   Kokkos::parallel_reduce(
       "GaugePlaquettes", Policy<rank>(start, end),
-      GaugePlaq<rank, Nc>(g_in, dimensions), spatial, temporal);
+      GaugePlaq<rank, Nc>(g_in, dimensions, open_time), spatial, temporal);
+
+  const size_t nTemporalSites = open_time
+      ? nSites - nSites / static_cast<size_t>(dimensions[rank - 1]) : nSites;
 
   if (normalize) {
     constexpr size_t nSpatialPlanes = (rank - 1) * (rank - 2) / 2;
@@ -104,29 +118,33 @@ GaugePlaquetteComponents GaugePlaquettes(
     } else {
       spatial = 0.0;
     }
-    temporal /= static_cast<real_t>(nSites * nTemporalPlanes * Nc);
+    temporal /= static_cast<real_t>(nTemporalSites * nTemporalPlanes * Nc);
   }
 
-  return GaugePlaquetteComponents{spatial, temporal};
+  return GaugePlaquetteComponents{spatial, temporal,
+      static_cast<real_t>(nTemporalSites) / static_cast<real_t>(nSites)};
 }
 
-// Recombine independently normalized components using their plane counts.
-// This weighting matters in 2+1 dimensions (one spatial, two temporal planes).
+// Recombine normalized components using the numbers of physical plaquettes.
+// In a slab, temporal planes have Nt layers and spatial planes Nt + 1.
 template <size_t rank>
 KOKKOS_FORCEINLINE_FUNCTION real_t
 AverageGaugePlaquette(const GaugePlaquetteComponents &components) {
   constexpr size_t nSpatialPlanes = (rank - 1) * (rank - 2) / 2;
   constexpr size_t nTemporalPlanes = rank - 1;
-  constexpr size_t nPlanes = nSpatialPlanes + nTemporalPlanes;
+  const real_t temporal_weight =
+      static_cast<real_t>(nTemporalPlanes) * components.temporal_site_fraction;
   return (static_cast<real_t>(nSpatialPlanes) * components.spatial +
-          static_cast<real_t>(nTemporalPlanes) * components.temporal) /
-         static_cast<real_t>(nPlanes);
+          temporal_weight * components.temporal) /
+         (static_cast<real_t>(nSpatialPlanes) + temporal_weight);
 }
 
 template <size_t rank, size_t Nc>
 real_t GaugePlaquette(const typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
-                      const bool normalize = true) {
-  const auto components = GaugePlaquettes<rank, Nc>(g_in, normalize);
+                      const bool normalize = true,
+                      const bool temporal_dirichlet = false) {
+  const auto components = GaugePlaquettes<rank, Nc>(g_in, normalize,
+                                                   temporal_dirichlet);
   if (normalize) {
     return AverageGaugePlaquette<rank>(components);
   }

@@ -101,7 +101,7 @@ real_t z_distance(const Estimate &left, const Estimate &right) {
 
 Gauge make_cold(const index_t nx, const index_t ny,
                 const index_t slab_thickness) {
-  auto gauge = make_identity_gauge_field<3, 2>(nx, ny, slab_thickness + 1, 1);
+  auto gauge = make_identity_gauge_field<3, 2>(nx, ny, slab_thickness + 1, 1, true);
   apply_temporal_dirichlet_boundaries<3, 2>(gauge);
   return gauge;
 }
@@ -110,7 +110,7 @@ Gauge make_hot(const index_t nx, const index_t ny,
                const index_t slab_thickness, const uint64_t seed) {
   RNG rng(seed);
   auto gauge =
-      make_hot_gauge_field<3, 2>(nx, ny, slab_thickness + 1, 1, rng);
+      make_hot_gauge_field<3, 2>(nx, ny, slab_thickness + 1, 1, rng, true);
   apply_temporal_dirichlet_boundaries<3, 2>(gauge);
   return gauge;
 }
@@ -306,8 +306,7 @@ void check_hot_cold_and_symmetry() {
 }
 
 real_t periodic_spatial_slice(const Gauge &gauge, const index_t t) {
-  const auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                        gauge.field);
+  const auto host = copy_gauge_to_host(gauge);
   real_t sum = 0.0;
   for (index_t x = 0; x < gauge.dimensions[0]; ++x) {
     for (index_t y = 0; y < gauge.dimensions[1]; ++y) {

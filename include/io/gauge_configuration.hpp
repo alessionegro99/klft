@@ -17,6 +17,10 @@ namespace gauge_configuration_detail {
 
 constexpr std::array<char, 8> magic{{'K', 'L', 'F', 'T', 'C', 'F', 'G', '1'}};
 constexpr std::uint32_t format_version = 1;
+// Flag 1 identified the retired slab + dynamical wrapping-PCM convention.
+// Distinguish it explicitly so a restart cannot silently change conventions.
+constexpr std::uint32_t slab_boundary_flag = 2;
+constexpr std::uint32_t open_slab_boundary_flag = 3;
 
 template <class T>
 bool write_scalar(std::ofstream &file, const T &value) {
@@ -151,6 +155,10 @@ bool save_gauge_configuration(
     const std::string &filename,
     const typename DeviceGaugeFieldType<rank, Nc>::type &gauge,
     const bool temporal_dirichlet) {
+  if (gauge_uses_open_time(gauge) && !temporal_dirichlet) {
+    printf("Error: an open slab cannot be saved as a periodic field\n");
+    return false;
+  }
   if (temporal_dirichlet &&
       !temporal_dirichlet_boundaries_are_exact<rank, Nc>(gauge)) {
     printf("Error: refusing to save '%s': temporal Dirichlet links are not "
@@ -171,7 +179,10 @@ bool save_gauge_configuration(
   const std::uint32_t file_rank = rank;
   const std::uint32_t file_nc = Nc;
   const std::uint32_t scalar_bytes = sizeof(real_t);
-  const std::uint32_t boundary_flag = temporal_dirichlet ? 1U : 0U;
+  const std::uint32_t boundary_flag = temporal_dirichlet
+      ? (gauge_uses_open_time(gauge)
+          ? gauge_configuration_detail::open_slab_boundary_flag
+          : gauge_configuration_detail::slab_boundary_flag) : 0U;
   bool ok = gauge_configuration_detail::write_scalar(
                 file, gauge_configuration_detail::format_version) &&
             gauge_configuration_detail::write_scalar(file, file_rank) &&
@@ -185,15 +196,16 @@ bool save_gauge_configuration(
 
   const size_t nsites =
       gauge_configuration_detail::site_count<rank>(gauge.dimensions);
-  const std::uint64_t nlinks = nsites * rank;
+  const std::uint64_t nlinks = nsites * rank - (gauge_uses_open_time(gauge)
+      ? nsites / gauge.dimensions[rank - 1] : 0);
   ok &= gauge_configuration_detail::write_scalar(file, nlinks);
 
-  const auto host = Kokkos::create_mirror_view_and_copy(
-      Kokkos::HostSpace(), gauge.field);
+  const auto host = copy_gauge_to_host(gauge);
   for (size_t linear = 0; ok && linear < nsites; ++linear) {
     const auto site = gauge_configuration_detail::linear_to_site<rank>(
         linear, gauge.dimensions);
     for (index_t mu = 0; ok && mu < static_cast<index_t>(rank); ++mu) {
+      if (!gauge_link_exists(gauge, site, mu)) continue;
       ok &= gauge_configuration_detail::write_link<Nc>(
           file, gauge_configuration_detail::host_link<rank>(host, site, mu));
     }
@@ -232,10 +244,18 @@ bool load_gauge_configuration(
             gauge_configuration_detail::read_scalar(file, file_nc) &&
             gauge_configuration_detail::read_scalar(file, scalar_bytes) &&
             gauge_configuration_detail::read_scalar(file, boundary_flag);
+  if (ok && temporal_dirichlet && boundary_flag == 1U) {
+    printf("Error: '%s' uses the retired dynamical wrapping-PCM convention; "
+           "an explicit configuration conversion is required\n", filename.c_str());
+    return false;
+  }
   if (!ok || magic != gauge_configuration_detail::magic ||
       version != gauge_configuration_detail::format_version ||
       file_rank != rank || file_nc != Nc || scalar_bytes != sizeof(real_t) ||
-      boundary_flag != (temporal_dirichlet ? 1U : 0U)) {
+      boundary_flag != (temporal_dirichlet
+          ? (gauge_uses_open_time(gauge)
+              ? gauge_configuration_detail::open_slab_boundary_flag
+              : gauge_configuration_detail::slab_boundary_flag) : 0U)) {
     printf("Error: incompatible or corrupt configuration header in '%s'\n",
            filename.c_str());
     return false;
@@ -254,21 +274,26 @@ bool load_gauge_configuration(
   const size_t nsites =
       gauge_configuration_detail::site_count<rank>(gauge.dimensions);
   std::uint64_t nlinks = 0;
+  const size_t expected_links = nsites * rank - (gauge_uses_open_time(gauge)
+      ? nsites / gauge.dimensions[rank - 1] : 0);
   if (!gauge_configuration_detail::read_scalar(file, nlinks) ||
-      nlinks != nsites * rank) {
+      nlinks != expected_links) {
     printf("Error: configuration '%s' has an invalid link count\n",
            filename.c_str());
     return false;
   }
 
-  auto host = Kokkos::create_mirror_view(gauge.field);
+  auto host = copy_gauge_to_host(gauge);
   for (size_t linear = 0; linear < nsites; ++linear) {
     const auto site = gauge_configuration_detail::linear_to_site<rank>(
         linear, gauge.dimensions);
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (!gauge_link_exists(gauge, site, mu)) continue;
       auto &link = gauge_configuration_detail::host_link<rank>(host, site, mu);
       if (!gauge_configuration_detail::read_link<Nc>(file, link) ||
-          !gauge_configuration_detail::link_is_finite_and_unitary<Nc>(link)) {
+          !gauge_configuration_detail::link_is_finite_and_unitary<Nc>(link) ||
+          (temporal_dirichlet && is_temporal_dirichlet_link<rank>(
+              site, mu, gauge.dimensions) && !is_exact_identity<Nc>(link))) {
         printf("Error: invalid link data in configuration '%s'\n",
                filename.c_str());
         return false;
@@ -282,7 +307,7 @@ bool load_gauge_configuration(
     return false;
   }
 
-  Kokkos::deep_copy(gauge.field, host);
+  copy_gauge_from_host(gauge, host);
   Kokkos::fence();
   if (temporal_dirichlet &&
       !temporal_dirichlet_boundaries_are_exact<rank, Nc>(gauge)) {

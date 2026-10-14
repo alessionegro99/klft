@@ -41,7 +41,8 @@ int Heatbath(const std::string &input_file) {
     printf("Error validating gradient-flow input\n");
     return -1;
   }
-  if (!validateTemporalDirichletParams(heatbathParams, gaugeObsParams)) {
+  if (!validateTemporalDirichletParams(heatbathParams, gaugeObsParams,
+                                       gradientFlowParams)) {
     printf("Error validating temporal Dirichlet input\n");
     return -1;
   }
@@ -57,10 +58,10 @@ int Heatbath(const std::string &input_file) {
       heatbathParams.start == "hot"
           ? make_hot_gauge_field<compiled_rank, compiled_nc>(
                 heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
-                heatbathParams.L3, rng)
+                heatbathParams.L3, rng, heatbathParams.temporal_dirichlet)
           : make_identity_gauge_field<compiled_rank, compiled_nc>(
                 heatbathParams.L0, heatbathParams.L1, heatbathParams.L2,
-                heatbathParams.L3);
+                heatbathParams.L3, heatbathParams.temporal_dirichlet);
   if (heatbathParams.start == "restart") {
     if (!load_gauge_configuration<compiled_rank, compiled_nc>(
             heatbathParams.configuration_input, gauge_field,

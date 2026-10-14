@@ -37,7 +37,8 @@ int Metropolis(const std::string &input_file) {
     printf("Error validating gradient-flow input\n");
     return -1;
   }
-  if (!validateTemporalDirichletParams(metropolisParams, gaugeObsParams)) {
+  if (!validateTemporalDirichletParams(metropolisParams, gaugeObsParams,
+                                       gradientFlowParams)) {
     printf("Error validating temporal Dirichlet input\n");
     return -1;
   }
@@ -55,7 +56,7 @@ int Metropolis(const std::string &input_file) {
       }
       auto gauge_field = make_identity_gauge_field<compiled_rank, 2>(
           metropolisParams.L0, metropolisParams.L1, metropolisParams.L2,
-          metropolisParams.L3);
+          metropolisParams.L3, metropolisParams.temporal_dirichlet);
       PartitionIndexField partition_indices;
       if (metropolisParams.start == "restart") {
         if (!load_gauge_configuration<compiled_rank, 2>(
@@ -89,10 +90,12 @@ int Metropolis(const std::string &input_file) {
       metropolisParams.start == "hot"
           ? make_hot_gauge_field<compiled_rank, compiled_nc>(
                 metropolisParams.L0, metropolisParams.L1,
-                metropolisParams.L2, metropolisParams.L3, rng)
+                metropolisParams.L2, metropolisParams.L3, rng,
+                metropolisParams.temporal_dirichlet)
           : make_identity_gauge_field<compiled_rank, compiled_nc>(
                 metropolisParams.L0, metropolisParams.L1,
-                metropolisParams.L2, metropolisParams.L3);
+                metropolisParams.L2, metropolisParams.L3,
+                metropolisParams.temporal_dirichlet);
   if (metropolisParams.start == "restart") {
     if (!load_gauge_configuration<compiled_rank, compiled_nc>(
             metropolisParams.configuration_input, gauge_field,

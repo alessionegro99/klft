@@ -59,6 +59,7 @@ template <size_t rank, class RNG> struct InitializePartitionGaugeField {
     if (hot) {
       auto generator = rng.get_state();
       for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+        if (!gauge_link_exists(gauge, site, mu)) continue;
         const real_t sample = generator.drand(0.0, 1.0);
         index_t lower = 0;
         index_t upper = table.size() - 1;
@@ -76,6 +77,7 @@ template <size_t rank, class RNG> struct InitializePartitionGaugeField {
       rng.free_state(generator);
     } else {
       for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+        if (!gauge_link_exists(gauge, site, mu)) continue;
         gauge(site, mu) = table.points(table.cold_index);
         indices(partitionLinkIndex<rank>(site, mu, gauge.dimensions)) =
             table.cold_index;
@@ -130,6 +132,7 @@ template <size_t rank> struct InitializePartitionIndicesFromGauge {
   KOKKOS_FORCEINLINE_FUNCTION void operator()(const Indices... idcs) const {
     const IndexArray<rank> site{static_cast<index_t>(idcs)...};
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (!gauge_link_exists(gauge, site, mu)) continue;
       index_t best = table.cold_index;
       real_t best_distance = 1.0e300;
       for (index_t point = 0; point < table.size(); ++point) {

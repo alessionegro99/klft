@@ -10,6 +10,8 @@ endif()
 if(KLFT_NDIM STREQUAL "3" AND KLFT_NC STREQUAL "2")
   add_executable(dirichlet_test dirichlet_test.cpp)
   target_link_libraries(dirichlet_test PRIVATE klft)
+  add_executable(dirichlet_benchmark dirichlet_benchmark.cpp)
+  target_link_libraries(dirichlet_benchmark PRIVATE klft)
   add_test(NAME temporal_dirichlet_deterministic
     COMMAND dirichlet_test ${PROJECT_SOURCE_DIR}/partitionings/linear_m3.yaml)
   set_tests_properties(temporal_dirichlet_deterministic PROPERTIES

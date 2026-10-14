@@ -170,7 +170,8 @@ void measureGaugeObservables(
       step % boundary_wilson_interval == 0;
 
   if (anyPlaquetteMeasurementEnabled(params)) {
-    const auto plaquettes = GaugePlaquettes<rank, Nc>(g_in);
+    const auto plaquettes = GaugePlaquettes<rank, Nc>(
+        g_in, true, updateParams.temporal_dirichlet);
     if (params.measure_plaquette) {
       params.plaquette_measurements.push_back(
           AverageGaugePlaquette<rank>(plaquettes));

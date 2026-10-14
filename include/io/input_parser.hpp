@@ -631,7 +631,8 @@ inline bool parseInputFile(const std::string &filename,
 template <class UpdateParams>
 inline bool validateTemporalDirichletParams(
     const UpdateParams &updateParams,
-    const GaugeObservableParams &observableParams) {
+    const GaugeObservableParams &observableParams,
+    const GradientFlowParams &flowParams = GradientFlowParams{}) {
   if (!updateParams.temporal_dirichlet) {
     if (anyDirichletMeasurementEnabled(observableParams)) {
       printf("Error: Dirichlet observables require temporal_dirichlet: true\n");
@@ -653,6 +654,19 @@ inline bool validateTemporalDirichletParams(
       observableParams.measure_polyakov_susceptibility) {
     printf("Error: periodic Polyakov observables include the wrapping link; "
            "use measure_dirichlet_holonomy in Dirichlet mode\n");
+    return false;
+  }
+  if (observableParams.measure_wilson_loop_temporal ||
+      observableParams.measure_wilson_loop_mu_nu ||
+      observableParams.measure_nested_wilson_action ||
+      observableParams.measure_retrace_U || observableParams.measure_retrace_U2) {
+    printf("Error: periodic Wilson/link measurements are undefined on an open "
+           "slab; use the Dirichlet observable suite\n");
+    return false;
+  }
+  if (flowParams.enabled) {
+    printf("Error: driver gradient-flow measurements currently use periodic "
+           "clover/loop definitions and are unavailable on an open slab\n");
     return false;
   }
   return true;

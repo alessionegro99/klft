@@ -29,27 +29,16 @@ slab_thickness_in_links(const IndexArray<rank> &dimensions) {
   return upper_boundary_slice<rank>(dimensions);
 }
 
-// The periodic storage has Nt + 1 temporal sites. Spatial links at t=0 and
-// t=Nt are fixed; the temporal link at t=Nt is the explicitly retained,
-// factorized wrapping-PCM link and is therefore dynamical.
+// Nt counts physical temporal links, with Nt + 1 sites including both
+// boundaries. This mask also excludes the nonexistent temporal link at t=Nt.
 template <size_t rank, typename indexType>
 KOKKOS_FORCEINLINE_FUNCTION bool is_temporal_dirichlet_link(
     const Kokkos::Array<indexType, rank> &site, const index_t mu,
     const IndexArray<rank> &dimensions) {
   const index_t time_dir = temporal_direction<rank>();
   const index_t t = static_cast<index_t>(site[time_dir]);
-  return mu != time_dir &&
-         (t == lower_boundary_slice<rank>() ||
-          t == upper_boundary_slice<rank>(dimensions));
-}
-
-template <size_t rank, typename indexType>
-KOKKOS_FORCEINLINE_FUNCTION bool is_wrapping_temporal_link(
-    const Kokkos::Array<indexType, rank> &site, const index_t mu,
-    const IndexArray<rank> &dimensions) {
-  return mu == temporal_direction<rank>() &&
-         static_cast<index_t>(site[temporal_direction<rank>()]) ==
-             upper_boundary_slice<rank>(dimensions);
+  return t == upper_boundary_slice<rank>(dimensions) ||
+         (mu != time_dir && t == lower_boundary_slice<rank>());
 }
 
 template <size_t Nc>
@@ -86,7 +75,8 @@ template <size_t rank, size_t Nc> struct SetTemporalDirichletLinks {
     const IndexArray<rank> site{static_cast<index_t>(indices)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
-      if (is_temporal_dirichlet_link<rank>(site, mu, gauge.dimensions)) {
+      if (gauge_link_exists(gauge, site, mu) &&
+          is_temporal_dirichlet_link<rank>(site, mu, gauge.dimensions)) {
         gauge(site, mu) = identitySUN<Nc>();
       }
     }
@@ -113,7 +103,8 @@ template <size_t rank, size_t Nc> struct CountInvalidTemporalDirichletLinks {
                                               size_t &invalid) const {
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
-      if (is_temporal_dirichlet_link<rank>(site, mu, gauge.dimensions) &&
+      if (gauge_link_exists(gauge, site, mu) &&
+          is_temporal_dirichlet_link<rank>(site, mu, gauge.dimensions) &&
           !is_exact_identity<Nc>(gauge(site, mu))) {
         ++invalid;
       }
@@ -170,7 +161,7 @@ size_t dynamical_link_count(const IndexArray<rank> &dimensions,
   }
   const size_t all_links = volume * rank;
   return temporal_dirichlet
-             ? all_links - 2 * spatial_volume * (rank - 1)
+             ? all_links - spatial_volume * (2 * (rank - 1) + 1)
              : all_links;
 }
 

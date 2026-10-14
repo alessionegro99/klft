@@ -73,6 +73,7 @@ template <size_t rank, size_t Nc> struct UnitarizeGaugeField {
     const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < Nd; ++mu) {
+      if (!gauge_link_exists(g_in, site, mu)) continue;
       if (temporal_dirichlet &&
           is_temporal_dirichlet_link<rank>(site, mu, g_in.dimensions)) {
         g_in(site, mu) = identitySUN<Nc>();
@@ -90,7 +91,7 @@ template <size_t rank, size_t Nc, class RNG>
 void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
                          const HeatbathParams &params, const RNG &rng) {
   constexpr static const size_t Nd = rank;
-  const auto &dimensions = g_in.field.layout().dimension;
+  const auto &dimensions = g_in.dimensions;
   IndexArray<rank> start;
   IndexArray<rank> end;
   IndexArray<rank> full_start;
@@ -106,6 +107,9 @@ void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
       lattice_color_total<rank>(g_in.dimensions, params.temporal_dirichlet);
 
   for (index_t dir = 0; dir < Nd; ++dir) {
+    // At Nt=1 every spatial link is fixed; avoid launching empty sweeps.
+    if (params.temporal_dirichlet && dimensions[rank - 1] == 2 &&
+        dir != static_cast<index_t>(rank - 1)) continue;
     for (index_t i = 0; i < color_count; ++i) {
       const auto colors = decode_lattice_color<rank>(
           i, g_in.dimensions, params.temporal_dirichlet);
@@ -123,6 +127,8 @@ void full_heatbath_sweep(typename DeviceGaugeFieldType<rank, Nc>::type &g_in,
   }
 
   for (index_t dir = 0; dir < Nd; ++dir) {
+    if (params.temporal_dirichlet && dimensions[rank - 1] == 2 &&
+        dir != static_cast<index_t>(rank - 1)) continue;
     for (index_t j = 0; j < params.nOverrelax; ++j) {
       for (index_t i = 0; i < color_count; ++i) {
         const auto colors = decode_lattice_color<rank>(

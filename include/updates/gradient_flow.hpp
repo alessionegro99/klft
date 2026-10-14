@@ -44,13 +44,13 @@ KOKKOS_FORCEINLINE_FUNCTION real_t complex_abs(const complex_t &z) {
 template <size_t rank, size_t Nc>
 typename DeviceGaugeFieldType<rank, Nc>::type
 make_gauge_field_with(const IndexArray<rank> &dimensions,
-                      const SUN<Nc> &init) {
+                      const SUN<Nc> &init, const bool open_time = false) {
   if constexpr (rank == 4) {
     return typename DeviceGaugeFieldType<rank, Nc>::type(
         dimensions[0], dimensions[1], dimensions[2], dimensions[3], init);
   } else if constexpr (rank == 3) {
     return typename DeviceGaugeFieldType<rank, Nc>::type(
-        dimensions[0], dimensions[1], dimensions[2], init);
+        dimensions[0], dimensions[1], dimensions[2], init, open_time);
   } else {
     return typename DeviceGaugeFieldType<rank, Nc>::type(dimensions[0],
                                                          dimensions[1], init);
@@ -78,8 +78,9 @@ make_random_gauge_field_with(const IndexArray<rank> &dimensions, RNG &rng,
 template <size_t rank, size_t Nc>
 typename DeviceGaugeFieldType<rank, Nc>::type copy_gauge_field(
     const typename DeviceGaugeFieldType<rank, Nc>::type &g_in) {
-  auto out = make_gauge_field_with<rank, Nc>(g_in.dimensions, identitySUN<Nc>());
-  Kokkos::deep_copy(out.field, g_in.field);
+  auto out = make_gauge_field_with<rank, Nc>(g_in.dimensions, identitySUN<Nc>(),
+                                            gauge_uses_open_time(g_in));
+  copy_gauge_storage(out, g_in);
   Kokkos::fence();
   return out;
 }
@@ -93,12 +94,13 @@ template <size_t rank, size_t Nc> struct GradientFlowWorkspace {
   GaugeFieldType Z1;
   GaugeFieldType Z2;
 
-  explicit GradientFlowWorkspace(const IndexArray<rank> &dimensions)
-      : W1(make_gauge_field_with<rank, Nc>(dimensions, identitySUN<Nc>())),
-        W2(make_gauge_field_with<rank, Nc>(dimensions, identitySUN<Nc>())),
-        Z0(make_gauge_field_with<rank, Nc>(dimensions, zeroSUN<Nc>())),
-        Z1(make_gauge_field_with<rank, Nc>(dimensions, zeroSUN<Nc>())),
-        Z2(make_gauge_field_with<rank, Nc>(dimensions, zeroSUN<Nc>())) {}
+  explicit GradientFlowWorkspace(const IndexArray<rank> &dimensions,
+                                  const bool open_time = false)
+      : W1(make_gauge_field_with<rank, Nc>(dimensions, identitySUN<Nc>(), open_time)),
+        W2(make_gauge_field_with<rank, Nc>(dimensions, identitySUN<Nc>(), open_time)),
+        Z0(make_gauge_field_with<rank, Nc>(dimensions, zeroSUN<Nc>(), open_time)),
+        Z1(make_gauge_field_with<rank, Nc>(dimensions, zeroSUN<Nc>(), open_time)),
+        Z2(make_gauge_field_with<rank, Nc>(dimensions, zeroSUN<Nc>(), open_time)) {}
 };
 
 template <size_t Nc>
@@ -181,6 +183,12 @@ template <size_t rank, size_t Nc> struct ComputeFlowForce {
       const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (!gauge_link_exists(V, site, mu)) continue;
+      if (gauge_uses_open_time(V) &&
+          is_temporal_dirichlet_link<rank>(site, mu, V.dimensions)) {
+        Z(site, mu) = zeroSUN<Nc>();
+        continue;
+      }
       const SUN<Nc> m = V(site, mu) * V.staple(site, mu);
       Z(site, mu) = flow_force_from_link_staple_product<Nc>(m) * dt;
     }
@@ -220,6 +228,7 @@ template <size_t rank, size_t Nc> struct ApplyFlowStage {
     const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (!gauge_link_exists(src, site, mu)) continue;
       if (temporal_dirichlet &&
           is_temporal_dirichlet_link<rank>(site, mu, src.dimensions)) {
         dst(site, mu) = identitySUN<Nc>();
@@ -253,6 +262,7 @@ template <size_t rank, size_t Nc> struct ReunitarizeFlowField {
     const IndexArray<rank> site{static_cast<index_t>(Idcs)...};
 #pragma unroll
     for (index_t mu = 0; mu < static_cast<index_t>(rank); ++mu) {
+      if (!gauge_link_exists(V, site, mu)) continue;
       if (temporal_dirichlet &&
           is_temporal_dirichlet_link<rank>(site, mu, V.dimensions)) {
         V(site, mu) = identitySUN<Nc>();
@@ -381,6 +391,7 @@ template <size_t rank, size_t Nc> struct MaxAlgebraNorm {
     const size_t site_index = i / rank;
     const auto site =
         gradient_flow_linear_to_site<rank>(site_index, Z.dimensions);
+    if (!gauge_link_exists(Z, site, mu)) return;
     const real_t norm = algebra_link_norm<Nc>(Z(site, mu));
     if (norm > max_norm) {
       max_norm = norm;
@@ -466,6 +477,7 @@ template <size_t rank, size_t Nc> struct MaxGroupErrors {
     const size_t site_index = i / rank;
     const auto site =
         gradient_flow_linear_to_site<rank>(site_index, V.dimensions);
+    if (!gauge_link_exists(V, site, mu)) return;
     const real_t e1 = link_unitarity_error<Nc>(V(site, mu));
     if (e1 > max_error) {
       max_error = e1;
@@ -484,6 +496,7 @@ template <size_t rank, size_t Nc> struct MaxDeterminantError {
     const size_t site_index = i / rank;
     const auto site =
         gradient_flow_linear_to_site<rank>(site_index, V.dimensions);
+    if (!gauge_link_exists(V, site, mu)) return;
     const real_t e2 = link_determinant_error<Nc>(V(site, mu));
     if (e2 > max_error) {
       max_error = e2;
@@ -701,7 +714,7 @@ void runGradientFlowMeasurements(
   }
 
   auto V = copy_gauge_field<rank, Nc>(U);
-  GradientFlowWorkspace<rank, Nc> workspace(V.dimensions);
+  GradientFlowWorkspace<rank, Nc> workspace(V.dimensions, gauge_uses_open_time(V));
 
   const bool write_obs = flowParams.measure_energy_clover;
   constexpr real_t time_tol = 1.0e-14;

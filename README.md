@@ -302,22 +302,41 @@ uv run python tools/test_generate_partitioning.py
 Temporal Dirichlet mode is restricted to 3D SU(2) pure Wilson builds. For
 physical slab thickness `Nt`, store `L2: Nt + 1` sites and set
 `temporal_dirichlet: true`. Spatial links in directions 0 and 1 at stored
-slices 0 and `Nt` are fixed to the identity; direction-2 links remain
-dynamical.
+slices 0 and `Nt` are fixed to the identity. The physical direction-2 links
+start at `t=0,...,Nt-1` and remain dynamical. Thus `Nt` counts links;
+there are `Nt+1` time slices and `Nt-1` interior slices.
 
-The periodic neighbor table is unchanged. The wrapping link based at `t=Nt`
-is an exactly factorized PCM sector and is excluded from the physical
-holonomy:
+Dirichlet fields allocate spatial links on `Nt+1` slices and temporal links
+on `Nt` layers. There is no direction-2 link at `t=Nt` and no temporal
+periodic closure. Heatbath, overrelaxation, Metropolis and partitioned updates
+share this open geometry. The physical holonomy is
 
 ```text
 G(x) = U_2(x,0) ... U_2(x,Nt-1).
 ```
 
 Use the dedicated Dirichlet holonomy, plaquette-profile, boundary-Wilson-loop,
-and bulk-Polyakov measurements. Periodic Polyakov observables are rejected in
-this mode; the aggregate plaquette still includes the factorized wrapping
-sector. Restart loading validates the fixed boundaries and fails rather than
-repairing an invalid field.
+and bulk-Polyakov measurements. Periodic Polyakov/Wilson/link measurements
+and the driver's periodic-clover gradient-flow measurements are rejected in
+this mode. The boundary-preserving RK3 flow kernel is tested independently.
+Aggregate plaquettes use
+physical plaquette counts: `Nt+1` spatial layers and `Nt` temporal layers.
+The slab's `Nt=1` PCM reduction remains an exact physical limit.
+
+Earlier versions evolved an independent wrapping PCM. Its removal preserves
+the equilibrium distribution of all physical slab observables; fixed-seed
+trajectories can change because fewer random updates are performed. Historical
+aggregate plaquettes included that extra sector and have a different meaning.
+New open-slab checkpoints carry boundary flag 3 and store physical links only;
+legacy rectangular checkpoints require explicit conversion and are refused by
+the open-slab drivers. Periodic checkpoints and mode are unchanged. Restart
+loading validates all records before modifying the target field.
+
+Holonomy correlations and structure factors are reduced on the compute device,
+as are the slice plaquette profiles. The definitions and output columns are
+unchanged. With `BUILD_TESTING=ON`, `tests/dirichlet_benchmark Ns Nt repeats`
+reports separate update/holonomy/profile timings after a warm-up. These are
+diagnostic timings, not thermalized simulation results.
 
 ## Analysis helpers
 

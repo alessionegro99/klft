@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 namespace klft {
@@ -35,8 +36,7 @@ template <size_t Nc, class GaugeFieldType> struct BuildSlabHolonomy3D {
   }
 };
 
-// G(x) contains exactly the Nt temporal links between the two fixed surfaces;
-// the periodic-storage wrapping link at t=Nt is deliberately excluded.
+// G(x) contains exactly the Nt temporal links between the two fixed surfaces.
 template <size_t Nc>
 SlabHolonomyField<Nc> SlabHolonomy(
     const typename DeviceGaugeFieldType<3, Nc>::type &gauge) {
@@ -137,7 +137,7 @@ SUN<Nc> boundary_wilson_at(const HostGauge &gauge, const index_t x,
 }
 
 template <size_t Nc, class HostGauge>
-real_t plaquette_at(const HostGauge &gauge, const IndexArray<3> &site,
+KOKKOS_INLINE_FUNCTION real_t plaquette_at(const HostGauge &gauge, const IndexArray<3> &site,
                     const index_t mu, const index_t nu,
                     const IndexArray<3> &dimensions) {
   auto site_plus_mu = site;
@@ -176,47 +176,74 @@ DirichletHolonomyMeasurement MeasureDirichletHolonomy(
   }
 
   const auto holonomy = SlabHolonomy<Nc>(gauge);
-  const auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                        holonomy);
   const real_t volume = static_cast<real_t>(nx) * static_cast<real_t>(ny);
 
-  complex_t mean_trace(0.0, 0.0);
-  for (index_t x = 0; x < nx; ++x) {
-    for (index_t y = 0; y < ny; ++y) {
-      mean_trace += trace(host(x, y));
-    }
-  }
-  mean_trace /= volume;
+  // SU(2): Re Tr(A B^dagger)/2 = sum_{a=0}^3 q_a(A) q_a(B),
+  // and Tr(A) Tr(B)^* = 4 q_0(A) q_0(B). Reduce on the device and transfer
+  // O(R_max) scalars, instead of copying the field for a serial O(Ns^3) loop.
+  // Hierarchical reduction follows Kokkos' Hierarchical_Parallelism tutorial.
+  using Team = Kokkos::TeamPolicy<>::member_type;
+  constexpr bool x_fast = std::is_same_v<
+      typename SlabHolonomyField<Nc>::array_layout, Kokkos::LayoutLeft>;
+  Kokkos::View<real_t *[2]> sums("slab_correlator_sums", max_r + 1);
+  Kokkos::parallel_for("slab_correlator",
+      Kokkos::TeamPolicy<>(2 * (max_r + 1), Kokkos::AUTO),
+      KOKKOS_LAMBDA(const Team &team) {
+        const index_t r = team.league_rank() / 2;
+        const index_t kind = team.league_rank() % 2;
+        real_t sum = 0.;
+        Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, nx * ny),
+            [&](const index_t i, real_t &value) {
+              const index_t x = x_fast ? i % nx : i / ny;
+              const index_t y = x_fast ? i / nx : i % ny;
+              const SU2 a = holonomy(x, y);
+              const SU2 b = holonomy((x + r) % nx, y);
+              const SU2 c = holonomy(x, (y + r) % ny);
+              if (kind == 0) {
+                for (index_t k = 0; k < 4; ++k)
+                  value += a.comp[k] * (b.comp[k] + c.comp[k]);
+              } else {
+                value += 4. * a.comp[0] * (b.comp[0] + c.comp[0]);
+              }
+            }, sum);
+        Kokkos::single(Kokkos::PerTeam(team), [&]() { sums(r, kind) = sum; });
+      });
+  // Four zero-momentum sums and 2 directions x 4 components x (cos,sin).
+  Kokkos::View<real_t *> modes("slab_fourier_modes", 20);
+  Kokkos::parallel_for("slab_fourier",
+      Kokkos::TeamPolicy<>(20, Kokkos::AUTO),
+      KOKKOS_LAMBDA(const Team &team) {
+        const index_t mode = team.league_rank();
+        const index_t component = mode < 4 ? mode : ((mode - 4) % 8) / 2;
+        const index_t direction = (mode - 4) / 8;
+        real_t sum = 0.;
+        Kokkos::parallel_reduce(Kokkos::TeamThreadRange(team, nx * ny),
+            [&](const index_t i, real_t &value) {
+              const index_t x = x_fast ? i % nx : i / ny;
+              const index_t y = x_fast ? i / nx : i % ny;
+              real_t factor = 1.;
+              if (mode >= 4) {
+                const real_t angle = 2. * Kokkos::numbers::pi_v<real_t> *
+                    (direction == 0 ? real_t(x) / nx : real_t(y) / ny);
+                factor = mode % 2 == 0 ? Kokkos::cos(angle) : Kokkos::sin(angle);
+              }
+              value += factor * holonomy(x, y).comp[component];
+            }, sum);
+        Kokkos::single(Kokkos::PerTeam(team), [&]() { modes(mode) = sum; });
+      });
+  const auto host_sums = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sums);
+  const auto host_modes = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), modes);
 
   DirichletHolonomyMeasurement result;
-  result.mean_trace_real = mean_trace.real();
-  result.mean_trace_imag = mean_trace.imag();
+  result.mean_trace_real = 2. * host_modes(0) / volume;
+  result.mean_trace_imag = 0.;
   result.correlator.reserve(static_cast<size_t>(max_r + 1));
   for (index_t separation = 0; separation <= max_r; ++separation) {
-    real_t single_sum = 0.0;
-    real_t double_sum = 0.0;
-    for (index_t x = 0; x < nx; ++x) {
-      for (index_t y = 0; y < ny; ++y) {
-        const SU2 origin = host(x, y);
-        const SU2 neighbor_x = host((x + separation) % nx, y);
-        const SU2 neighbor_y = host(x, (y + separation) % ny);
-        single_sum +=
-            dirichlet_observable_detail::normalized_pair<2>(origin,
-                                                             neighbor_x);
-        single_sum +=
-            dirichlet_observable_detail::normalized_pair<2>(origin,
-                                                             neighbor_y);
-        double_sum +=
-            dirichlet_observable_detail::legacy_pair<2>(origin, neighbor_x);
-        double_sum +=
-            dirichlet_observable_detail::legacy_pair<2>(origin, neighbor_y);
-      }
-    }
     const real_t normalization = 2.0 * volume;
     const real_t primary =
-        separation == 0 ? 1.0 : single_sum / normalization;
+        separation == 0 ? 1.0 : host_sums(separation, 0) / normalization;
     result.correlator.push_back(DirichletCorrelatorPoint{
-        separation, primary, double_sum / normalization,
+        separation, primary, host_sums(separation, 1) / normalization,
         std::numeric_limits<real_t>::quiet_NaN()});
   }
   for (size_t r = 0; r + 1 < result.correlator.size(); ++r) {
@@ -231,36 +258,17 @@ DirichletHolonomyMeasurement MeasureDirichletHolonomy(
   // the four real quaternion components. Its Fourier transform therefore has
   // the positive structure-factor representation used here.
   real_t zero = 0.0;
-  for (index_t component = 0; component < 4; ++component) {
-    real_t sum = 0.0;
-    for (index_t x = 0; x < nx; ++x) {
-      for (index_t y = 0; y < ny; ++y) {
-        sum += host(x, y).comp[component];
-      }
-    }
-    zero += sum * sum;
-  }
+  for (index_t component = 0; component < 4; ++component)
+    zero += host_modes(component) * host_modes(component);
   zero /= volume;
 
   real_t pmin_sum = 0.0;
-  const index_t extents[2] = {nx, ny};
   for (index_t direction = 0; direction < 2; ++direction) {
-    const real_t momentum =
-        2.0 * Kokkos::numbers::pi_v<real_t> /
-        static_cast<real_t>(extents[direction]);
     real_t direction_value = 0.0;
     for (index_t component = 0; component < 4; ++component) {
-      real_t real_sum = 0.0;
-      real_t imag_sum = 0.0;
-      for (index_t x = 0; x < nx; ++x) {
-        for (index_t y = 0; y < ny; ++y) {
-          const index_t coordinate = direction == 0 ? x : y;
-          const real_t angle = momentum * static_cast<real_t>(coordinate);
-          const real_t value = host(x, y).comp[component];
-          real_sum += std::cos(angle) * value;
-          imag_sum += std::sin(angle) * value;
-        }
-      }
+      const index_t mode = 4 + 8 * direction + 2 * component;
+      const real_t real_sum = host_modes(mode);
+      const real_t imag_sum = host_modes(mode + 1);
       direction_value += real_sum * real_sum + imag_sum * imag_sum;
     }
     pmin_sum += direction_value / volume;
@@ -281,8 +289,6 @@ DirichletHolonomyMeasurement MeasureDirichletHolonomy(
 template <size_t Nc>
 DirichletPlaquetteProfileMeasurement MeasureDirichletPlaquetteProfiles(
     const typename DeviceGaugeFieldType<3, Nc>::type &gauge) {
-  const auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                        gauge.field);
   const auto dimensions = gauge.dimensions;
   const index_t nx = dimensions[0];
   const index_t ny = dimensions[1];
@@ -295,28 +301,28 @@ DirichletPlaquetteProfileMeasurement MeasureDirichletPlaquetteProfiles(
   result.temporal.reserve(static_cast<size_t>(slab_thickness));
   for (index_t t = 0; t <= slab_thickness; ++t) {
     real_t sum = 0.0;
-    for (index_t x = 0; x < nx; ++x) {
-      for (index_t y = 0; y < ny; ++y) {
-        sum += dirichlet_observable_detail::plaquette_at<Nc>(
-            host, IndexArray<3>{x, y, t}, 0, 1, dimensions);
-      }
-    }
+    Kokkos::parallel_reduce("slab_spatial_profile",
+        Policy<2>(IndexArray<2>{}, IndexArray<2>{nx, ny}),
+        KOKKOS_LAMBDA(const index_t x, const index_t y, real_t &value) {
+          value += dirichlet_observable_detail::plaquette_at<Nc>(
+              gauge, IndexArray<3>{x, y, t}, 0, 1, dimensions);
+        }, sum);
     result.spatial.push_back(
         Kokkos::Array<real_t, 2>{static_cast<real_t>(t),
                                  sum / spatial_volume});
   }
   for (index_t t = 0; t < slab_thickness; ++t) {
     real_t sum = 0.0;
-    for (index_t x = 0; x < nx; ++x) {
-      for (index_t y = 0; y < ny; ++y) {
+    Kokkos::parallel_reduce("slab_temporal_profile",
+        Policy<2>(IndexArray<2>{}, IndexArray<2>{nx, ny}),
+        KOKKOS_LAMBDA(const index_t x, const index_t y, real_t &value) {
         for (index_t spatial_direction = 0; spatial_direction < 2;
              ++spatial_direction) {
-          sum += dirichlet_observable_detail::plaquette_at<Nc>(
-              host, IndexArray<3>{x, y, t}, spatial_direction,
+          value += dirichlet_observable_detail::plaquette_at<Nc>(
+              gauge, IndexArray<3>{x, y, t}, spatial_direction,
               temporal_direction<3>(), dimensions);
         }
-      }
-    }
+        }, sum);
     result.temporal.push_back(Kokkos::Array<real_t, 2>{
         static_cast<real_t>(t) + 0.5, sum / (2.0 * spatial_volume)});
   }
@@ -350,8 +356,7 @@ BoundaryWilsonLoopMeasurement MeasureBoundaryWilsonLoops(
     }
   }
 
-  const auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                        gauge.field);
+  const auto host = copy_gauge_to_host(gauge);
   const real_t volume = static_cast<real_t>(nx) * static_cast<real_t>(ny);
   std::vector<real_t> sums(
       heights.size() * static_cast<size_t>(max_r + 1), 0.0);
@@ -447,8 +452,7 @@ DirichletBulkPolyakovMeasurement MeasureDirichletBulkPolyakovCorrelator(
         "dirichlet_bulk_polyakov_max_r exceeds the slab thickness.");
   }
 
-  const auto host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                        gauge.field);
+  const auto host = copy_gauge_to_host(gauge);
   DirichletBulkPolyakovMeasurement result;
   for (index_t separation = thickness % 2; separation <= max_r;
        separation += 2) {

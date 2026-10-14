@@ -10,13 +10,13 @@ using CompiledGaugeField =
 template <size_t rank, size_t Nc>
 typename DeviceGaugeFieldType<rank, Nc>::type
 make_identity_gauge_field(const index_t L0, const index_t L1, const index_t L2,
-                          const index_t L3) {
+                          const index_t L3, const bool open_time = false) {
   if constexpr (rank == 4) {
     return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1, L2, L3,
                                                          identitySUN<Nc>());
   } else if constexpr (rank == 3) {
     return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1, L2,
-                                                         identitySUN<Nc>());
+                                                         identitySUN<Nc>(), open_time);
   } else {
     return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1,
                                                          identitySUN<Nc>());
@@ -29,11 +29,11 @@ make_identity_gauge_field(const index_t L0, const index_t L1, const index_t L2,
 template <size_t rank, size_t Nc, class RNG>
 typename DeviceGaugeFieldType<rank, Nc>::type
 make_hot_gauge_field(const index_t L0, const index_t L1, const index_t L2,
-                     const index_t L3, RNG &rng) {
+                     const index_t L3, RNG &rng, const bool open_time = false) {
   if constexpr (rank == 4) {
     return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1, L2, L3, rng);
   } else if constexpr (rank == 3) {
-    return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1, L2, rng);
+    return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1, L2, rng, open_time);
   } else {
     return typename DeviceGaugeFieldType<rank, Nc>::type(L0, L1, rng);
   }
