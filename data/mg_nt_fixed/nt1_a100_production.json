@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "campaign_type": "nt1_matched_beta",
+  "backend": "CUDA/AMPERE80",
+  "production_authorized": true,
+  "authorization": "User approved A100 Nt=1 production on 2026-10-14",
+  "source_manifest": "nt1_manifest.json",
+  "source_manifest_sha256": "0bd0baedbfee731080568edb396a1ee31a287c489f8550bdc4431ba69878cd01",
+  "source_metadata_policy": "Preserve original P100 planning metadata unchanged; execution_start/result record the actual A100 executable and this execution plan.",
+  "klft_commit": "f47421d895469b72d4af8a9b8479807f2b09a692",
+  "executable": "/qbigwork2/negro/dirichlet/build/klft-a100/binaries/heatbath",
+  "heatbath_sha256": "1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8",
+  "evidence_sha256": {
+    "open_slab_a100_build.txt": "9862acaade56856a9e816e9b215a137e603aa22818c9ab282ed08a2e9916b9b7",
+    "open_slab_a100_validation.txt": "0b5ec9ad937d5fd96db914185ddb25ba00ac59054fa2c4d105b00eb9b2a2b501",
+    "open_slab_a100_runs.json": "6a7fe32bae5c04d1c1a3e127cf2caa4aec668ffeb8b78183206d1204b93c595b"
+  },
+  "physical_Nt": 1,
+  "stored_L2": 2,
+  "sweeps": 8000,
+  "chains_per_beta": 4,
+  "measurement_interval": 1,
+  "dirichlet_suite_measurement_interval": 5,
+  "n_overrelax": 5,
+  "boundary_wilson_enabled": false,
+  "target_c": null,
+  "fixed_c_continuum_input": false,
+  "analysis_bootstrap_samples": 500,
+  "volume_status": "unvalidated",
+  "node": "lnode19",
+  "worker_time_limit_seconds": 7200,
+  "min_free_bytes": 12884901888,
+  "projected_total_gpu_hours": 3.859448832770189,
+  "workers": [
+    {
+      "index": 0,
+      "cpu": 32,
+      "gpu_uuid": "GPU-439f10b2-3f2f-c6d2-12cc-deca128ca0f2"
+    },
+    {
+      "index": 1,
+      "cpu": 33,
+      "gpu_uuid": "GPU-94eef473-cba0-0850-d8e5-dc5dafa2493a"
+    },
+    {
+      "index": 2,
+      "cpu": 34,
+      "gpu_uuid": "GPU-97c59efd-ea9e-94d9-7f18-1959e77798e4"
+    },
+    {
+      "index": 3,
+      "cpu": 35,
+      "gpu_uuid": "GPU-c0d18349-2a36-8733-e53b-ae2ab1e14209"
+    }
+  ],
+  "runs": [
+    {
+      "seed": 1606565234,
+      "chain_index": 0,
+      "Ns": 2048,
+      "beta_text": "2.989543168360997",
+      "reference_c": 0.5,
+      "input": "c_0p5/Nt_1/Ns_2048/beta_2p989543168360997/seed_1606565234/input.yaml",
+      "input_sha256": "fb3af61657e172d01c84a6f5b2058a6e8b8bd77b8556d59a0386c2b5e3038ef4",
+      "worker": 0
+    },
+    {
+      "seed": 586569993,
+      "chain_index": 1,
+      "Ns": 2048,
+      "beta_text": "2.989543168360997",
+      "reference_c": 0.5,
+      "input": "c_0p5/Nt_1/Ns_2048/beta_2p989543168360997/seed_586569993/input.yaml",
+      "input_sha256": "19ab7d70e795112281767364482e1dbbe4942a28ed6da6d56428b6992fd042eb",
+      "worker": 1
+    },
+    {
+      "seed": 1641392374,
+      "chain_index": 2,
+      "Ns": 2048,
+      "beta_text": "2.989543168360997",
+      "reference_c": 0.5,
+      "input": "c_0p5/Nt_1/Ns_2048/beta_2p989543168360997/seed_1641392374/input.yaml",
+      "input_sha256": "d836d01f2a47aa0128549e20fcf2b109b178de241ffa109289b9cc77d353b2ea",
+      "worker": 2
+    },
+    {
+      "seed": 1927164974,
+      "chain_index": 3,
+      "Ns": 2048,
+      "beta_text": "2.989543168360997",
+      "reference_c": 0.5,
+      "input": "c_0p5/Nt_1/Ns_2048/beta_2p989543168360997/seed_1927164974/input.yaml",
+      "input_sha256": "f6509b60b29e5f462295bfca7cc79eb2a9286e7d45007b3f6a17efc229eb0aa4",
+      "worker": 3
+    },
+    {
+      "seed": 696671852,
+      "chain_index": 0,
+      "Ns": 512,
+      "beta_text": "2.5044558261064154",
+      "reference_c": 1,
+      "input": "c_1/Nt_1/Ns_512/beta_2p5044558261064154/seed_696671852/input.yaml",
+      "input_sha256": "86b4a61c3380dbe23efae41ec929ec8cafbdaa3de21a71126d639e16b69ea8f3",
+      "worker": 0
+    },
+    {
+      "seed": 1410713389,
+      "chain_index": 1,
+      "Ns": 512,
+      "beta_text": "2.5044558261064154",
+      "reference_c": 1,
+      "input": "c_1/Nt_1/Ns_512/beta_2p5044558261064154/seed_1410713389/input.yaml",
+      "input_sha256": "d4def0fea4b24e2ce6e75a805400667f644f7e3f67e7cf9840d0a798c3f21a7d",
+      "worker": 1
+    },
+    {
+      "seed": 941163981,
+      "chain_index": 2,
+      "Ns": 512,
+      "beta_text": "2.5044558261064154",
+      "reference_c": 1,
+      "input": "c_1/Nt_1/Ns_512/beta_2p5044558261064154/seed_941163981/input.yaml",
+      "input_sha256": "f7fbc9256b4b6127e15eec5723cb7bcbe2b7382e6e09b9c40b9d06a6dff22641",
+      "worker": 2
+    },
+    {
+      "seed": 1741805734,
+      "chain_index": 3,
+      "Ns": 512,
+      "beta_text": "2.5044558261064154",
+      "reference_c": 1,
+      "input": "c_1/Nt_1/Ns_512/beta_2p5044558261064154/seed_1741805734/input.yaml",
+      "input_sha256": "bb0076cc7c6e0611efe041fc864f73d2a5f94ae96e8615e3d0685e17096e592b",
+      "worker": 3
+    },
+    {
+      "seed": 1178212110,
+      "chain_index": 0,
+      "Ns": 128,
+      "beta_text": "1.962386866460073",
+      "reference_c": 2,
+      "input": "c_2/Nt_1/Ns_128/beta_1p962386866460073/seed_1178212110/input.yaml",
+      "input_sha256": "9821660c67729bbfc8dcdc1c0211c8ccff6012c329873732863a2fcc473a215e",
+      "worker": 0
+    },
+    {
+      "seed": 821564244,
+      "chain_index": 1,
+      "Ns": 128,
+      "beta_text": "1.962386866460073",
+      "reference_c": 2,
+      "input": "c_2/Nt_1/Ns_128/beta_1p962386866460073/seed_821564244/input.yaml",
+      "input_sha256": "4d65dac6f3afcd3ae7c841d184c29e7f27a2bd15354202e8ed1c86f7bfab707a",
+      "worker": 1
+    },
+    {
+      "seed": 1405694367,
+      "chain_index": 2,
+      "Ns": 128,
+      "beta_text": "1.962386866460073",
+      "reference_c": 2,
+      "input": "c_2/Nt_1/Ns_128/beta_1p962386866460073/seed_1405694367/input.yaml",
+      "input_sha256": "23a206ebbd62ae0485e8d993032ef38bfc8d1f1ebe65d084fa01bacdab073ce2",
+      "worker": 2
+    },
+    {
+      "seed": 2113319249,
+      "chain_index": 3,
+      "Ns": 128,
+      "beta_text": "1.962386866460073",
+      "reference_c": 2,
+      "input": "c_2/Nt_1/Ns_128/beta_1p962386866460073/seed_2113319249/input.yaml",
+      "input_sha256": "8b4eaee3739473b0a35b863ed3fc5357bb93810aee05fd1b7b9414703ca72575",
+      "worker": 3
+    }
+  ]
+}
