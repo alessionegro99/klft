@@ -1,0 +1,30 @@
+{
+  "worker": 3,
+  "pid": 3196265,
+  "parent_pid": 3196247,
+  "node": "lnode19",
+  "gpu_uuid": "GPU-c0d18349-2a36-8733-e53b-ae2ab1e14209",
+  "cpu": 35,
+  "started_at": "2026-10-14T16:11:33.906924+00:00",
+  "manifest_sha256": "31b2ab1c5d9513e4effdcdd4063d9f5839b09305ff1b6e14900e89be562b292b",
+  "source_manifest_sha256": "0bd0baedbfee731080568edb396a1ee31a287c489f8550bdc4431ba69878cd01",
+  "klft_commit": "f47421d895469b72d4af8a9b8479807f2b09a692",
+  "heatbath_sha256": "1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8",
+  "backend": "CUDA/AMPERE80",
+  "evidence_sha256": {
+    "open_slab_a100_build.txt": "9862acaade56856a9e816e9b215a137e603aa22818c9ab282ed08a2e9916b9b7",
+    "open_slab_a100_validation.txt": "0b5ec9ad937d5fd96db914185ddb25ba00ac59054fa2c4d105b00eb9b2a2b501",
+    "open_slab_a100_runs.json": "6a7fe32bae5c04d1c1a3e127cf2caa4aec668ffeb8b78183206d1204b93c595b"
+  },
+  "runner_sha256": "4fcfb74ea7bccc1cfb62017e16cdeb13fa51f44fc7366cec91607ad486792878",
+  "output_checker_sha256": "62caae6cc25807f1dbf9490efea9a2c270d2457c67ca5decc70d5f22ab580ef9",
+  "timing_gate": {
+    "projected_total_gpu_hours": 3.859448832770189,
+    "largest_chain_gpu_hours": 0.9029706250462267
+  },
+  "seeds": [
+    2113319249,
+    1741805734,
+    1927164974
+  ]
+}
