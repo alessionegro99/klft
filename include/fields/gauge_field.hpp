@@ -245,22 +245,7 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField3D {
       : dimensions({L0, L1, L2}), open_time(open_time) {
     if (open_time) {
       allocate_slab();
-      const auto links = *this;
-      Kokkos::parallel_for("hot_open_slab",
-          Policy<3>(IndexArray<3>{}, dimensions),
-          KOKKOS_LAMBDA(const index_t x, const index_t y, const index_t t) {
-            auto generator = rng.get_state();
-            for (index_t mu = 0; mu < 2; ++mu) {
-              if (t == 0 || t == L2 - 1) {
-                links(x, y, t, mu) = identitySUN<Nc>();
-              } else {
-                rand_matrix(links(x, y, t, mu), generator);
-              }
-            }
-            if (t < L2 - 1) rand_matrix(links(x, y, t, 2), generator);
-            rng.free_state(generator);
-          });
-      Kokkos::fence();
+      initialize_slab_hot(rng);
     } else {
       do_init(L0, L1, L2, field, rng);
     }
@@ -345,6 +330,28 @@ template <size_t Nd, size_t Nc> struct deviceGaugeField3D {
                                 dimensions[1], dimensions[2]);
     temporal = Kokkos::View<SUN<Nc> ***>("slab_temporal", dimensions[0],
                                        dimensions[1], dimensions[2] - 1);
+  }
+
+  template <class RNG> void initialize_slab_hot(RNG &rng) {
+    // CUDA extended lambdas need an addressable enclosing function; a
+    // constructor cannot enclose this kernel (CUDA 11.5 compilation check).
+    const auto links = *this;
+    const index_t nt = dimensions[2] - 1;
+    Kokkos::parallel_for("hot_open_slab",
+        Policy<3>(IndexArray<3>{}, dimensions),
+        KOKKOS_LAMBDA(const index_t x, const index_t y, const index_t t) {
+          auto generator = rng.get_state();
+          for (index_t mu = 0; mu < 2; ++mu) {
+            if (t == 0 || t == nt) {
+              links(x, y, t, mu) = identitySUN<Nc>();
+            } else {
+              rand_matrix(links(x, y, t, mu), generator);
+            }
+          }
+          if (t < nt) rand_matrix(links(x, y, t, 2), generator);
+          rng.free_state(generator);
+        });
+    Kokkos::fence();
   }
 
   // define accessors for the field
