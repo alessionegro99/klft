@@ -1,0 +1,31 @@
+{
+  "purpose": "timing",
+  "chain_index": 0,
+  "campaign_type": "nt1_matched_beta",
+  "reference_c": 1.0,
+  "target_c": null,
+  "source_tuning_Nt": 2,
+  "fixed_c_continuum_input": false,
+  "physical_Nt": 1,
+  "stored_L2": 2,
+  "Ns": 512,
+  "beta": 2.5044558261064154,
+  "beta_text": "2.5044558261064154",
+  "seed": 1254285861,
+  "sweeps": 100,
+  "n_overrelax": 5,
+  "measurement_interval": 1,
+  "dirichlet_suite_measurement_interval": 5,
+  "boundary_wilson_enabled": false,
+  "ensemble": "c_1/Nt_1/Ns_512/beta_2p5044558261064154",
+  "input": "c_1/Nt_1/Ns_512/beta_2p5044558261064154/seed_1254285861/input.yaml",
+  "klft_commit": "f47421d895469b72d4af8a9b8479807f2b09a692",
+  "heatbath_sha256": "856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd",
+  "reference_tuning_flags": [
+    "between_chain_review",
+    "late_window_drift"
+  ],
+  "volume_status": "unvalidated",
+  "raw_path": "/qbigwork2/negro/dirichlet/data/mg_nt_fixed/c_1/Nt_1/Ns_512/beta_2p5044558261064154/seed_1254285861",
+  "input_sha256": "063f147b12de8355e01fde2391578114e6d13c6cf4f410fe2029a2f90c7e55d4"
+}

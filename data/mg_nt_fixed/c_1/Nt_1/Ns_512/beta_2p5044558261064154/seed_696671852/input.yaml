@@ -1,0 +1,33 @@
+# Nt=1 matched-beta diagnostic; source Nt=2 reference c=1.0.
+# The actual Nt=1 mG*Nt is to be measured; it is not fixed to reference_c.
+HeatbathParams:
+  L0: 512
+  L1: 512
+  L2: 2
+  L3: 1
+  nSweep: 8000
+  nOverrelax: 5
+  seed: 696671852
+  start: "hot"
+  temporal_dirichlet: true
+  beta: 2.5044558261064154
+  epsilon1: 0.0
+  epsilon2: 0.0
+  configuration_output: "configuration_final.klft"
+GaugeObservableParams:
+  measurement_interval: 1
+  dirichlet_suite_measurement_interval: 5
+  measure_plaquette: false
+  measure_dirichlet_holonomy: true
+  measure_dirichlet_plaquette_profiles: true
+  measure_boundary_wilson_loops: false
+  measure_dirichlet_bulk_polyakov: false
+  dirichlet_correlator_max_r: 0
+  dirichlet_holonomy_correlator_filename: "holonomy_correlator.out"
+  dirichlet_holonomy_summary_filename: "holonomy_summary.out"
+  dirichlet_plaquette_profile_filename: "plaquette_profile.out"
+  write_to_file: true
+GradientFlowParams:
+  enabled: false
+PartitioningParams:
+  enabled: false

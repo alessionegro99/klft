@@ -1,0 +1,26 @@
+klft_commit f47421d895469b72d4af8a9b8479807f2b09a692
+source_path /qbigwork2/negro/dirichlet/src/klft
+build_path /qbigwork2/negro/dirichlet/build/klft
+job_id 290994
+node lcpunode02
+cmake_options Release;-Wall -Wextra;KLFT_NDIM=3;KLFT_NC=2;CUDA=ON;CUDA_LAMBDA=ON;OpenMP=ON;PASCAL60=ON;statistical_tests=ON
+slab_boundary_flag 3
+cmake version 3.21.1
+c++ (GCC) 11.2.0
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2021 NVIDIA Corporation
+Built on Mon_Sep_13_19:13:29_PDT_2021
+Cuda compilation tools, release 11.5, V11.5.50
+Build cuda_11.5.r11.5/compiler.30411180_0
+ 6e357fa03b1e01454dd0fcac01f7af57e9db20c4 thirdparty/kokkos/kokkos (post-formating-10237-g6e357fa03)
+ 28f93bdec6387d42332220afa9558060c8016795 thirdparty/yaml-cpp (0.8.0-72-g28f93bd)
+heatbath_sha256 856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd
+cmake_cache_sha256 5253d68d1d814f4877f6a5ca239051c883b526cbd3545ae6de22ac5936b06895
+artifact_sha256 856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd  /qbigwork2/negro/dirichlet/build/klft/binaries/heatbath
+artifact_sha256 e1a0916c86f7ac4fa8f5d38c6061bd04259728d4a77beaa889be053cf8f81376  /qbigwork2/negro/dirichlet/build/klft/binaries/gradient_flow_check
+artifact_sha256 a6a4fb9f14790fac2fc746829fd4c4b4425c3e04c6f79a21963d4d512277dd9b  /qbigwork2/negro/dirichlet/build/klft/tests/partitioning_test
+artifact_sha256 17ad80b45ef4abe1152b6250e7417b32f9f5b5b2bd9959a9a34ec7133318f1f2  /qbigwork2/negro/dirichlet/build/klft/tests/dirichlet_test
+artifact_sha256 5dd500f75e7f043f5e5c50a8fceb3c0a163f12fcd3148793ae6a313d4d406a8b  /qbigwork2/negro/dirichlet/build/klft/tests/dirichlet_statistical_test
+artifact_sha256 c2360d86d44d68d64461d52c6838e1d396f83598ddbee93db752a4cc8f07a930  /qbigwork2/negro/dirichlet/build/klft/tests/orbifold_test
+artifact_sha256 2deaae18122fde8bf80aa3352a1a1c1e4de1b7bff5fb77dbdbeac29a68f7d8b7  /qbigwork2/negro/dirichlet/build/klft/tests/dirichlet_benchmark
+gpu_validation pending
