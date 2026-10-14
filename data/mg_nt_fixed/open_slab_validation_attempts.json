@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-14T17:36:28+02:00",
+  "klft_commit": "f47421d895469b72d4af8a9b8479807f2b09a692",
+  "build_directory": "/qbigwork2/negro/dirichlet/build/klft",
+  "heatbath_sha256": "856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd",
+  "build_record_sha256": "ee8749ae838939e7402eb8693a3ec82cf3b94773f79265de5f47238713c837ae",
+  "attempts": [
+    {
+      "job_id": 290995,
+      "state": "FAILED",
+      "exit_code": "8:0",
+      "node": "lnode17",
+      "started_at": "2026-10-14T17:13:22+02:00",
+      "ended_at": "2026-10-14T17:13:35+02:00",
+      "failure": "cudaErrorStubLibrary during initialization of all six CTest processes",
+      "cause": "Executable RUNPATH resolves libcuda.so.1 to /opt/eb/software/CUDA/11.5.0/lib/stubs",
+      "numerical_tests_reached": false,
+      "successful_validation_record_created": false,
+      "log": "/qbigwork2/negro/dirichlet/logs/dir-open-check-290995.out"
+    },
+    {
+      "job_id": 290996,
+      "state": "PENDING",
+      "reason": "Resources",
+      "submitted_at": "2026-10-14T17:36:10+02:00",
+      "resources": {"nodes": 1, "cpus": 1, "gres": "gpu:pascal:1", "memory_gb": 8, "time_limit_minutes": 45},
+      "dependencies": [],
+      "launcher_commit": "b314b01",
+      "launcher_sha256": "797d63c7920ce9f836e7244aaf3942bbb94607f7319f99325ebe7d9be23c6e77",
+      "log": "/qbigwork2/negro/dirichlet/logs/dir-open-check-290996.out"
+    }
+  ],
+  "runtime_correction": {
+    "method": "Prepend only the real libcuda.so.1 to LD_PRELOAD, preserving existing preloads and module library paths",
+    "driver_path": "/usr/lib/x86_64-linux-gnu/libcuda.so.1",
+    "verified_driver_target_on_lnode17": "/usr/lib/x86_64-linux-gnu/libcuda.so.495.29.05",
+    "loader_check": "ldd with the corrected LD_PRELOAD resolves the real driver and retains CUDA 11.5 libcudart",
+    "binary_rebuilt": false,
+    "validation_launcher_sha256": "797d63c7920ce9f836e7244aaf3942bbb94607f7319f99325ebe7d9be23c6e77",
+    "nt1_launcher_sha256": "beea2009183a7a649f8d721705c3daa294d398766c3b3980eee76e312c9ac96c",
+    "launcher_tests_passed": 5,
+    "nt1_input_execution_tests_passed": 19
+  },
+  "production_submitted": false
+}
