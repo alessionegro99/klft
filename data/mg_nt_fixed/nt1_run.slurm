@@ -1,0 +1,28 @@
+#!/bin/bash -l
+#SBATCH --job-name=dir-nt1
+#SBATCH --partition=batch
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --gres=gpu:pascal:1
+#SBATCH --mem=8G
+#SBATCH --time=02:00:00
+#SBATCH --output=/qbigwork2/negro/dirichlet/logs/dir-nt1-%A_%a.out
+
+set -euo pipefail
+: "${SLURM_JOB_ID:?Submit through Slurm}"
+: "${SLURM_CPUS_PER_TASK:?Missing CPU allocation}"
+case "${1:-}" in
+    smoke|timing|production) ;;
+    *) echo 'Specify smoke, timing or production; stages are submitted manually' >&2; exit 1 ;;
+esac
+source /hadron/negro/.env/klft_env.sh
+export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
+export OMP_PROC_BIND=close
+export OMP_PLACES=cores
+nvidia-smi --query-gpu=index,uuid,name,memory.used,utilization.gpu --format=csv
+nvidia-smi --query-compute-apps=gpu_uuid,pid,used_memory --format=csv
+cd /qbigwork2/negro/dirichlet/project
+/qbigwork2/negro/dirichlet/bin/uv run --frozen python \
+    /qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/mg_nt_fixed_nt1_run.py \
+    "$1" --index "${SLURM_ARRAY_TASK_ID:-0}"
