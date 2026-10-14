@@ -17,6 +17,10 @@ case "${1:-}" in
     *) echo 'Specify smoke, timing or production; stages are submitted manually' >&2; exit 1 ;;
 esac
 source /hadron/negro/.env/klft_env.sh
+# Override CUDA's build-time driver stub without changing other module libraries.
+dirichlet_driver=/usr/lib/x86_64-linux-gnu/libcuda.so.1
+[[ -r "${dirichlet_driver}" ]]
+export LD_PRELOAD="${dirichlet_driver}${LD_PRELOAD:+:${LD_PRELOAD}}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores

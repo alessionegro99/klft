@@ -48,6 +48,18 @@ class OpenSlabSubmissionTest(unittest.TestCase):
         self.assertIn("artifact_sha256", SCRIPTS[0].read_text())
         self.assertIn("sha256sum --check -", SCRIPTS[1].read_text())
 
+    def test_gpu_launchers_select_the_real_driver_without_system_library_override(self) -> None:
+        production = ROOT / "data/mg_nt_fixed/nt1_run.slurm"
+        for path in (SCRIPTS[1], production):
+            text = path.read_text()
+            subprocess.run(["bash", "-n", str(path)], check=True)
+            self.assertIn("dirichlet_driver=/usr/lib/x86_64-linux-gnu/libcuda.so.1", text)
+            self.assertIn('export LD_PRELOAD="${dirichlet_driver}${LD_PRELOAD:+:${LD_PRELOAD}}"', text)
+            self.assertLess(text.index("source /hadron/negro/.env/klft_env.sh"),
+                            text.index("export LD_PRELOAD="))
+            self.assertNotIn("export LD_LIBRARY_PATH=", text)
+        self.assertNotIn("LD_PRELOAD", SCRIPTS[0].read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

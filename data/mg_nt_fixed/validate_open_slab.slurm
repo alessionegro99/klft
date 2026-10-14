@@ -36,6 +36,12 @@ grep -Fxq "cmake_cache_sha256 ${cache_hash}" "${provenance}"
 awk '$1 == "artifact_sha256" {print $2 "  " $3}' "${provenance}" | sha256sum --check -
 
 source /hadron/negro/.env/klft_env.sh
+# The CPU-node build embeds CUDA's link-time stub directory in RUNPATH.
+# Select only the real driver; prepending all system libraries would also
+# override the GCC module's libstdc++ and OpenMP runtime.
+dirichlet_driver=/usr/lib/x86_64-linux-gnu/libcuda.so.1
+[[ -r "${dirichlet_driver}" ]]
+export LD_PRELOAD="${dirichlet_driver}${LD_PRELOAD:+:${LD_PRELOAD}}"
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 export OMP_PROC_BIND=close
 export OMP_PLACES=cores
@@ -57,6 +63,8 @@ set -o noclobber
 {
     printf 'klft_commit %s\nheatbath_sha256 %s\n' "${expected_commit}" "${binary_hash}"
     printf 'job_id %s\nnode %s\n' "${SLURM_JOB_ID}" "${SLURMD_NODENAME}"
+    printf 'cuda_driver %s\n' "$(readlink -f "${dirichlet_driver}")"
+    printf 'cuda_driver_sha256 %s\n' "$(sha256sum "${dirichlet_driver}" | cut -d ' ' -f 1)"
     printf 'ctest passed\ncuda_memcheck passed\nbenchmark passed\nproduction_timing pending\n'
 } > "${validation}"
 # No dependent jobs or production submissions are made here.
