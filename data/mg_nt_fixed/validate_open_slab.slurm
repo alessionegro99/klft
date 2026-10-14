@@ -23,7 +23,7 @@ build_dir="${remote_root}/build/klft"
 records="${remote_root}/campaigns/mg_nt_fixed"
 provenance="${records}/open_slab_build.txt"
 validation="${records}/open_slab_validation.txt"
-expected_commit=c78efbd1ed6c60fc809db54ac9309fa532854982
+expected_commit=f47421d895469b72d4af8a9b8479807f2b09a692
 
 [[ "$(git -C "${source_dir}" rev-parse HEAD)" == "${expected_commit}" ]]
 [[ -z "$(git -C "${source_dir}" status --porcelain --ignore-submodules=none)" ]]
@@ -42,6 +42,8 @@ export OMP_PLACES=cores
 nvidia-smi --query-gpu=index,uuid,name,memory.used,utilization.gpu --format=csv
 nvidia-smi --query-compute-apps=gpu_uuid,pid,used_memory --format=csv
 ctest --test-dir "${build_dir}" --output-on-failure
+compute-sanitizer --tool memcheck --error-exitcode 99 \
+    "${build_dir}/tests/dirichlet_test" "${source_dir}/partitionings/linear_m3.yaml"
 
 # Diagnostic scaling only: the benchmark uses two overrelaxations. Production
 # inputs must separately time 100 sweeps with FIVE overrelaxations, holonomy
@@ -55,6 +57,6 @@ set -o noclobber
 {
     printf 'klft_commit %s\nheatbath_sha256 %s\n' "${expected_commit}" "${binary_hash}"
     printf 'job_id %s\nnode %s\n' "${SLURM_JOB_ID}" "${SLURMD_NODENAME}"
-    printf 'ctest passed\nbenchmark passed\nproduction_timing pending\n'
+    printf 'ctest passed\ncuda_memcheck passed\nbenchmark passed\nproduction_timing pending\n'
 } > "${validation}"
 # No dependent jobs or production submissions are made here.

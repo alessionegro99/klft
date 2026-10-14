@@ -43,7 +43,7 @@ class OpenSlabSubmissionTest(unittest.TestCase):
         commits = [re.search(r"^expected_commit=([0-9a-f]{40})$",
                              path.read_text(), re.MULTILINE).group(1)
                    for path in SCRIPTS]
-        self.assertEqual(commits, ["c78efbd1ed6c60fc809db54ac9309fa532854982"] * 2)
+        self.assertEqual(commits, ["f47421d895469b72d4af8a9b8479807f2b09a692"] * 2)
         self.assertIn("production_timing pending", SCRIPTS[1].read_text())
         self.assertIn("artifact_sha256", SCRIPTS[0].read_text())
         self.assertIn("sha256sum --check -", SCRIPTS[1].read_text())

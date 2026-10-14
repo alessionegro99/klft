@@ -18,7 +18,7 @@ source_dir="${remote_root}/src/klft"
 build_dir="${remote_root}/build/klft"
 records="${remote_root}/campaigns/mg_nt_fixed"
 provenance="${records}/open_slab_build.txt"
-expected_commit=c78efbd1ed6c60fc809db54ac9309fa532854982
+expected_commit=f47421d895469b72d4af8a9b8479807f2b09a692
 
 [[ "$(git -C "${source_dir}" rev-parse HEAD)" == "${expected_commit}" ]]
 [[ -z "$(git -C "${source_dir}" status --porcelain --ignore-submodules=none)" ]]
@@ -71,6 +71,7 @@ set -o noclobber
     printf 'job_id %s\nnode %s\n' "${SLURM_JOB_ID}" "${SLURMD_NODENAME}"
     printf 'cmake_options %s\n' \
         'Release;-Wall -Wextra;KLFT_NDIM=3;KLFT_NC=2;CUDA=ON;CUDA_LAMBDA=ON;OpenMP=ON;PASCAL60=ON;statistical_tests=ON'
+    printf 'slab_boundary_flag 3\n'
     cmake --version | sed -n '1p'
     "${host_cxx}" --version | sed -n '1p'
     nvcc --version
