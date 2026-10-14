@@ -19,7 +19,16 @@ Run KLFT's Python partitioning check with `cd klft && uv run python tools/test_g
 
 ## Coding Style & Naming Conventions
 
-Use four spaces in Python, `snake_case` for files and functions, and `PascalCase` for classes. Add type hints to public signatures and NumPy-style docstrings. Use `numpy.float64` by default and `np.random.default_rng(seed)` for stochastic work. Keep reusable functions separate from plotting or exploratory scripts. Name production ensembles `data/Nt_<thickness>_Ns_<size>_b_<beta>/seed_<seed>/`, replacing the decimal point in beta by `p`, for example `data/Nt_2_Ns_64_b_12p15266/seed_12001/`. Here `Nt` is the physical number of temporal links between the Dirichlet surfaces; the current periodic-wrapper KLFT input therefore has temporal site extent `Nt + 1`.
+Use four spaces in Python, `snake_case` for files and functions, and `PascalCase` for classes. Add type hints to public signatures and NumPy-style docstrings. Use `numpy.float64` by default and `np.random.default_rng(seed)` for stochastic work. Keep reusable functions separate from plotting or exploratory scripts. Name production ensembles `data/Nt_<thickness>_Ns_<size>_b_<beta>/seed_<seed>/`, replacing the decimal point in beta by `p`, for example `data/Nt_2_Ns_64_b_12p15266/seed_12001/`. Here `Nt` is the physical number of temporal links between the Dirichlet surfaces; the KLFT input specifies temporal site extent `L2 = Nt + 1`.
+
+Current KLFT Dirichlet fields use open storage: `Nt+1` spatial-link slices and
+`Nt` temporal-link layers. No closing temporal layer is allocated or evolved.
+Preserve historical executable/input provenance: older aggregate plaquettes
+included the independent wrapping sector. Open-slab restart files use boundary
+flag 3 and require explicit conversion of older rectangular checkpoints.
+`Nt` continues to count links, with `L2=Nt+1` slices. The periodic-clover flow
+measurements are unavailable in the Dirichlet drivers; the boundary-preserving
+flow kernel remains tested separately.
 
 ## Plotting and Fitting
 

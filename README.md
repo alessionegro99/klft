@@ -24,8 +24,8 @@ observables are unchanged.
 
 ## Geometry and action convention
 
-KLFT retains its periodic neighbor tables. For physical slab thickness `Nt`,
-the stored temporal extent is
+KLFT's Dirichlet fields use an open temporal geometry. For physical slab
+thickness `Nt`, the temporal site extent is
 
 ```text
 temporal_site_extent = L2 = Nt + 1
@@ -33,23 +33,29 @@ lower_boundary_slice = 0
 upper_boundary_slice = Nt
 ```
 
-Spatial links `U_0` and `U_1` (KLFT directions 0 and 1) at stored slices 0 and
-`Nt` are exactly the identity. Temporal links `U_2` are all dynamical,
-including those starting on either boundary. The links `U_2(x,t)` for
-`0 <= t < Nt` form the physical slab. `U_2(x,Nt)` wraps from the upper surface
-to the lower surface and is not part of the slab holonomy.
+`Nt` counts **physical temporal links**. There are `Nt+1` time slices,
+including both fixed surfaces, and `Nt-1` interior slices. For example,
+`Nt=4` has slices `0,1,2,3,4` and four links joining them.
 
-Because both tangential endpoint layers are fixed, the periodic Wilson action
-factorizes exactly into the physical slab action and a separate two-dimensional
-PCM made from the wrapping links. It introduces no coupling back into the slab.
-The deterministic test checks this identity configuration by configuration.
-This is the frozen-slice construction used in Sec. 4.1 of Marco Nebbia,
-*Effects of Dirichlet Boundary Conditions in Yang-Mills Theories* (MSc thesis,
-University of Turin, 2024/2025). It avoids a broad geometry rewrite while
-making the extra sector explicit.
+Spatial links `U_0` and `U_1` (KLFT directions 0 and 1) at slices 0 and `Nt`
+are exactly the identity. Physical temporal links `U_2(x,t)`, `0 <= t < Nt`,
+remain dynamical. Spatial links occupy `Nt+1` slices and temporal links occupy
+`Nt` layers. There is no closing temporal link at `t=Nt`. Immutable campaign
+inputs retain their meaning: `L2=Nt+1`.
 
-Odd stored temporal extents are safe because the wrapping-neighbor tangential
-links are fixed and temporal links at adjacent `t` do not share a plaquette.
+The historical implementation evolved the unused wrapping links. With both
+tangential endpoint layers fixed, their Wilson plaquettes form an independent
+two-dimensional PCM. Integrating out that factor leaves the same physical
+slab distribution. Removing those links therefore preserves the slab action,
+holonomy correlators, profiles and boundary loops; fixed-seed trajectories can
+change because the random-number consumption changes. The deterministic
+checks compare arbitrary legacy wrapping links with genuinely open storage,
+including every physical-link staple. The physical boundary construction is
+described in Sec. 4.1 of Marco Nebbia, *Effects of Dirichlet Boundary Conditions
+in Yang-Mills Theories* (MSc thesis, University of Turin, 2024/2025).
+
+Odd temporal site extents are safe because time is open and temporal links at
+adjacent `t` do not share a plaquette.
 Odd periodic spatial extents use three independent colors; even lattices keep
 the original two-color update order. This permits the thesis quality geometry
 with a spatial extent of 9.
@@ -59,13 +65,19 @@ with a spatial extent of 9.
 Cold, hot, near-identity random, partitioned, and driver restart paths enforce
 or validate the fixed links. Metropolis, partitioned Metropolis, SU(2)
 heatbath, overrelaxation, reunitarization, and RK3 gradient flow skip or restore
-them exactly. No temporal link is frozen.
+them exactly. All physical temporal links remain dynamical. Periodic
+Wilson/Polyakov/link measurements and the driver's periodic-clover flow
+measurements are rejected in Dirichlet mode. The boundary-preserving RK3
+flow kernel is validated independently.
 
 `configuration_output` writes a versioned binary float64 configuration after a
 successful run. Use `start: "restart"` with `configuration_input` to read it.
 The reader validates dimensions, group, finiteness, unitarity, and exact
-Dirichlet links and fails rather than repairing an invalid boundary. The file
-is native-endian and intended for restart with the same architecture.
+fixed links before changing the target field. New open-slab configurations
+carry boundary flag 3 and store physical links only. Older rectangular files
+require an explicit conversion and are refused by the open-slab driver. Periodic
+checkpoints retain their existing format. The file is native-endian and
+intended for restart with the same architecture.
 
 ## Observables and normalization
 
@@ -110,9 +122,12 @@ plaquette on every stored slice, including the explicitly inspectable fixed
 boundary values. Kind 1 averages the two physical temporal planes at
 half-integer coordinates and excludes the wrapping sector.
 
-The pre-existing aggregate plaquette observables still describe the complete
-periodic storage, including the factorized wrapping PCM. Use the dedicated
-slice profiles for physical-slab plaquettes.
+Current aggregate plaquettes describe the physical slab: spatial averages use
+`Nt+1` layers including the fixed surfaces, temporal averages use `Nt` layers,
+and their total is weighted by the corresponding plaquette counts.
+Historical outputs from the old executable included the auxiliary sector in
+these aggregate observables; their values must retain that recorded convention.
+The dedicated slice profiles and all existing mass-analysis inputs are unchanged.
 
 Boundary loops contain normalized `(1/2) Re Tr W_b(R,H)`. The lower horizontal
 side is at `t=0`; either all `1 <= H <= Nt` or only `H=1,Nt` are written. The
@@ -134,9 +149,10 @@ S_YM,slab - S_fixed_spatial
   = S_PCM.
 ```
 
-The standalone slab, wrapping-sector, periodic, and PCM action evaluators are
-test utilities. Random configurations and several sizes are compared to
-machine precision; no Monte Carlo average enters this test.
+The standalone slab, periodic, and PCM action evaluators are test utilities.
+Random configurations and several sizes are compared to machine precision;
+no Monte Carlo average enters this test. `Nt=1` is the physical one-link slab
+and remains available.
 
 ## Build and tests
 
