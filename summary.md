@@ -18,6 +18,15 @@ gate. The canonical report is
 
 ## Local removal of the auxiliary wrapping sector
 
+The user subsequently approved twelve Nt=1 production chains on A100s. Four
+lnode19 workers started at 18:11:32 CEST on 14 October, each with one GPU,
+one CPU and a two-hour bound. At 18:13:48, the eight Ns=128/512 chains had
+completed and passed all output/checkpoint checks; four Ns=2048 chains were
+running. They reuse the original unused inputs at the three exact Nt=2 tuned
+beta values, with explicit A100 execution provenance. See the current
+[dispatch record](running_simulations.md#nt1-matched-beta-production--eight-complete-four-running-on-a100).
+No Nt=1 mass or fixed-c continuum point is inferred from the short tests.
+
 An additional user-authorized native A100 test completed successfully on
 lnode19 GPU 3 (manager PID `3180516`, exit 0), using the separate
 `build/klft-a100` directory, CUDA 12.6/GCC 13.3 and AMPERE80. All six GPU CTests
@@ -119,7 +128,9 @@ generator has seven passing tests covering exact tuned couplings, physical
 geometry, cadences, seeds and overwrite refusal. Both Slurm scripts
 are transferred. Production timing must use the established five
 overrelaxations per heatbath sweep; the two-overrelaxation benchmark above is
-only diagnostic. The project repository has no configured Git remote.
+only diagnostic. The project repository now uses the same GitHub remote as
+KLFT, with the user-approved independent branch `dirichlet-campaign`.
+Simulation changes remain on `orbifold`; `master` is unchanged.
 
 Project commit `08a41e4` adds a guarded Nt=1 launcher with twelve passing
 execution-check tests; `87b91f8` records the sixteen immutable smoke, timing

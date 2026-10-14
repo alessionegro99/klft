@@ -1,5 +1,58 @@
 # Running simulations
 
+## Nt=1 matched-beta production — eight complete, four running on A100
+
+The user approved A100 production after the native smoke/timing checks. The
+execution plan is [nt1_a100_production.json](data/mg_nt_fixed/nt1_a100_production.json).
+It reuses the twelve unused 8,000-sweep inputs and independent seeds from
+`nt1_manifest.json`; original P100 planning metadata is retained unchanged.
+The actual A100 executable, execution-plan hash, worker PID and GPU UUID are
+recorded in each seed directory's `execution_start.json` and `execution_result.json`.
+
+Four direct workers on lnode19 use GPUs 3--6 and CPU cores 32--35, respectively.
+Fresh preflight found those GPUs idle; other projects on GPUs 0--2 are left
+untouched. Each worker runs its three chains in increasing Ns order, with a
+two-hour whole-worker timeout, an exclusive worker lock, per-run overwrite
+refusal and a 12-GiB free-disk reserve. All 36 launcher/input tests pass.
+There is no Slurm submission or automatic analysis for this A100 execution.
+
+| Reference c at Nt=2 | Exact beta | Nt=1 Ns | Production seeds (workers 0, 1, 2, 3) |
+| ---: | ---: | ---: | --- |
+| 2 | 1.962386866460073 | 128 | 1178212110, 821564244, 1405694367, 2113319249 |
+| 1 | 2.5044558261064154 | 512 | 696671852, 1410713389, 941163981, 1741805734 |
+| 0.5 | 2.989543168360997 | 2048 | 1606565234, 586569993, 1641392374, 1927164974 |
+
+All runs use Nt=1 temporal link, L2=2 slices, hot starts, five overrelaxations,
+holonomy cadence 1, profile cadence 5 and no Wilson measurements. Actual Nt=1
+masses and volume adequacy remain to be measured; `target_c` is null and these
+inputs are excluded from fixed-c continuum fits. Raw paths retain the canonical
+`data/mg_nt_fixed/c_<reference_c>/Nt_1/Ns_<Ns>/beta_<beta>/seed_<seed>/` tree.
+
+The native binary is the validated `build/klft-a100/binaries/heatbath`, KLFT
+`f47421d895469b72d4af8a9b8479807f2b09a692`, SHA256
+`1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8`.
+The total timing projection is 3.859 A100 GPU-hours, largest chain 54.18 min.
+Launcher: `campaigns/mg_nt_fixed/run_nt1_a100.sh <worker>`; worker logs:
+`logs/dir-nt1-a100-worker-<worker>.out`.
+
+Launched at 18:11:32 CEST on 14 October. Timeout-manager PIDs for workers
+0--3 are `3196198`, `3196199`, `3196200`, `3196201`; the Python worker PIDs
+and exact start times are in `data/mg_nt_fixed/nt1_a100_worker_<worker>_start.json`.
+Inspected live at 18:12:40 after more than one minute. At 18:13:48, all eight
+Ns=128/512 chains had completed 8,000 sweeps and passed the complete-output,
+cadence, C_G(0), exact-boundary and checkpoint-unitarity checks. Process times
+were 30.67--31.27 s (Ns=128) and 77.12--78.82 s (Ns=512). All four Ns=2048
+chains were running, with 61--68 measurements already written. No failure or
+restart occurred; no mass analysis has been performed. Raw histories remain
+on qbig; only compact execution records are synchronized.
+
+Production code commit: `45b4fe1`; execution-plan commit: `c1f28a2`. The plan
+SHA256 is `31b2ab1c5d9513e4effdcdd4063d9f5839b09305ff1b6e14900e89be562b292b`.
+The separate campaign Git branch is `dirichlet-campaign` in
+`git@github.com:alessionegro99/klft.git`; simulation source remains on
+`orbifold`. Existing unrelated uncommitted campaign work remains local.
+P100 validation `290996` remains queued independently and submits no production.
+
 ## A100 open-slab test — completed successfully
 
 The user authorized a direct-node test on lnode18/19. At preflight, lnode18
@@ -58,8 +111,8 @@ Native heatbath SHA256:
 Compact [build](data/mg_nt_fixed/open_slab_a100_build.txt),
 [validation](data/mg_nt_fixed/open_slab_a100_validation.txt) and
 [run/timing records](data/mg_nt_fixed/open_slab_a100_runs.json) are local;
-raw histories remain on qbig. The P100 binary checksum is unchanged. A100
-production requires approval beyond this bounded test.
+raw histories remain on qbig. The P100 binary checksum is unchanged. Subsequent
+production approval and execution are recorded in the section above.
 
 ## Open Dirichlet geometry and Nt=1 matched-beta runs — P100 validation retry queued
 
@@ -140,8 +193,9 @@ jobs. GPU validation includes CUDA memory checking. The diagnostic benchmark
 uses two overrelaxations; a separate
 100-sweep measurement-enabled timing run with the production value of five
 is still required. Both scripts are transferred and submitted manually.
-This project repository has no Git remote configured; the KLFT
-commit is pushed.
+The KLFT commit is pushed on `origin/orbifold`. The user subsequently approved
+publishing this independent project history to the same remote on the separate
+`dirichlet-campaign` branch, preserving `master` and `orbifold`.
 
 The committed `scripts/mg_nt_fixed_nt1_inputs.py` has seven passing tests.
 It generates one smoke input, three timing inputs and twelve production
