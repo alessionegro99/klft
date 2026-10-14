@@ -9,8 +9,8 @@ occupancy recheck before each GPU stage. Its separate native 3D SU(2) build
 is `/qbigwork2/negro/dirichlet/build/klft-a100`, from pushed revision
 `f47421d895469b72d4af8a9b8479807f2b09a692`, CUDA 12.6/GCC 13.3 and AMPERE80.
 The established environment order is `setup_qbig3.sh`, then
-`load_modules_qbig3.sh`. The P100 build and queued validation `290995` remain
-unchanged.
+`load_modules_qbig3.sh`. The P100 binary is unchanged; its separate validation
+failed during driver loading and was resubmitted as `290996`, as recorded below.
 
 Scope: all six CTests, CUDA memory checking, one eight-sweep Nt=1 smoke test
 (Ns=4, seed 1468374202), then 100 sweeps at each exact matched beta, increasing
@@ -61,7 +61,7 @@ Compact [build](data/mg_nt_fixed/open_slab_a100_build.txt),
 raw histories remain on qbig. The P100 binary checksum is unchanged. A100
 production requires approval beyond this bounded test.
 
-## Open Dirichlet geometry and Nt=1 matched-beta runs — P100 validation queued
+## Open Dirichlet geometry and Nt=1 matched-beta runs — P100 validation retry queued
 
 KLFT `f47421d895469b72d4af8a9b8479807f2b09a692` is committed and pushed to
 `origin/orbifold`. It uses open storage with no closing temporal layer
@@ -78,7 +78,8 @@ plan is four independent 8,000-sweep hot chains per beta, five overrelaxations
 per heatbath sweep, holonomy every sweep, profiles every five sweeps and
 Wilson loops disabled. The provisional spatial sizes are respectively 2048,
 512 and 128. They require timing and a subsequent finite-volume assessment.
-The immutable inputs are prepared; no Nt=1 simulation has started.
+The immutable production inputs are prepared; no production chain has started.
+The four short A100 tests above are complete.
 
 After the goal was resumed, the committed source was transferred with the
 permission-gated SSH route. The verified Git bundle checksum is
@@ -106,21 +107,32 @@ SHA256. No raw history was moved or changed.
   [Build provenance](data/mg_nt_fixed/open_slab_build.txt) SHA256:
   `ee8749ae838939e7402eb8693a3ec82cf3b94773f79265de5f47238713c837ae`.
   Log: `/qbigwork2/negro/dirichlet/logs/dir-open-build-290994.out`.
-- P100 validation `290995`: PENDING (Resources), one typed Pascal GPU,
-  one CPU, 8 GB, 45-minute limit, no dependencies. All P100-node CPUs are
-  allocated to other jobs; Slurm forbids oversubscription. Its current start
-  estimate is 2026-10-17 21:39 CEST and can change. Preflight GPU queries on
-  lnode13/14/15/17 showed no compute processes. The lnode16 query failed host-key
-  verification; no trust setting was changed. GPU occupancy is queried again
-  within the validation allocation.
+- P100 validation `290995`: FAILED, exit 8, on `lnode17`, 17:13:22--17:13:35
+  CEST on 14 October. All six test processes failed during CUDA initialization
+  with `cudaErrorStubLibrary`, before numerical validation. The CPU build's
+  RUNPATH selected `/opt/eb/software/CUDA/11.5.0/lib/stubs/libcuda.so.1`.
+  No successful-validation record or simulation history was produced.
   Log: `/qbigwork2/negro/dirichlet/logs/dir-open-check-290995.out`.
-- Nt=1 smoke, timing and production: not submitted. GPU correctness tests
+- Runtime correction `b314b01` explicitly preloads the installed driver
+  `/usr/lib/x86_64-linux-gnu/libcuda.so.1` in both P100 GPU launchers. A read-only
+  loader check on `lnode17` resolves the real driver while retaining the module
+  CUDA/GCC libraries. The binary and build provenance are unchanged. Five
+  launcher safeguards and nineteen Nt=1 input/execution tests pass.
+- P100 validation retry `290996`: submitted at 17:36:10 CEST on 14 October;
+  PENDING (Resources) at 17:36:28. It requests one typed Pascal GPU, one CPU,
+  8 GB and 45 minutes, with no dependencies or follow-up submissions. All
+  P100-node CPUs are currently allocated. GPU occupancy is checked again
+  inside the allocation. The corrected script's local/remote SHA256 is
+  `797d63c7920ce9f836e7244aaf3942bbb94607f7319f99325ebe7d9be23c6e77`.
+  Log: `/qbigwork2/negro/dirichlet/logs/dir-open-check-290996.out`.
+  [Attempt record](data/mg_nt_fixed/open_slab_validation_attempts.json).
+- P100 Nt=1 smoke, timing and production: not submitted. Its GPU validation
   and production-cadence timing must pass first. Recheck free space before
-  production: qbigwork2 had 42 GB free at this preflight.
+  production; the post-A100 check found about 41 GB free on qbigwork2.
 
 The manually staged [CPU build](data/mg_nt_fixed/build_open_slab.slurm) and
 [P100 validation](data/mg_nt_fixed/validate_open_slab.slurm) scripts are
-committed locally as `8c06326`, updated by `4f92581`, with four passing
+committed locally as `8c06326`, updated by `4f92581` and `b314b01`, with five passing
 safeguard tests. They bind
 the pushed KLFT revision, verify executable/test hashes, preserve existing
 build provenance and refuse execution outside Slurm. They submit no other
@@ -137,7 +149,8 @@ inputs only after a P100 executable checksum is available. The seed inventory
 (`06338d1`) covers 276 qbig input files and 256 distinct seeds. New seeds are
 distinct positive int32 values from master seed 20260724. All sixteen inputs
 are committed as `87b91f8` and transferred, with a clean checksum-based rsync
-verification. The remote input count is now 292. The four pre-existing reused
+verification. That transfer brought the input count to 292; the separate A100
+test added four more inputs. The four pre-existing reused
 seeds (32091, 90517, 177013, 515029) are unchanged; all sixteen new seeds occur
 once. [Nt=1 manifest](data/mg_nt_fixed/nt1_manifest.json) SHA256:
 `0bd0baedbfee731080568edb396a1ee31a287c489f8550bdc4431ba69878cd01`.

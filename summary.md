@@ -28,8 +28,9 @@ GPU-hours for twelve 8,000-sweep chains (54.18 minutes for the largest chain).
 These short hot starts establish execution integrity and timing only; masses,
 thermalization and finite-volume effects remain unmeasured. Compact results
 are saved in [open_slab_a100_runs.json](data/mg_nt_fixed/open_slab_a100_runs.json).
-No production was launched. The P100 executable and queued validation remain
-unchanged; see [the execution record](running_simulations.md).
+No production was launched. The P100 executable is unchanged; its driver-loading
+failure and validation retry are recorded below and in the
+[execution record](running_simulations.md).
 
 KLFT commits `c78efbd1ed6c60fc809db54ac9309fa532854982` (open storage) and
 `f47421d895469b72d4af8a9b8479807f2b09a692` (CUDA 11.5 compatibility) are
@@ -99,14 +100,21 @@ inside a constructor. The same kernel now resides in an ordinary helper;
 corrected build `290994` completed with exit 0 in 4m24s on `lcpunode02`.
 The sole active P100 build's heatbath SHA256 is
 `856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd`.
-GPU validation `290995` is queued (Resources); its six CTests, CUDA memory
-check and timing diagnostics have not run. All P100-node CPUs are allocated
-to other jobs, with `OverSubscribe=NO`. Slurm currently estimates a start on
-17 October; that estimate can change. No Nt=1 simulation is submitted.
+GPU validation `290995` failed on `lnode17` in 13 seconds with
+`cudaErrorStubLibrary`: the executable's RUNPATH resolved CUDA's link-time
+driver stub. All six processes stopped during CUDA initialization, before
+numerical validation. Project commit `b314b01` makes both P100 GPU launchers
+preload only the installed driver, preserving the module CUDA/GCC libraries;
+a read-only loader check confirms that resolution. The unchanged binary is
+awaiting validation retry `290996`, PENDING (Resources) at 17:36:28 CEST on
+14 October. No P100 Nt=1 smoke, timing or production job has been submitted.
+The [attempt record](data/mg_nt_fixed/open_slab_validation_attempts.json)
+preserves the failure and corrected-script hashes.
 
 Local project commits `8c06326` and `4f92581` add the manual CPU-build and P100-validation
-submission scripts, with four passing tests for syntax, Slurm-only execution,
-resource requests, immutable provenance and revision binding. The Nt=1 input
+submission scripts; with the `b314b01` runtime correction, five tests pass for
+syntax, Slurm-only execution, resource requests, immutable provenance,
+revision binding and real-driver selection. The Nt=1 input
 generator has seven passing tests covering exact tuned couplings, physical
 geometry, cadences, seeds and overwrite refusal. Both Slurm scripts
 are transferred. Production timing must use the established five
