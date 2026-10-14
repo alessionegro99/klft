@@ -1,5 +1,97 @@
 # Running simulations
 
+## Open Dirichlet geometry and Nt=1 matched-beta runs — P100 validation queued
+
+KLFT `f47421d895469b72d4af8a9b8479807f2b09a692` is committed and pushed to
+`origin/orbifold`. It uses open storage with no closing temporal layer
+(introduced by `c78efbd`), with a CUDA 11.5 initialization compatibility fix.
+Six CTests, five sanitizer CTests, project analysis tests and a small
+driver/restart smoke test pass; see the
+[validation and audit](summary.md#local-removal-of-the-auxiliary-wrapping-sector).
+
+Planned diagnostic simulations use `Nt=1` at the current `Nt=2` tuned medians:
+beta 2.989543168360997, 2.5044558261064154 and 1.962386866460073, associated
+with reference c values 0.5, 1 and 2. Their actual `mG Nt` values are to be
+measured; they must not be inserted as fixed-c continuum points. The working
+plan is four independent 8,000-sweep hot chains per beta, five overrelaxations
+per heatbath sweep, holonomy every sweep, profiles every five sweeps and
+Wilson loops disabled. The provisional spatial sizes are respectively 2048,
+512 and 128. They require timing and a subsequent finite-volume assessment.
+The immutable inputs are prepared; no Nt=1 simulation has started.
+
+After the goal was resumed, the committed source was transferred with the
+permission-gated SSH route. The verified Git bundle checksum is
+`a3ed2c98d90890e8636a5e0acd1e7faddd2ef2b45a490c73eb1e77a95837ce24`
+for `klft-f47421d.bundle`.
+The clean checkout is `/qbigwork2/negro/dirichlet/src/klft`, with pinned Kokkos
+`6e357fa03b1e01454dd0fcac01f7af57e9db20c4` and yaml-cpp
+`28f93bdec6387d42332220afa9558060c8016795`. The older modified checkout
+`/hadron/negro/src/klft` remains untouched. Its P100 build was moved intact to
+`/qbigwork2/negro/dirichlet/archive/klft_builds/41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57/`,
+including a saved source diff. Its heatbath executable retains the directory's
+SHA256. No raw history was moved or changed.
+
+- Build job `290993`: FAILED with exit 2 after 2m04s on `lcpunode02`, four
+  CPUs, 8 GB. CUDA 11.5 rejects an extended device lambda inside a constructor;
+  the unchanged initialization kernel was moved into a normal helper in
+  `f47421d`. No new
+  executable or build-provenance file was produced. Sole active build path:
+  `/qbigwork2/negro/dirichlet/build/klft`.
+  Script: `/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/build_open_slab.slurm`.
+  Log: `/qbigwork2/negro/dirichlet/logs/dir-open-build-290993.out`.
+- Build retry `290994`: COMPLETED, exit 0, 4m24s on `lcpunode02`, four
+  CPUs, 8 GB, 45-minute limit. New P100 heatbath SHA256:
+  `856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd`.
+  [Build provenance](data/mg_nt_fixed/open_slab_build.txt) SHA256:
+  `ee8749ae838939e7402eb8693a3ec82cf3b94773f79265de5f47238713c837ae`.
+  Log: `/qbigwork2/negro/dirichlet/logs/dir-open-build-290994.out`.
+- P100 validation `290995`: PENDING (Resources), one typed Pascal GPU,
+  one CPU, 8 GB, 45-minute limit, no dependencies. All P100-node CPUs are
+  allocated to other jobs; Slurm forbids oversubscription. Its current start
+  estimate is 2026-10-17 21:39 CEST and can change. Preflight GPU queries on
+  lnode13/14/15/17 showed no compute processes. The lnode16 query failed host-key
+  verification; no trust setting was changed. GPU occupancy is queried again
+  within the validation allocation.
+  Log: `/qbigwork2/negro/dirichlet/logs/dir-open-check-290995.out`.
+- Nt=1 smoke, timing and production: not submitted. GPU correctness tests
+  and production-cadence timing must pass first. Recheck free space before
+  production: qbigwork2 had 42 GB free at this preflight.
+
+The manually staged [CPU build](data/mg_nt_fixed/build_open_slab.slurm) and
+[P100 validation](data/mg_nt_fixed/validate_open_slab.slurm) scripts are
+committed locally as `8c06326`, updated by `4f92581`, with four passing
+safeguard tests. They bind
+the pushed KLFT revision, verify executable/test hashes, preserve existing
+build provenance and refuse execution outside Slurm. They submit no other
+jobs. GPU validation includes CUDA memory checking. The diagnostic benchmark
+uses two overrelaxations; a separate
+100-sweep measurement-enabled timing run with the production value of five
+is still required. Both scripts are transferred and submitted manually.
+This project repository has no Git remote configured; the KLFT
+commit is pushed.
+
+The committed `scripts/mg_nt_fixed_nt1_inputs.py` has seven passing tests.
+It generates one smoke input, three timing inputs and twelve production
+inputs only after a P100 executable checksum is available. The seed inventory
+(`06338d1`) covers 276 qbig input files and 256 distinct seeds. New seeds are
+distinct positive int32 values from master seed 20260724. All sixteen inputs
+are committed as `87b91f8` and transferred, with a clean checksum-based rsync
+verification. The remote input count is now 292. The four pre-existing reused
+seeds (32091, 90517, 177013, 515029) are unchanged; all sixteen new seeds occur
+once. [Nt=1 manifest](data/mg_nt_fixed/nt1_manifest.json) SHA256:
+`0bd0baedbfee731080568edb396a1ee31a287c489f8550bdc4431ba69878cd01`.
+
+The [launcher](data/mg_nt_fixed/nt1_run.slurm) and
+[execution checker](scripts/mg_nt_fixed_nt1_run.py) are committed as `08a41e4`
+and transferred to `campaigns/mg_nt_fixed/` on qbig. Twelve execution tests pass
+(19 together with the input tests). The checker binds the build and input
+hashes, refuses existing outputs, checks every measurement's order and cadence,
+C_G(0), finite primitive observables, exact boundary links and all SU(2) norms
+in the flag-3 checkpoint. It records wall time and raw-file checksums. A
+separate manual timing gate requires projected costs <=2 GPU-hours per chain
+and <=12 GPU-hours total. No script submits follow-up jobs. All new analyses
+will use 500 bootstrap replicas.
+
 As checked on 2026-08-28 at 10:52 CEST, the user queue was empty,
 `lnode13`--`lnode17` were Slurm-idle, and direct inspection found no GPU
 compute processes on their 40 P100s. This is an availability snapshot, not a

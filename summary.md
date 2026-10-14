@@ -16,6 +16,100 @@ confirmation gives `m_G Nt=1.006200 +/- 0.006542` and passes its 3% agreement
 gate. The canonical report is
 [`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
 
+## Local removal of the auxiliary wrapping sector
+
+KLFT commits `c78efbd1ed6c60fc809db54ac9309fa532854982` (open storage) and
+`f47421d895469b72d4af8a9b8479807f2b09a692` (CUDA 11.5 compatibility) are
+committed and pushed to `origin/orbifold`. Dirichlet fields now allocate only physical links:
+`Nt+1` spatial-link slices and `Nt` temporal-link layers. No closing temporal
+link is allocated or evolved. `Nt` counts links and `L2=Nt+1` counts slices.
+The shared library's periodic and orbifold modes remain available.
+
+Historical mass results retain their meaning. With fixed tangential links on
+both surfaces, the historical action factorizes as `S_old(U,V)=S_slab(U)+S_aux(V)`.
+Integrating over the auxiliary links multiplies the partition function and
+the numerator of every slab expectation by the same factor. The physical
+distribution is therefore unchanged. Tests compare every dynamical staple,
+the action, correlators, structure factors, profiles and all-height boundary
+loops between open storage and a historical field with arbitrary auxiliary
+links. The physical `Nt=1` PCM identity remains exact. Historical aggregate
+plaquettes included the auxiliary sector; their original provenance is retained.
+
+Validation on the final local code:
+
+- Six 3D SU(2), OpenMP CTests pass, including statistical hot/cold and bulk
+  checks and periodic/orbifold regressions (32.35 s, rerun after the CUDA fix).
+- All five non-statistical CTests pass with ASan/UBSan, using
+  `ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1` (2.46 s, rerun).
+- Before the CUDA-only initialization refactor, project Python discovery:
+  97 tests, six archived-workflow skips; the
+  separate fixed-beta/Nt suite has 39 passing tests. KLFT's two Python
+  partition-generation tests pass.
+- On `c78efbd`, an eight-sweep `Nt=2,Ns=4,beta=2.2` hot start and two-sweep restart pass.
+  Compact checkpoints contain exactly 128 physical links, flag 3, exact fixed
+  surfaces and normalized SU(2) matrices. Holonomy/profile/Wilson counts are
+  8/4/2, and the full-height loop equals the correlator.
+
+The audit also corrected non-transactional CPU checkpoint loading and added
+guards against periodic Wilson/link and periodic-clover flow measurements
+in the Dirichlet drivers. The boundary-preserving flow kernel is tested
+separately. Legacy rectangular checkpoints need explicit conversion before
+use with the open-slab drivers. No converter has been implemented.
+
+The main measured bottleneck was the serial host holonomy calculation and
+full-field measurement transfers. Correlators, Fourier modes and profiles now
+use device reductions, verified against direct host sums. Empty spatial
+update sweeps at `Nt=1` are skipped. Indicative two-thread Debug timings at
+`Ns=256,Nt=1` changed from 3.75 to 0.65 seconds per holonomy measurement and
+0.138 to 0.066 seconds per profile. These local timings are diagnostic;
+P100 performance remains unmeasured. The direct correlator still has cubic
+spatial-size scaling. Repeated allocations and per-measurement file opens
+remain candidates for profiling if they matter on P100.
+
+Local build: `build/klft`, Debug, `-Wall -Wextra`, 3D SU(2), OpenMP, statistical
+tests enabled. Heatbath SHA256:
+`9d2c093c2e429d172b9d331acd8526171d07d9bb25856b53c1ffd4882e446520`.
+Benchmark entry point: `build/klft/tests/dirichlet_benchmark Ns Nt repeats`.
+The [geometry documentation](README.md#geometry-and-action-convention)
+describes the conventions.
+
+qbig now has a clean checkout at `/qbigwork2/negro/dirichlet/src/klft`.
+After the goal was resumed, a permission-gated SSH transfer supplied the
+committed source bundle, SHA256
+`a3ed2c98d90890e8636a5e0acd1e7faddd2ef2b45a490c73eb1e77a95837ce24`
+for revision `f47421d`.
+The old modified checkout is untouched; its build is preserved in
+`archive/klft_builds/41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57/`
+under the remote project root, with the old executable checksum unchanged.
+CPU build job `290993` failed because CUDA 11.5 rejects an extended lambda
+inside a constructor. The same kernel now resides in an ordinary helper;
+corrected build `290994` completed with exit 0 in 4m24s on `lcpunode02`.
+The sole active P100 build's heatbath SHA256 is
+`856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd`.
+GPU validation `290995` is queued (Resources); its six CTests, CUDA memory
+check and timing diagnostics have not run. All P100-node CPUs are allocated
+to other jobs, with `OverSubscribe=NO`. Slurm currently estimates a start on
+17 October; that estimate can change. No Nt=1 simulation is submitted.
+
+Local project commits `8c06326` and `4f92581` add the manual CPU-build and P100-validation
+submission scripts, with four passing tests for syntax, Slurm-only execution,
+resource requests, immutable provenance and revision binding. The Nt=1 input
+generator has seven passing tests covering exact tuned couplings, physical
+geometry, cadences, seeds and overwrite refusal. Both Slurm scripts
+are transferred. Production timing must use the established five
+overrelaxations per heatbath sweep; the two-overrelaxation benchmark above is
+only diagnostic. The project repository has no configured Git remote.
+
+Project commit `08a41e4` adds a guarded Nt=1 launcher with twelve passing
+execution-check tests; `87b91f8` records the sixteen immutable smoke, timing
+and production inputs and the successful build provenance. All are
+checksum-verified on qbig. The three exact Nt=2 tuned beta values are reused
+at Nt=1, with provisional Ns=2048, 512 and 128. These are matched-beta
+diagnostics, with unknown Nt=1 mass and unvalidated finite-volume effects.
+They remain separate from fixed-c continuum inputs. Production requires the
+manual GPU-validation, smoke and timing stages to pass. See the current
+[execution record](running_simulations.md) for seeds, paths and job states.
+
 ## Fixed-beta/Nt pilot implementation and execution
 
 KLFT commit `7eed1f7d9bb0948621a2d4020706d19c56406001` adds a separate
