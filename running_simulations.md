@@ -33,6 +33,13 @@ All 1,105 plot PDFs passed local single-page 16:9 checks. The 17-page
 logbook was visually inspected and its source/output freshness check passed.
 The fixed-c tuning and continuum CSV checksums are unchanged by the Nt=1
 addition. No further simulation or analysis job remains active for this task.
+Report-only job 291006 completed with exit 0 in 27 seconds. Its freshness
+manifest tracks the active versioned pipeline and shared dependencies;
+unused historical helper scripts no longer invalidate a fresh checkout.
+All 33 targeted analysis/provenance/report tests pass. Analysis snapshot:
+`/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_nt1/`; logs:
+`/qbigwork2/negro/dirichlet/logs/mgnt-nt1-analysis-291001_<index>.out` and
+`/qbigwork2/negro/dirichlet/logs/mgnt-nt1-collect-291006.out`.
 P100 validation 290996 completed successfully on lnode16 on 15 October,
 05:03:35--05:04:13 CEST: six CTests, CUDA memory check and benchmark passed.
 
