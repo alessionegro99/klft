@@ -8,10 +8,17 @@ from unittest.mock import patch
 
 from beta_nt_fixed.analysis import analyse_ensemble
 from mg_nt_fixed_plot_layout import arrange_plots, plot_destination
-from mg_nt_fixed_logbook import check_freshness
+from mg_nt_fixed_logbook import ACTIVE_SOURCE_PATHS, check_freshness
 
 
 class LogbookTest(unittest.TestCase):
+    def test_freshness_covers_active_pipeline_and_shared_dependencies(self) -> None:
+        self.assertIn('scripts/mg_nt_fixed_adaptive.py', ACTIVE_SOURCE_PATHS)
+        self.assertIn('scripts/beta_nt_fixed/analysis.py', ACTIVE_SOURCE_PATHS)
+        self.assertIn('uv.lock', ACTIVE_SOURCE_PATHS)
+        self.assertNotIn('scripts/mg_nt_fixed_reanalysis.py', ACTIVE_SOURCE_PATHS)
+        self.assertEqual(len(ACTIVE_SOURCE_PATHS), len(set(ACTIVE_SOURCE_PATHS)))
+
     def test_plot_routing_across_filesystems(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

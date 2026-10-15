@@ -15,6 +15,18 @@ from mg_nt_fixed_inventory import ROOT, sha256, write_json
 RESULTS = ROOT/'analysis/mg_nt_fixed'
 REPORT = ROOT/'docs/mg_nt_fixed'
 PRODUCTS = REPORT/'generated'
+ACTIVE_SOURCE_PATHS = (
+    'scripts/mg_nt_fixed_analysis.py', 'scripts/mg_nt_fixed_ensemble.py',
+    'scripts/mg_nt_fixed_statistics.py', 'scripts/mg_nt_fixed_inventory.py',
+    'scripts/mg_nt_fixed_parallel.py', 'scripts/mg_nt_fixed_adaptive.py',
+    'scripts/mg_nt_fixed_campaign.py', 'scripts/mg_nt_fixed_canonical_plots.py',
+    'scripts/mg_nt_fixed_verify.py', 'scripts/mg_nt_fixed_logbook.py',
+    'scripts/mg_nt_fixed_nt1_inventory.py', 'scripts/mg_nt_fixed_nt1_inputs.py',
+    'scripts/mg_nt_fixed_nt1_run.py', 'scripts/mg_nt_fixed_nt1_a100.py',
+    'scripts/beta_nt_fixed/analysis.py', 'scripts/dirichlet_analysis.py',
+    'scripts/pcm_beta_pilot_analysis.py', 'scripts/thermalization_diagnostics.py',
+    'scripts/plot_thesis_results.py', 'uv.lock',
+)
 
 
 def read_json(path: Path) -> dict:
@@ -41,7 +53,9 @@ def source_hashes() -> dict[str,str]:
     paths = [REPORT/'logbook.tex',REPORT/'review.json',ROOT/'data/mg_nt_fixed/manifest.json']
     paths += list((ROOT/'data/mg_nt_fixed').glob('nt1_*manifest.json'))
     paths += list((ROOT/'data/mg_nt_fixed').glob('nt1_a100*json'))
-    paths += list((ROOT/'scripts').glob('mg_nt_fixed_*.py'))
+    # Retired stage helpers are archived separately. Requiring every matching
+    # filename made a published report depend on unrelated unversioned files.
+    paths += [ROOT/path for path in ACTIVE_SOURCE_PATHS]
     paths += list(RESULTS.glob('*.csv'))+list(RESULTS.glob('*.json'))
     for target in sorted(RESULTS.glob('c_*')):
         paths += [p for p in target.rglob('*') if p.is_file() and p.suffix in ('.json','.csv','.npz','.pdf')]
