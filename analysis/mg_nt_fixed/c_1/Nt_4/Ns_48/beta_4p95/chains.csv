@@ -1,0 +1,5 @@
+ensemble,seed,raw_path,source_campaign,sweeps,thermalization_cut_sweeps,retained_sweeps,tau_int_R1_sweeps,tau_int_max_sweeps,flags,block_length_sweeps,n_complete_blocks,used_sweeps,pooled_weight,discarded_partial_sweeps,split_max_z,split_max_observable
+c_1/Nt_4/Ns_48/beta_4p95,153408608,/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_4_Ns_48_b_4p95/seed_153408608,mg_nt_fixed,8000,500,7500,0.6505824520686837,3.298615246862869,,80,93,7440,0.25,60,1.6714402744409809,temporal_t_1.5
+c_1/Nt_4/Ns_48/beta_4p95,383820648,/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_4_Ns_48_b_4p95/seed_383820648,mg_nt_fixed,8000,500,7500,0.6996251521974264,3.5517838420113677,,80,93,7440,0.25,60,2.239389479956413,C_G_R23
+c_1/Nt_4/Ns_48/beta_4p95,1813985794,/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_4_Ns_48_b_4p95/seed_1813985794,mg_nt_fixed,8000,500,7500,0.6740737276913296,3.6961582768330343,,80,93,7440,0.25,60,1.4473269042990042,C_G_R24
+c_1/Nt_4/Ns_48/beta_4p95,1876858386,/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_4_Ns_48_b_4p95/seed_1876858386,mg_nt_fixed,8000,500,7500,0.6097173790444608,3.3769207599226054,,80,93,7440,0.25,60,1.795135939051064,spatial_t_1

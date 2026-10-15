@@ -1,0 +1,3 @@
+ensemble,Ns,mass,mass_error,mass_Ns,reference_Ns,mass_difference,difference_combined_sigma,flags
+c_1/Nt_4/Ns_48/beta_5p3,48,0.15341650872595677,0.0006135017890795395,7.363992418845925,48,0.0,0.0,finite_volume_safety_review;late_window_drift
+c_1/Nt_4/Ns_96/beta_5p3,96,0.1528370504599406,0.000384708209236112,14.672356844154297,48,-0.0005794582660161862,0.8001973225195611,

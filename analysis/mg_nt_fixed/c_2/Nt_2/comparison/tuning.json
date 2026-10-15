@@ -1,0 +1,43 @@
+{
+  "target_c": 2.0,
+  "physical_Nt": 2,
+  "window_index": 0,
+  "betas": [
+    1.9,
+    2.0,
+    2.1
+  ],
+  "ensembles": [
+    "c_2/Nt_2/Ns_32/beta_1p9",
+    "c_2/Nt_2/Ns_32/beta_2",
+    "c_2/Nt_2/Ns_48/beta_2p1"
+  ],
+  "bracketed": true,
+  "available": true,
+  "beta_star": 1.962386866460073,
+  "beta_star_central": 1.9624385242000173,
+  "stat_low": 1.9602681272466085,
+  "stat_high": 1.9639970388194927,
+  "beta_star_error": 0.001903862249755365,
+  "interpolation_systematic": 0.0026858487297607425,
+  "intercept": 3.121352429320594,
+  "slope": -1.2373407975928825,
+  "chi2_full": 3.3126237822913764,
+  "nominal_dof": 1,
+  "covariance_condition": 1.9687235473444407,
+  "bootstrap_successes": 500,
+  "bootstrap_extrapolated_fraction": 0.0,
+  "bootstrap_slope_sign_change_fraction": 0.0,
+  "bootstrap_samples": 500,
+  "flags": [
+    "below_50_blocks",
+    "between_chain_review",
+    "interpolation_shift_above_statistical_error",
+    "late_window_drift",
+    "prior_10000_sweeps",
+    "split_history_review"
+  ],
+  "selected": true,
+  "include": true,
+  "review_status": "auto"
+}

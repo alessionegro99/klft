@@ -1,0 +1,40 @@
+{
+  "target_c": 2.0,
+  "physical_Nt": 3,
+  "window_index": 0,
+  "betas": [
+    2.85,
+    3.05,
+    3.25
+  ],
+  "ensembles": [
+    "c_2/Nt_3/Ns_32/beta_2p85",
+    "c_2/Nt_3/Ns_32/beta_3p05",
+    "c_2/Nt_3/Ns_32/beta_3p25"
+  ],
+  "bracketed": true,
+  "available": true,
+  "beta_star": 2.942830639132368,
+  "beta_star_central": 2.942769663121266,
+  "stat_low": 2.9410045400712086,
+  "stat_high": 2.9442492990396736,
+  "beta_star_error": 0.0016903915718346325,
+  "interpolation_systematic": 0.0018747445010705022,
+  "intercept": 3.9099530669226974,
+  "slope": -1.0931218731373042,
+  "chi2_full": 2.3269646362851764,
+  "nominal_dof": 1,
+  "covariance_condition": 2.807821362964315,
+  "bootstrap_successes": 500,
+  "bootstrap_extrapolated_fraction": 0.0,
+  "bootstrap_slope_sign_change_fraction": 0.0,
+  "bootstrap_samples": 500,
+  "flags": [
+    "between_chain_review",
+    "interpolation_shift_above_statistical_error",
+    "late_window_drift"
+  ],
+  "selected": true,
+  "include": true,
+  "review_status": "auto"
+}

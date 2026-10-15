@@ -1,0 +1,227 @@
+{
+  "ensemble": "c_1/Nt_3/Ns_48/beta_3p7",
+  "target_c": 1.0,
+  "physical_Nt": 3,
+  "stored_L2": 4,
+  "Ns": 48,
+  "beta": 3.7,
+  "chains": [
+    {
+      "ensemble": "c_1/Nt_3/Ns_48/beta_3p7",
+      "seed": 575753767,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_3_Ns_48_b_3p70/seed_575753767",
+      "source_campaign": "mg_nt_fixed",
+      "sweeps": 8000,
+      "thermalization_cut_sweeps": 500,
+      "retained_sweeps": 7500,
+      "tau_int_R1_sweeps": 0.712979219475224,
+      "tau_int_max_sweeps": 2.7430286035511067,
+      "flags": [],
+      "mser5": {
+        "selected_scalar_candidates_sweeps": {
+          "Tr_G_real": 0,
+          "Ctilde_0": 0,
+          "Ctilde_pmin": 10,
+          "C_G_R1": 5
+        },
+        "largest_correlator_candidate": {
+          "observable": "C_G_R7",
+          "sweeps": 65.0
+        },
+        "largest_profile_candidate": {
+          "observable": "spatial_t_2",
+          "sweeps": 75.0
+        },
+        "largest_boundary_candidate": null,
+        "cut_cadence_sweeps": 5
+      },
+      "block_length_sweeps": 40,
+      "n_complete_blocks": 187,
+      "used_sweeps": 7480,
+      "pooled_weight": 0.25,
+      "discarded_partial_sweeps": 20,
+      "split_max_z": 2.5165370452063978,
+      "split_max_observable": "C_G_R7"
+    },
+    {
+      "ensemble": "c_1/Nt_3/Ns_48/beta_3p7",
+      "seed": 758474695,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_3_Ns_48_b_3p70/seed_758474695",
+      "source_campaign": "mg_nt_fixed",
+      "sweeps": 8000,
+      "thermalization_cut_sweeps": 500,
+      "retained_sweeps": 7500,
+      "tau_int_R1_sweeps": 0.690832394534341,
+      "tau_int_max_sweeps": 2.828331693954105,
+      "flags": [
+        "split_history_review"
+      ],
+      "mser5": {
+        "selected_scalar_candidates_sweeps": {
+          "Tr_G_real": 0,
+          "Ctilde_0": 5,
+          "Ctilde_pmin": 0,
+          "C_G_R1": 5
+        },
+        "largest_correlator_candidate": {
+          "observable": "C_G_R1",
+          "sweeps": 5.0
+        },
+        "largest_profile_candidate": {
+          "observable": "temporal_t_0.5",
+          "sweeps": 50.0
+        },
+        "largest_boundary_candidate": null,
+        "cut_cadence_sweeps": 5
+      },
+      "block_length_sweeps": 40,
+      "n_complete_blocks": 187,
+      "used_sweeps": 7480,
+      "pooled_weight": 0.25,
+      "discarded_partial_sweeps": 20,
+      "split_max_z": 3.452010034248855,
+      "split_max_observable": "C_G_R13"
+    },
+    {
+      "ensemble": "c_1/Nt_3/Ns_48/beta_3p7",
+      "seed": 1245371653,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_3_Ns_48_b_3p70/seed_1245371653",
+      "source_campaign": "mg_nt_fixed",
+      "sweeps": 8000,
+      "thermalization_cut_sweeps": 500,
+      "retained_sweeps": 7500,
+      "tau_int_R1_sweeps": 0.6704473464759032,
+      "tau_int_max_sweeps": 2.6334603641082985,
+      "flags": [],
+      "mser5": {
+        "selected_scalar_candidates_sweeps": {
+          "Tr_G_real": 0,
+          "Ctilde_0": 15,
+          "Ctilde_pmin": 5,
+          "C_G_R1": 10
+        },
+        "largest_correlator_candidate": {
+          "observable": "C_G_R18",
+          "sweeps": 60.0
+        },
+        "largest_profile_candidate": {
+          "observable": "spatial_t_1",
+          "sweeps": 200.0
+        },
+        "largest_boundary_candidate": null,
+        "cut_cadence_sweeps": 5
+      },
+      "block_length_sweeps": 40,
+      "n_complete_blocks": 187,
+      "used_sweeps": 7480,
+      "pooled_weight": 0.25,
+      "discarded_partial_sweeps": 20,
+      "split_max_z": 1.5404903715226572,
+      "split_max_observable": "spatial_t_1"
+    },
+    {
+      "ensemble": "c_1/Nt_3/Ns_48/beta_3p7",
+      "seed": 1462729493,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/mg_nt_fixed/Nt_3_Ns_48_b_3p70/seed_1462729493",
+      "source_campaign": "mg_nt_fixed",
+      "sweeps": 8000,
+      "thermalization_cut_sweeps": 500,
+      "retained_sweeps": 7500,
+      "tau_int_R1_sweeps": 0.680341015188787,
+      "tau_int_max_sweeps": 2.9575479027835003,
+      "flags": [],
+      "mser5": {
+        "selected_scalar_candidates_sweeps": {
+          "Tr_G_real": 0,
+          "Ctilde_0": 0,
+          "Ctilde_pmin": 5,
+          "C_G_R1": 5
+        },
+        "largest_correlator_candidate": {
+          "observable": "C_G_R18",
+          "sweeps": 20.0
+        },
+        "largest_profile_candidate": {
+          "observable": "spatial_t_1",
+          "sweeps": 50.0
+        },
+        "largest_boundary_candidate": null,
+        "cut_cadence_sweeps": 5
+      },
+      "block_length_sweeps": 40,
+      "n_complete_blocks": 187,
+      "used_sweeps": 7480,
+      "pooled_weight": 0.25,
+      "discarded_partial_sweeps": 20,
+      "split_max_z": 1.429599011407155,
+      "split_max_observable": "spatial_t_2"
+    }
+  ],
+  "labels": [
+    "Tr_G_real",
+    "Tr_G_imag",
+    "Ctilde_0",
+    "Ctilde_pmin",
+    "C_G_R0",
+    "C_G_R1",
+    "C_G_R2",
+    "C_G_R3",
+    "C_G_R4",
+    "C_G_R5",
+    "C_G_R6",
+    "C_G_R7",
+    "C_G_R8",
+    "C_G_R9",
+    "C_G_R10",
+    "C_G_R11",
+    "C_G_R12",
+    "C_G_R13",
+    "C_G_R14",
+    "C_G_R15",
+    "C_G_R16",
+    "C_G_R17",
+    "C_G_R18",
+    "C_G_R19",
+    "C_G_R20",
+    "C_G_R21",
+    "C_G_R22",
+    "C_G_R23",
+    "C_G_R24",
+    "spatial_t_0",
+    "spatial_t_1",
+    "spatial_t_2",
+    "spatial_t_3",
+    "temporal_t_0.5",
+    "temporal_t_1.5",
+    "temporal_t_2.5"
+  ],
+  "R": [
+    0.0,
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0,
+    17.0,
+    18.0,
+    19.0,
+    20.0,
+    21.0,
+    22.0,
+    23.0,
+    24.0
+  ],
+  "bootstrap_samples": 500,
+  "block_length_sweeps": 40
+}

@@ -1,0 +1,18 @@
+# Plots
+
+- [blocking_C_G_R1.pdf](blocking_C_G_R1.pdf)
+- [blocking_Ctilde_0.pdf](blocking_Ctilde_0.pdf)
+- [blocking_Ctilde_pmin.pdf](blocking_Ctilde_pmin.pdf)
+- [blocking_Tr_G_real.pdf](blocking_Tr_G_real.pdf)
+- [blocking_counts.pdf](blocking_counts.pdf)
+- [blocking_mass.pdf](blocking_mass.pdf)
+- [blocking_xi_2nd.pdf](blocking_xi_2nd.pdf)
+- [blocking_xi_exp.pdf](blocking_xi_exp.pdf)
+- [thermalization_seed_1492645711_C_G_R1.pdf](thermalization_seed_1492645711_C_G_R1.pdf)
+- [thermalization_seed_1492645711_Ctilde_0.pdf](thermalization_seed_1492645711_Ctilde_0.pdf)
+- [thermalization_seed_1776605215_C_G_R1.pdf](thermalization_seed_1776605215_C_G_R1.pdf)
+- [thermalization_seed_1776605215_Ctilde_0.pdf](thermalization_seed_1776605215_Ctilde_0.pdf)
+- [thermalization_seed_2054294666_C_G_R1.pdf](thermalization_seed_2054294666_C_G_R1.pdf)
+- [thermalization_seed_2054294666_Ctilde_0.pdf](thermalization_seed_2054294666_Ctilde_0.pdf)
+- [thermalization_seed_471073462_C_G_R1.pdf](thermalization_seed_471073462_C_G_R1.pdf)
+- [thermalization_seed_471073462_Ctilde_0.pdf](thermalization_seed_471073462_Ctilde_0.pdf)
