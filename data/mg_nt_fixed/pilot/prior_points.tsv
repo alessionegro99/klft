@@ -1,3 +1,0 @@
-prior_index	target_c	physical_Nt	stored_L2	Ns	beta	sweeps	ensemble	seeds	source_campaign	source_analysis
-0	0.5	2	3	64	3.0	10000	Nt_2_Ns_64_b_3p0	1303883636,1918926692,35345667,1514287536	beta_nt_fixed	analysis/beta_nt_fixed/pilot/Nt_2_Ns_64_b_3p0
-1	2.0	2	3	48	2.1	10000	Nt_2_Ns_48_b_2p1	1221654998,912127774,588577353,1187026180	beta_nt_fixed	analysis/beta_nt_fixed/pilot/Nt_2_Ns_48_b_2p1

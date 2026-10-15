@@ -1,12 +1,13 @@
-# Nonperturbative fixed-`m_G Nt` campaign
+# Fixed mG Nt
 
-The immutable 25-point pilot is in `pilot/`. It contains 100 new hot-start
-chains, a 100-sweep largest-grid timing input, two explicitly labelled prior
-points from `beta_nt_fixed`, and dependency/input hashes. The generator uses
-master seed `20260724` and refuses all overwrites.
+Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.
 
-The trajectory is defined by `target_c = m_G Nt`, not by `beta/Nt`. Raw qbig
-histories are written below `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/` and
-must not be mixed with the legacy raw directories used by `beta_nt_fixed`.
-The canonical campaign status and gates are in
-[`docs/mg_nt_fixed/summary.md`](../../docs/mg_nt_fixed/summary.md).
+[Immutable manifest](manifest.json) · [Simulation build](build_provenance.json) · [Migration map](migration.csv).
+[Nt=1 analysis inventory](nt1_analysis_manifest.json): matched-beta diagnostics; folder c is the source Nt=2 reference target, and target_c is null.
+The manifest records the checksum-verified qbig recovery archive. Historical stage directories are retired after product verification.
+
+- [c_0p5](c_0p5/)
+- [c_1](c_1/)
+- [c_2](c_2/)
+
+- [migration.csv](migration.csv)

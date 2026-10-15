@@ -1,0 +1,21 @@
+{
+  "campaign": "step3_scan",
+  "purpose": "fixed_nt2_beta3",
+  "job_id": "259794_13",
+  "node": "lnode14",
+  "cuda_visible_devices": "5",
+  "physical_Nt": "2",
+  "stored_L2": "3",
+  "Ns": "64",
+  "beta": "3.0",
+  "lambda_squared_tree": "2.666666666667",
+  "chain_index": "1",
+  "seed": "1918926692",
+  "sweeps": "10000",
+  "measurement_interval": "1",
+  "dirichlet_suite_measurement_interval": "5",
+  "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+  "build_path": "/qbigwork2/negro/dirichlet/build/klft",
+  "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+  "input_sha256": "c9e9365cd7b959a241cc642198b3435918aae0cc4aecfe400d6d3b510df9dd38"
+}

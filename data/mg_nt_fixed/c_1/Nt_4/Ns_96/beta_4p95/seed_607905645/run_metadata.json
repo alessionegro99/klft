@@ -1,0 +1,22 @@
+{
+  "campaign_type": "nonperturbative_mg_nt",
+  "target_c": "1.0",
+  "purpose": "finite_volume_replacement",
+  "job_id": "289406_6",
+  "node": "lnode13",
+  "cuda_visible_devices": "6",
+  "physical_Nt": "4",
+  "stored_L2": "5",
+  "Ns": "96",
+  "beta": "4.95",
+  "chain_index": "2",
+  "seed": "607905645",
+  "sweeps": "8000",
+  "measurement_interval": "1",
+  "dirichlet_suite_measurement_interval": "5",
+  "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+  "build_path": "/qbigwork2/negro/dirichlet/build/klft",
+  "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+  "input_sha256": "f45fa34a1bbf8a22aef5d8b87608cb5375a94914c4db35cf8e85472afff07792",
+  "uv_lock_sha256": "1bee9b5d384309d87510e632ea585807e4e887791bb00ab808b599cfc8bab67d"
+}

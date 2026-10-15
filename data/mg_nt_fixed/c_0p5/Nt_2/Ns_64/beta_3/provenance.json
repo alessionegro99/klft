@@ -1,0 +1,87 @@
+{
+  "ensemble": "c_0p5/Nt_2/Ns_64/beta_3",
+  "target_c": 0.5,
+  "physical_Nt": 2,
+  "stored_L2": 3,
+  "Ns": 64,
+  "beta": 3.0,
+  "chains": [
+    {
+      "source_input": "data/beta_nt_fixed/comparison/provenance/legacy_pilot_inputs/Nt_2_Ns_64_b_3p0/seed_35345667/input.yaml",
+      "source_manifest": "data/mg_nt_fixed/pilot/prior_points.tsv",
+      "source_campaign": "beta_nt_fixed",
+      "input_sha256": "402db941fa21ced5181e904ccf510199057602d01498f6661b25320b40319f44",
+      "sweeps": 10000,
+      "measurement_interval": 1,
+      "dirichlet_suite_measurement_interval": 5,
+      "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+      "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+      "seed": 35345667,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_3p0/seed_35345667",
+      "input": "c_0p5/Nt_2/Ns_64/beta_3/seed_35345667/input.yaml",
+      "flags": [
+        "prior_10000_sweeps"
+      ]
+    },
+    {
+      "source_input": "data/beta_nt_fixed/comparison/provenance/legacy_pilot_inputs/Nt_2_Ns_64_b_3p0/seed_1303883636/input.yaml",
+      "source_manifest": "data/mg_nt_fixed/pilot/prior_points.tsv",
+      "source_campaign": "beta_nt_fixed",
+      "input_sha256": "1f98ed439a8833878d55ddc42cc7155714ddc179a4379b8c4cc83f714d5c94ca",
+      "sweeps": 10000,
+      "measurement_interval": 1,
+      "dirichlet_suite_measurement_interval": 5,
+      "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+      "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+      "seed": 1303883636,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_3p0/seed_1303883636",
+      "input": "c_0p5/Nt_2/Ns_64/beta_3/seed_1303883636/input.yaml",
+      "flags": [
+        "prior_10000_sweeps"
+      ]
+    },
+    {
+      "source_input": "data/beta_nt_fixed/comparison/provenance/legacy_pilot_inputs/Nt_2_Ns_64_b_3p0/seed_1514287536/input.yaml",
+      "source_manifest": "data/mg_nt_fixed/pilot/prior_points.tsv",
+      "source_campaign": "beta_nt_fixed",
+      "input_sha256": "8e4aeab255ac6737bf5aae22af0c2b406159ea171a92f1d779755153e2de7f81",
+      "sweeps": 10000,
+      "measurement_interval": 1,
+      "dirichlet_suite_measurement_interval": 5,
+      "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+      "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+      "seed": 1514287536,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_3p0/seed_1514287536",
+      "input": "c_0p5/Nt_2/Ns_64/beta_3/seed_1514287536/input.yaml",
+      "flags": [
+        "prior_10000_sweeps"
+      ]
+    },
+    {
+      "source_input": "data/beta_nt_fixed/comparison/provenance/legacy_pilot_inputs/Nt_2_Ns_64_b_3p0/seed_1918926692/input.yaml",
+      "source_manifest": "data/mg_nt_fixed/pilot/prior_points.tsv",
+      "source_campaign": "beta_nt_fixed",
+      "input_sha256": "c9e9365cd7b959a241cc642198b3435918aae0cc4aecfe400d6d3b510df9dd38",
+      "sweeps": 10000,
+      "measurement_interval": 1,
+      "dirichlet_suite_measurement_interval": 5,
+      "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+      "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+      "seed": 1918926692,
+      "raw_path": "/qbigwork2/negro/dirichlet/data/Nt_2_Ns_64_b_3p0/seed_1918926692",
+      "input": "c_0p5/Nt_2/Ns_64/beta_3/seed_1918926692/input.yaml",
+      "flags": [
+        "prior_10000_sweeps"
+      ]
+    }
+  ],
+  "historical_analyses": [
+    "analysis/mg_nt_fixed/audit/Nt_2_Ns_64_b_3p0/analysis.json",
+    "analysis/mg_nt_fixed/bootstrap_correction_20261012/audit/Nt_2_Ns_64_b_3p0/analysis.json"
+  ],
+  "index": 1,
+  "campaign_type": "nonperturbative_mg_nt",
+  "reference_c": 0.5,
+  "fixed_c_continuum_input": true,
+  "metadata_verified_on_qbig": true
+}

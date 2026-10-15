@@ -1,0 +1,10 @@
+klft_commit f47421d895469b72d4af8a9b8479807f2b09a692
+heatbath_sha256 856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd
+job_id 290996
+node lnode16
+cuda_driver /usr/lib/x86_64-linux-gnu/libcuda.so.495.29.05
+cuda_driver_sha256 17b29c527785b5f0385233fd42e8f30a52123a1d46731aff01f0e2e3691c223c
+ctest passed
+cuda_memcheck passed
+benchmark passed
+production_timing pending

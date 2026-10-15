@@ -1,0 +1,22 @@
+{
+  "simulation_build_unchanged": true,
+  "klft_commit": "7eed1f7d9bb0948621a2d4020706d19c56406001",
+  "remote_source_path": "/hadron/negro/src/klft",
+  "remote_build_path": "/qbigwork2/negro/dirichlet/build/klft",
+  "heatbath_sha256": "41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57",
+  "cmake": {
+    "KLFT_NDIM": 3,
+    "KLFT_NC": 2,
+    "Kokkos_ENABLE_OPENMP": "ON",
+    "Kokkos_ENABLE_CUDA": "ON",
+    "Kokkos_ARCH_PASCAL60": "ON",
+    "Kokkos_ARCH_PASCAL61": "OFF"
+  },
+  "cxx_compiler": "/opt/eb/software/GCCcore/11.2.0/bin/c++",
+  "cxx_version": "GCC 11.2.0",
+  "cuda_version": "11.5",
+  "uv_lock_sha256": "1bee9b5d384309d87510e632ea585807e4e887791bb00ab808b599cfc8bab67d",
+  "source": "archived data/mg_nt_fixed/pilot/build_provenance.txt; prior runs verified separately from run_metadata.txt",
+  "master_simulation_seed": 20260724,
+  "analysis_bootstrap_samples": 500
+}
