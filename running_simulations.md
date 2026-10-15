@@ -1,6 +1,6 @@
 # Running simulations
 
-## Matched-y scaling diagnostic — approved, preparing A100 preflight
+## Matched-y scaling diagnostic — prepared; launch blocked by GPU occupancy
 
 The user approved this four-ensemble first batch and use of available A100s,
 with one of the four free lnode19 GPUs left unused. Execution uses GPUs 3,4,5
@@ -49,7 +49,17 @@ Logs: `logs/dir-scaling-preflight.out` and
 `logs/dir-scaling-production-worker-<worker>.out`.
 Raw inputs/output:
 `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/c_0p5/Nt_<Nt>/Ns_<Ns>/beta_<beta>/seed_<seed>/`.
-Production processes have not yet been started; preflight is pending.
+Preflight manager PID 3348454 exited before creating any execution-start
+record or running a heatbath sweep. Its idle-GPU guard found GPU 3 occupied
+by PID 3348228. At 12:00:49 UTC on 15 October, user `gruber` occupied GPUs
+3,4,5,6 with `meson_new` PIDs 3348228,3348232,3348236,3348240. These jobs had
+started after our earlier free-device checks. None was altered or overlapped.
+No production chain or Slurm job was launched; no worker remains running.
+The inputs are still unused. Re-run preflight only after coordinating idle
+devices, preserving the original blocked-attempt log and using a new log path.
+See [dispatch record](data/mg_nt_fixed/scaling_dispatch.json).
+Launch code `98e1edf`, inputs `30fe913`, and planning record `2d83d68` are
+committed and pushed to `dirichlet-campaign`. Existing analysis is unchanged.
 
 ## Nt=1 matched-beta production — all twelve complete and analyzed
 

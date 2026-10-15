@@ -2,7 +2,8 @@
 
 A four-ensemble matched-beta/Nt diagnostic batch is approved: 16 new chains
 of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
-Preflight is pending. See the [campaign report](docs/mg_nt_fixed/summary.md)
+The preflight guard stopped on occupied GPUs; no simulation has started.
+See the [campaign report](docs/mg_nt_fixed/summary.md)
 and [execution record](running_simulations.md).
 
 Fixed-beta/Nt production has 36 of 40 chains complete and eleven accepted slab

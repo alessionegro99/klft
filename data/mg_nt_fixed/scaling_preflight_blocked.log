@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/mg_nt_fixed_scaling_run.py", line 274, in <module>
+    run_stage(args.stage, args.worker)
+  File "/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/mg_nt_fixed_scaling_run.py", line 222, in run_stage
+    check_gpu_idle(gpu)
+  File "/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/mg_nt_fixed_nt1_a100.py", line 108, in check_gpu_idle
+    raise RuntimeError(f"Assigned A100 is occupied by PID(s): {pids}")
+RuntimeError: Assigned A100 is occupied by PID(s): 3348228
