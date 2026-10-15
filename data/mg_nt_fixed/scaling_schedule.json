@@ -1,0 +1,17 @@
+{
+  "automatic_dispatch_authorized": true,
+  "authorization": "user: schedule jobs as soon as they become free; use available lnode19 A100s and leave one free",
+  "node": "lnode19",
+  "poll_seconds": 30,
+  "idle_confirmations": 2,
+  "max_wait_seconds": 172800,
+  "leave_free_gpu_index": 6,
+  "manifest_sha256": "f4b2c2b96afc6834e3f068b269f5326f737aa15637f7d8a739b7f42ca6bbc396",
+  "execution_plan_sha256": "6cc4d57bff2b212054805207972d5d06c0f49e78f61c91853ac7648ef3696053",
+  "source_sha256": {
+    "mg_nt_fixed_scaling_schedule.py": "07510ed2cc73e68af1f3ef8008539546f843cc991fe5ac88981da1ad7024a98b",
+    "run_scaling_when_free.sh": "d3fef802fe917f460842d0abf032f3f5df04492e1b1df775898590c16af4ce6d"
+  },
+  "stage_policy": "Automatically run preflight, approve passing timing gates, then dispatch workers on GPUs 3,4,5 as they become free. Failed or partial stages require manual review.",
+  "supersedes": "Manual stage submission in scaling_execution.json; all other safety, physics, cost and provenance requirements remain unchanged."
+}
