@@ -395,6 +395,8 @@ def plot_matched_nt1(points: list[dict]) -> None:
             label=rf'$\beta={p["beta"]:.6f},\ N_s={p["Ns"]}$', **pu.data(1+i, markersize=4))
     ax.set_xscale('log')
     ax.set_yscale('symlog', linthresh=max(max(p['C_G_error']) for p in points))
+    # Omit crowded +/-1e-4 tick labels around the narrow linear region.
+    ax.set_yticks([-1e-2, -1e-3, 0., 1e-3, 1e-2, 1e-1, 1.])
     finish(fig, ax, output/'nt1_correlators.pdf', r'$R/a$', r'$C_G(R)$',
            r'$N_t=1$: couplings matched to $N_t=2$; untuned screening masses')
     fig, ax = plt.subplots(figsize=FIGURE_SIZE)
@@ -534,7 +536,10 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                 lines += ['Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.','']
                 if relative=='.':
                     lines += ['[Immutable manifest](manifest.json) · [Simulation build](build_provenance.json) · [Migration map](migration.csv).',
+                              '[Nt=1 analysis inventory](nt1_analysis_manifest.json): matched-beta diagnostics; folder c is the source Nt=2 reference target, and target_c is null.',
                               'The manifest records the checksum-verified qbig recovery archive. Historical stage directories are retired after product verification.','']
+                if '/Nt_1' in relative:
+                    lines += ['Matched-beta Nt=1 diagnostic. The c folder is a source Nt=2 reference target; these inputs are excluded from fixed-c continuum fits.','']
             children=[p for p in sorted(directory.iterdir()) if p.is_dir() and (p.name.startswith(('c_','Nt_','Ns_','beta_','seed_')) or p.name=='comparison')]
             lines += [f'- [{p.name}]({p.name}/)' for p in children]
             lines += ['']+[f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.csv'))]

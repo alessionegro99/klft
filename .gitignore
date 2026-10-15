@@ -13,4 +13,11 @@ data/dirichlet_thesis/runs/
 # Compact, versioned products of the qbig Dirichlet analysis.
 !analysis/dirichlet_thesis/**/covariance.npz
 !analysis/pcm_beta_pilot/**/covariance.npz
+!analysis/mg_nt_fixed/**/*.npz
 analysis/dirichlet_thesis/**/analysis.log
+
+# The canonical logbook PDF and generated tables are versioned; TeX scratch is not.
+docs/mg_nt_fixed/generated/*.aux
+docs/mg_nt_fixed/generated/*.log
+docs/mg_nt_fixed/generated/*.out
+docs/mg_nt_fixed/generated/*.pdf
