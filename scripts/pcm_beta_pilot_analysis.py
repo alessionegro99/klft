@@ -2,12 +2,12 @@
 """Chain-aware analysis of the exact-``Nt=1`` SU(2) PCM pilot.
 
 Independent histories are never concatenated. Each chain is thermalized and
-blocked separately, then a two-level bootstrap resamples chains and complete
-within-chain block vectors. This preserves covariance across ``R``. Blocking
+blocked separately, then complete block vectors are resampled independently
+within each fixed chain. This preserves covariance across ``R``. Blocking
 before resampling follows H. R. Kunsch, Ann. Stat. 17 (1989) 1217,
-DOI 10.1214/aos/1176347265; the nested resampling logic follows the
-hierarchical bootstrap described by S. Saravanan, N. Berman, and A. Sober,
-Nature Neuroscience 23 (2020) 1647, DOI 10.1038/s41593-020-00709-0.
+DOI 10.1214/aos/1176347265. Chain identities are fixed strata: the independent
+Markov replicas estimate the same equilibrium expectation. Resampling their
+identities as well would count fluctuations of their noisy means twice.
 """
 
 from __future__ import annotations
@@ -33,23 +33,25 @@ from dirichlet_analysis import (
 from thermalization_diagnostics import split_z_score
 
 
-def hierarchical_bootstrap(
+def chainwise_bootstrap(
     per_chain_blocks: Sequence[FloatArray],
     transform: Callable[[FloatArray], FloatArray],
     n_resamples: int,
     rng: np.random.Generator,
 ) -> tuple[FloatArray, FloatArray, FloatArray]:
-    """Return point estimate, samples, and covariance from nested resampling.
+    """Return an equal-chain estimate, block-bootstrap samples and covariance.
 
-    Every block is a complete observable vector. The outer level resamples
-    independent chains; the inner level independently resamples block means
-    within each selected chain. Equal chain weights prevent a longer retained
-    history from silently dominating the between-run fluctuations.
+    Every draw resamples complete vectors within every chain, keeping chain
+    identities fixed. For a linear mean of K chains with B_k blocks, the exact
+    conditional covariance is sum(Cov_population(blocks_k)/B_k)/K**2, by
+    independence of the within-chain draws. Different retained lengths do
+    not change the equal-chain estimand. Equilibration/chain consistency must
+    be checked separately; bootstrap resampling cannot establish either.
     """
     if len(per_chain_blocks) < 2:
-        raise ValueError("hierarchical bootstrap needs at least two chains")
-    if n_resamples < 2:
-        raise ValueError("at least two bootstrap resamples are required")
+        raise ValueError("chainwise bootstrap needs at least two chains")
+    if n_resamples != 500:
+        raise ValueError("bootstrap samples must be exactly 500")
     vector_shape = per_chain_blocks[0].shape[1:]
     if any(blocks.shape[1:] != vector_shape for blocks in per_chain_blocks):
         raise ValueError("chain block vectors have inconsistent shapes")
@@ -62,17 +64,14 @@ def hierarchical_bootstrap(
     )
     estimate = np.asarray(transform(np.mean(chain_means, axis=0)), dtype=np.float64)
     samples = np.empty((n_resamples, *estimate.shape), dtype=np.float64)
-    n_chains = len(per_chain_blocks)
     for sample_index in range(n_resamples):
-        selected_chains = rng.integers(0, n_chains, size=n_chains)
         resampled_means = []
-        for chain_index in selected_chains:
-            blocks = per_chain_blocks[int(chain_index)]
+        for blocks in per_chain_blocks:
             selected_blocks = rng.integers(0, len(blocks), size=len(blocks))
             resampled_means.append(np.mean(blocks[selected_blocks], axis=0))
         samples[sample_index] = transform(np.mean(resampled_means, axis=0))
     if not np.all(np.isfinite(samples)):
-        raise ValueError("non-finite derived quantity in hierarchical bootstrap")
+        raise ValueError("non-finite derived quantity in chainwise bootstrap")
     covariance = np.atleast_2d(np.cov(samples, rowvar=False, ddof=1))
     return estimate, samples, covariance
 
@@ -195,7 +194,7 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
             (correlator, np.asarray([xi, args.ns / xi, mean[0]]))
         )
 
-    estimate, samples, covariance = hierarchical_bootstrap(
+    estimate, samples, covariance = chainwise_bootstrap(
         per_chain_blocks,
         transform,
         args.bootstrap_samples,
@@ -252,7 +251,7 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
         fit_output = {
             "K0_fit_method": {
                 "parameter_covariance": "diagonal",
-                "parameter_errors": "joint hierarchical bootstrap",
+                "parameter_errors": "joint fixed-chain block bootstrap",
                 "goodness_of_fit_covariance": "complete",
                 "goodness_of_fit_p_value": "recentered joint bootstrap",
             },
@@ -270,8 +269,8 @@ def analyse(args: argparse.Namespace) -> dict[str, object]:
     )
     return {
         "method": (
-            "per-chain thermalization and blocking; hierarchical bootstrap of "
-            "independent chains and complete within-chain block vectors"
+            "per-chain thermalization and blocking; fixed-chain bootstrap of "
+            "complete within-chain block vectors with equal chain weights"
         ),
         "ns": args.ns,
         "n_chains": n_chains,
@@ -323,7 +322,7 @@ def main() -> None:
     parser.add_argument("--ns", type=int, required=True)
     parser.add_argument("--block-factor", type=float, default=2.0)
     parser.add_argument("--minimum-blocks", type=int, default=30)
-    parser.add_argument("--bootstrap-samples", type=int, default=20000)
+    parser.add_argument("--bootstrap-samples", type=int, choices=(500,), default=500)
     parser.add_argument("--bootstrap-seed", type=int, default=20260720)
     parser.add_argument("--minimum-xi", type=float, default=5.0)
     parser.add_argument("--minimum-volume-ratio", type=float, default=8.0)

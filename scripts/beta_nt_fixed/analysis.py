@@ -37,7 +37,7 @@ from dirichlet_analysis import (
     load_keyed_chain,
     require_matching_grids,
 )
-from pcm_beta_pilot_analysis import hierarchical_bootstrap
+from pcm_beta_pilot_analysis import chainwise_bootstrap
 from thermalization_diagnostics import mser5_cut, split_z_score
 
 
@@ -63,8 +63,10 @@ BLOCKING_CANDIDATE_UNITS = (
     56,
     64,
 )
-RANGE_SCAN_BOOTSTRAP_SAMPLES = 1000
-ANALYSIS_BOOTSTRAP_SAMPLES = (1000, 10000)
+RANGE_SCAN_BOOTSTRAP_SAMPLES = 500
+# User policy updated 2026-10-12: exactly 500 replicas for new operations.
+# Historical 10000-replica products keep their original provenance on disk.
+ANALYSIS_BOOTSTRAP_SAMPLES = (500,)
 
 
 @dataclass(frozen=True)
@@ -1603,7 +1605,7 @@ def analyse_ensemble(
     """Produce the full result for one four-chain ensemble."""
     if bootstrap_samples not in ANALYSIS_BOOTSTRAP_SAMPLES:
         raise ValueError(
-            "analysis bootstrap samples must be 1000 or 10000"
+            "analysis bootstrap samples must be exactly 500"
         )
     plateau = diagnostics["blocking_error_plateau"]
     if not bool(plateau["all_primary_and_secondary_plateaus_found"]):
@@ -1630,7 +1632,7 @@ def analyse_ensemble(
         if len({len(part) for part in parts}) != 1:
             raise ValueError(f"{chain.raw.directory}: joint block grids differ")
         joint_blocks.append(np.concatenate(parts, axis=1))
-    joint_mean, joint_samples, _ = hierarchical_bootstrap(
+    joint_mean, joint_samples, _ = chainwise_bootstrap(
         joint_blocks,
         lambda mean: mean,
         bootstrap_samples,
@@ -1806,9 +1808,9 @@ def analyse_ensemble(
         "bootstrap_samples": bootstrap_samples,
         "bootstrap_seed": bootstrap_seed,
         "bootstrap_resampling": (
-            "hierarchical complete-vector resampling: identical chain/block "
-            "draws for every correlator separation, profile coordinate, and "
-            "boundary-loop geometry"
+            "fixed-chain complete-vector block bootstrap; equal chain weights; "
+            "independent within-chain draws shared by every correlator "
+            "separation, profile coordinate, and boundary-loop geometry"
         ),
         "thermalization_and_blocking": diagnostics,
         "R": separations.tolist(),
@@ -1837,7 +1839,7 @@ def analyse_ensemble(
         "K0_fit_method": {
             "model": "A * [K0(m R) + K0(m (Ns - R))]",
             "parameter_estimation": "diagonal covariance",
-            "parameter_uncertainty": "joint hierarchical bootstrap fits",
+            "parameter_uncertainty": "joint fixed-chain block bootstrap fits",
             "goodness_of_fit": "complete covariance chi2 per dof",
             "goodness_of_fit_p_value": "recentered joint bootstrap",
             "r_max_scan": (
