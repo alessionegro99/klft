@@ -1,5 +1,20 @@
 # Fixed mG Nt campaign
 
+## Approved next simulations
+
+The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =
+(3,96,4.5), (4,160,6.0), (6,320,9.0), (4,160,6.2), each with four independent
+8,000-sweep hot chains. They test the proposed scaling collapse near beta/Nt=1.5
+and volume dependence against the existing Nt=4,Ns=96,beta=6.2 result.
+The current plan uses three lnode19 A100s (GPUs 3--5), leaving GPU 6 free.
+Smoke and timing checks are pending; production has not started.
+Inputs use the canonical c=0.5 reference-family tree, with target_c=null and
+fixed_c_continuum_input=false. Existing numerical results remain unchanged.
+See [execution status](../../running_simulations.md) and
+[immutable inputs](../../data/mg_nt_fixed/scaling_manifest.json).
+
+## Last completed analysis
+
 The fixed-c reanalysis retains **38 physical ensembles, 156 independent
 chains, 10 preliminary tuning points and three p=1 continuum comparisons**.
 Every bootstrap operation uses exactly 500 replicas. All raw-history analysis

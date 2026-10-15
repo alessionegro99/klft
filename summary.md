@@ -1,5 +1,10 @@
 # Numerical validation summary
 
+A four-ensemble matched-beta/Nt diagnostic batch is approved: 16 new chains
+of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
+Preflight is pending. See the [campaign report](docs/mg_nt_fixed/summary.md)
+and [execution record](running_simulations.md).
+
 Fixed-beta/Nt production has 36 of 40 chains complete and eleven accepted slab
 masses. The 48,300-sweep `Nt=5,beta=10.5` analysis completed with exactly
 1,000 replicas but found no stable asymptotic mass patch; `Nt=4,beta=8.4`

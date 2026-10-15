@@ -1,5 +1,56 @@
 # Running simulations
 
+## Matched-y scaling diagnostic — approved, preparing A100 preflight
+
+The user approved this four-ensemble first batch and use of available A100s,
+with one of the four free lnode19 GPUs left unused. Execution uses GPUs 3,4,5
+on CPU cores 32,33,34; GPU 6 is excluded. GPUs 0,1,2 belong to other work.
+P100 nodes lnode13--17 are fully allocated to other jobs and are not used.
+
+| Nt (links) | L2 (slices) | Ns | beta | beta/Nt | Production seeds |
+|---:|---:|---:|---:|---:|---|
+| 3 | 4 | 96 | 4.5 | 1.5 | 1932351770, 1957974461, 1636737046, 781803439 |
+| 4 | 5 | 160 | 6.0 | 1.5 | 2119748451, 1999456795, 2072474296, 1813985793 |
+| 6 | 7 | 320 | 9.0 | 1.5 | 1876858385, 964494047, 1715733354, 734628251 |
+| 4 | 5 | 160 | 6.2 | 1.55 | 1165210146, 1729419008, 1766896381, 2034175857 |
+
+Each ensemble has four independent hot-start chains of 8,000 composite sweeps
+(one heatbath plus five overrelaxations): 16 chains, 128,000 production sweeps.
+Holonomy cadence is 1; plaquette-profile cadence is 5; Wilson loops, horizontal
+Polyakov observables and flow are disabled. Future analysis uses exactly 500
+bootstrap replicas with the approved chain-aware mg_nt policy.
+
+These points test matched beta/Nt scaling, with a direct Ns=96 versus 160
+comparison at Nt=4,beta=6.2. The canonical `c_0p5` folder is the source grid
+reference only: `target_c=null`, `fixed_c_continuum_input=false`, campaign type
+`matched_y_scaling`. They are not added to the fixed-c analysis inventory yet.
+The immutable [manifest](data/mg_nt_fixed/scaling_manifest.json) and
+[execution plan](data/mg_nt_fixed/scaling_execution.json) preserve this role.
+All 21 new seeds (one smoke, four timings and sixteen production chains) are
+distinct from the current qbig and local input inventories; master seed 20260724.
+
+Reuse the validated native A100 build, without rebuilding: KLFT
+`f47421d895469b72d4af8a9b8479807f2b09a692`, executable
+`/qbigwork2/negro/dirichlet/build/klft-a100/binaries/heatbath`, SHA256
+`1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8`.
+Build/validation, input, script and locked-environment hashes are recorded.
+38 synthetic input/execution tests pass; the physical Nt=1 checkpoint limit
+and fixed surfaces at Nt=3,4,6 are tested. No new mass analysis is performed.
+
+Preflight and production are separate manual stages, with no Slurm jobs or
+dependencies. First run a 10-sweep Nt=6,Ns=4 smoke and four 100-sweep timings.
+Production requires successful output checks and projected cost <=12 GPU-hours
+total, <=2 hours per chain and <=2 hours per worker. Each worker also enforces
+the two-hour timeout, exclusive execution records, an idle-GPU check before
+every chain, input/output overwrite refusal and a 12-GiB free-space reserve.
+
+Remote launcher: `campaigns/mg_nt_fixed/run_scaling_a100.sh <stage> <worker>`.
+Logs: `logs/dir-scaling-preflight.out` and
+`logs/dir-scaling-production-worker-<worker>.out`.
+Raw inputs/output:
+`/qbigwork2/negro/dirichlet/data/mg_nt_fixed/c_0p5/Nt_<Nt>/Ns_<Ns>/beta_<beta>/seed_<seed>/`.
+Production processes have not yet been started; preflight is pending.
+
 ## Nt=1 matched-beta production — all twelve complete and analyzed
 
 Checked 15 October: all twelve 8,000-sweep production chains completed on
