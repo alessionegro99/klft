@@ -1,11 +1,12 @@
 # Running simulations
 
-## Matched-y scaling diagnostic — prepared; launch blocked by GPU occupancy
+## Matched-y scaling diagnostic — automatic dispatch active; waiting for idle GPUs
 
 The user approved this four-ensemble first batch and use of available A100s,
 with one of the four free lnode19 GPUs left unused. Execution uses GPUs 3,4,5
 on CPU cores 32,33,34; GPU 6 is excluded. GPUs 0,1,2 belong to other work.
-P100 nodes lnode13--17 are fully allocated to other jobs and are not used.
+P100 nodes lnode13--17 were fully allocated at the original planning check and
+are not used. This batch runs directly on the authorized non-Slurm A100 node.
 
 | Nt (links) | L2 (slices) | Ns | beta | beta/Nt | Production seeds |
 |---:|---:|---:|---:|---:|---|
@@ -34,32 +35,64 @@ Reuse the validated native A100 build, without rebuilding: KLFT
 `/qbigwork2/negro/dirichlet/build/klft-a100/binaries/heatbath`, SHA256
 `1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8`.
 Build/validation, input, script and locked-environment hashes are recorded.
-38 synthetic input/execution tests pass; the physical Nt=1 checkpoint limit
+47 targeted input/execution/scheduling tests pass; the physical Nt=1 checkpoint limit
 and fixed surfaces at Nt=3,4,6 are tested. No new mass analysis is performed.
 
-Preflight and production are separate manual stages, with no Slurm jobs or
-dependencies. First run a 10-sweep Nt=6,Ns=4 smoke and four 100-sweep timings.
+The user's request to schedule jobs when GPUs become free authorizes automatic
+progression through the existing stages. There are no Slurm jobs or dependencies.
+First run a 10-sweep Nt=6,Ns=4 smoke and four 100-sweep timings on GPU 3.
 Production requires successful output checks and projected cost <=12 GPU-hours
 total, <=2 hours per chain and <=2 hours per worker. Each worker also enforces
 the two-hour timeout, exclusive execution records, an idle-GPU check before
 every chain, input/output overwrite refusal and a 12-GiB free-space reserve.
 
-Remote launcher: `campaigns/mg_nt_fixed/run_scaling_a100.sh <stage> <worker>`.
-Logs: `logs/dir-scaling-preflight.out` and
-`logs/dir-scaling-production-worker-<worker>.out`.
+The one-shot scheduler started on **15 October 2026 at 12:20:52 UTC**:
+manager PID `3350720`, Python PID `3350734`, node `lnode19`. It polls every
+30 seconds and requires two consecutive process-free GPU checks. Once
+preflight passes, the three workers start independently as GPUs 3,4,5 become
+free; they run 6,5,5 chains respectively. GPU 6 is never used by this batch.
+New starts expire on **17 October at 12:20:52 UTC**; in-flight bounded workers
+may finish. Failure stops dispatch and its own active workers, with no automatic
+retry of failed or partially written runs. No simulation has started at the
+initial activation check: all three assigned GPUs remain occupied. Rechecked
+at 12:22:27 UTC after 95 seconds: the detached manager remains alive, the
+status heartbeat advanced to 12:22:23 UTC, and no stage-start record exists.
+
+Scheduler launcher: `campaigns/mg_nt_fixed/run_scaling_when_free.sh`.
+Stage launcher: `campaigns/mg_nt_fixed/run_scaling_a100.sh <stage> <worker>`.
+Scheduler log: `logs/dir-scaling-scheduler.out`; stage logs:
+`logs/dir-scaling-scheduled-<preflight|production>-<worker>.out`.
+Live state: `campaigns/mg_nt_fixed/scaling_schedule_status.json`.
+The [automatic-dispatch contract](data/mg_nt_fixed/scaling_schedule.json)
+pins source hashes and the original immutable execution plan. The
+[start record](data/mg_nt_fixed/scaling_schedule_start.json) and
+[status snapshot](data/mg_nt_fixed/scaling_schedule_status.json) are compact
+local copies; the latter is current only at its `updated_at` timestamp.
 Raw inputs/output:
 `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/c_0p5/Nt_<Nt>/Ns_<Ns>/beta_<beta>/seed_<seed>/`.
-Preflight manager PID 3348454 exited before creating any execution-start
+
+The earlier manual preflight manager PID 3348454 exited before creating any execution-start
 record or running a heatbath sweep. Its idle-GPU guard found GPU 3 occupied
 by PID 3348228. At 12:00:49 UTC on 15 October, user `gruber` occupied GPUs
 3,4,5,6 with `meson_new` PIDs 3348228,3348232,3348236,3348240. These jobs had
 started after our earlier free-device checks. None was altered or overlapped.
-No production chain or Slurm job was launched; no worker remains running.
-The inputs are still unused. Re-run preflight only after coordinating idle
-devices, preserving the original blocked-attempt log and using a new log path.
-See [dispatch record](data/mg_nt_fixed/scaling_dispatch.json).
+That attempt launched no production chain or Slurm job. Its original log
+`logs/dir-scaling-preflight.out` and
+[dispatch record](data/mg_nt_fixed/scaling_dispatch.json) are preserved.
+All 21 inputs were hash-verified and unused immediately before scheduler
+activation; direct GPU occupancy checks found existing compute processes on
+GPUs 3--6, which remain untouched. Slurm CLI commands were unavailable in the
+qbig login environment on this check; no Slurm submission was attempted.
 Launch code `98e1edf`, inputs `30fe913`, and planning record `2d83d68` are
-committed and pushed to `dirichlet-campaign`. Existing analysis is unchanged.
+committed and pushed to `dirichlet-campaign`, followed by scheduler code
+`2543332` and its authorization `451c21f`. Existing analysis is unchanged.
+
+Validation: `UV_CACHE_DIR=/tmp/dirichlet-uv-cache PYTHONPATH=scripts uv run --frozen
+python -m unittest scripts.test_mg_nt_fixed_scaling_schedule
+scripts.test_mg_nt_fixed_scaling scripts.test_mg_nt_fixed_nt1_run
+scripts.test_mg_nt_fixed_nt1_inputs scripts.test_mg_nt_fixed_nt1_a100`.
+All 47 tests pass. `bash -n data/mg_nt_fixed/run_scaling_when_free.sh` and
+`uv run --frozen python scripts/mg_nt_fixed_logbook.py --check` also pass.
 
 ## Nt=1 matched-beta production — all twelve complete and analyzed
 

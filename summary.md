@@ -2,7 +2,10 @@
 
 A four-ensemble matched-beta/Nt diagnostic batch is approved: 16 new chains
 of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
-The preflight guard stopped on occupied GPUs; no simulation has started.
+Automatic dispatch is active, checking GPUs 3--5 every 30 seconds and requiring
+smoke/timing gates before production. It is waiting for idle devices; no new
+simulation has started at activation. New starts expire on 17 October at
+12:20 UTC. Code and inputs are pushed; all 47 targeted tests pass.
 See the [campaign report](docs/mg_nt_fixed/summary.md)
 and [execution record](running_simulations.md).
 

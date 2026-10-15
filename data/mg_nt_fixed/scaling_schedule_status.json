@@ -1,0 +1,25 @@
+{
+  "status": "waiting_for_preflight_gpu",
+  "pid": 3350734,
+  "node": "lnode19",
+  "started_at": "2026-10-15T12:20:52.683214+00:00",
+  "expires_at": "2026-10-17T12:20:52.683193+00:00",
+  "manifest_sha256": "f4b2c2b96afc6834e3f068b269f5326f737aa15637f7d8a739b7f42ca6bbc396",
+  "config_sha256": "9df1fdb9c48905103c3e80f7e1ac4626961f322b32c775aa7ee1b0283c6e3526",
+  "gpu_indices": [
+    3,
+    4,
+    5
+  ],
+  "leave_free_gpu_index": 6,
+  "workers": {},
+  "poll_seconds": 30,
+  "idle_confirmations": 2,
+  "bootstrap_operations": 0,
+  "updated_at": "2026-10-15T12:22:23.320762+00:00",
+  "idle_confirmations_seen": [
+    0,
+    0,
+    0
+  ]
+}

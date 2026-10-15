@@ -7,9 +7,14 @@ The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =
 8,000-sweep hot chains. They test the proposed scaling collapse near beta/Nt=1.5
 and volume dependence against the existing Nt=4,Ns=96,beta=6.2 result.
 The current plan uses three lnode19 A100s (GPUs 3--5), leaving GPU 6 free.
-The preflight guard stopped before any sweep because other jobs occupied all
-four devices before execution. Smoke and timing checks remain pending;
-production has not started. Inputs and launch code are committed and pushed.
+Automatic dispatch is active on lnode19: it checks GPUs 3--5 every 30 seconds,
+requiring two consecutive process-free checks. Smoke and timing checks run
+first; passing gates allow the three production workers to start as their
+assigned devices become free. The scheduler started at 12:20:52 UTC on
+15 October and accepts new starts for 48 hours. GPUs remain occupied at the
+activation check; no simulation has started. The earlier guarded manual
+attempt is preserved in the dispatch history. Inputs and launch code are
+committed and pushed; 47 targeted tests pass.
 Inputs use the canonical c=0.5 reference-family tree, with target_c=null and
 fixed_c_continuum_input=false. Existing numerical results remain unchanged.
 See [execution status](../../running_simulations.md) and
