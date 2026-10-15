@@ -1,0 +1,36 @@
+{
+  "production_authorized": true,
+  "authorization": "user: ok launch; use available A100s; leave one of four free",
+  "node": "lnode19",
+  "backend": "CUDA/AMPERE80",
+  "manifest_sha256": "f4b2c2b96afc6834e3f068b269f5326f737aa15637f7d8a739b7f42ca6bbc396",
+  "source_sha256": {
+    "mg_nt_fixed_scaling_run.py": "f8d4e619d74a1203c7d43b236f4d550a134c2d7af8f8e93c2ab422c98571806d",
+    "mg_nt_fixed_nt1_a100.py": "4fcfb74ea7bccc1cfb62017e16cdeb13fa51f44fc7366cec91607ad486792878",
+    "mg_nt_fixed_nt1_run.py": "62caae6cc25807f1dbf9490efea9a2c270d2457c67ca5decc70d5f22ab580ef9",
+    "run_scaling_a100.sh": "760d496ee289db5e48ffe53eb90cf32d78af0be4358d073763c917cf798fc36b"
+  },
+  "uv_lock_sha256": "1bee9b5d384309d87510e632ea585807e4e887791bb00ab808b599cfc8bab67d",
+  "min_free_bytes": 12884901888,
+  "workers": [
+    {
+      "index": 0,
+      "gpu_uuid": "GPU-439f10b2-3f2f-c6d2-12cc-deca128ca0f2",
+      "cpu": 32
+    },
+    {
+      "index": 1,
+      "gpu_uuid": "GPU-94eef473-cba0-0850-d8e5-dc5dafa2493a",
+      "cpu": 33
+    },
+    {
+      "index": 2,
+      "gpu_uuid": "GPU-97c59efd-ea9e-94d9-7f18-1959e77798e4",
+      "cpu": 34
+    }
+  ],
+  "leave_free_gpu_index": 6,
+  "staging": "manual preflight, manual timing gate, manual production",
+  "assignment": "production index modulo 3",
+  "per_worker_time_limit_seconds": 7200
+}
