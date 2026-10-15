@@ -143,7 +143,8 @@ def blocking_scan(series: Sequence[Array], labels: list[str], ns: int,
 
 
 def fit_window(r: Array, mean: Array, samples: Array, covariance: Array,
-               ns: int, low: int, high: int) -> tuple[dict, Array]:
+               ns: int, low: int, high: int,
+               initial_mass: float | None = None) -> tuple[dict, Array]:
     """Diagonal central/refit objective, full-covariance descriptive residual.
 
     The shared fit_utils.boot_fit cannot retain individual failed refits,
@@ -161,13 +162,21 @@ def fit_window(r: Array, mean: Array, samples: Array, covariance: Array,
                bootstrap_successes=0, bootstrap_samples=NBOOT, flags=[], failure=None)
     parameters = np.full((NBOOT, 2), np.nan)
     try:
-        central = _uncorrelated_k0_fit_with_errors(x, y, error, ns)
+        initial = None
+        if initial_mass is not None:
+            normalization = finite_volume_k0(x[:1], 1., initial_mass, ns)[0]
+            initial = np.asarray([max(abs(y[0])/normalization, 1e-8), initial_mass])
+        central = _uncorrelated_k0_fit_with_errors(x, y, error, ns, initial)
     except (ValueError, RuntimeError, FloatingPointError) as exc:
         row['failure'] = str(exc)
         row['flags'] = ['undefined_central_fit']
         return row, parameters
     row.update(amplitude=central['amplitude'], mass=central['mass'])
     try:
+        # Centering 500 replica vectors bounds covariance rank by 499.
+        # Roundoff can otherwise let Cholesky spuriously succeed here.
+        if len(x) >= NBOOT:
+            raise linalg.LinAlgError('fitted points exceed bootstrap covariance rank')
         condition = float(np.linalg.cond(cov))
         row['covariance_condition'] = condition if np.isfinite(condition) else None
         factor = linalg.cholesky(cov, lower=True)
