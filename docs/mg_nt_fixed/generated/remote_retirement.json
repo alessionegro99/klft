@@ -1,0 +1,78 @@
+{
+  "archive_sha256": "84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6",
+  "moves": [
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/audit",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/audit"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/bootstrap_correction_20261012",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/bootstrap_correction_20261012"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/code_audit_20261012",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/code_audit_20261012"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/comparison/review_20261014",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/comparison/review_20261014"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/comparison/tuning_final",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/comparison/tuning_final"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/comparison/tuning_round2",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/comparison/tuning_round2"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/confirmation",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/confirmation"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/continuation_20261012",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/continuation_20261012"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/extensions",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/extensions"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/final_checks",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/final_checks"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/logbook",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/logbook"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/pilot",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/pilot"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/preliminary_checklist.md",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/preliminary_checklist.md"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/review_20261014",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/review_20261014"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/tuning",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/tuning"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/tuning_final",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/tuning_final"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/tuning_round1",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/tuning_round1"
+    },
+    {
+      "source": "/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization/analysis/mg_nt_fixed/tuning_round2",
+      "destination": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote/analysis/mg_nt_fixed/tuning_round2"
+    }
+  ],
+  "recovery": "/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6/retired_remote"
+}

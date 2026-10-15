@@ -1,0 +1,340 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,amsmath,amssymb,graphicx,booktabs,longtable}
+\usepackage[margin=22mm]{geometry}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\pagestyle{fancy}\fancyhf{}\lhead{Fixed $m_G L$: $L=aN_t$}\rhead{Canonical campaign logbook}\cfoot{\thepage}
+\setlength{\headheight}{14pt}\setlength{\parindent}{0pt}\setlength{\parskip}{6pt}\setlength{\emergencystretch}{2em}
+\input{docs/mg_nt_fixed/generated/numbers.tex}
+\newcommand{\plotpage}[3]{\clearpage\section*{#1}\includegraphics[width=\linewidth]{#2}\par #3}
+\begin{document}
+\begin{center}{\LARGE Fixed $m_G L$ campaign}\\[6pt]{\large Theory, methods and preliminary results}\end{center}
+
+\section*{Current status and scope}
+The canonical analysis contains \Ensembles{} physical ensembles and \Chains{}
+independent chains: \TotalSweeps{} measured sweeps, \RetainedSweeps{} after
+independent thermalization cuts, and \UsedSweeps{} used in complete blocks.
+There are \NumericalMasses{} numerical mass estimates and \TuningPoints{}
+usable preliminary coupling interpolations. All three targets, $c=0.5,1,2$,
+have $N_t=2,3,4$; $c=1$ also has $N_t=6$. Every new bootstrap operation uses
+exactly 500 replicas. No new Monte Carlo simulations are launched by this
+reanalysis. Raw histories remain on qbig.
+
+The register now also includes three $N_t=1$ matched-coupling ensembles:
+twelve independent 8,000-sweep chains completed on lnode19 A100 GPUs on
+14 October. Their couplings are the three current $N_t=2$ tuning estimates.
+For these rows, the folder's $c_{\rm ref}$ denotes that source target;
+the actual $N_t=1$ mass is measured without imposing $m_GN_t=c_{\rm ref}$.
+They are excluded from fixed-$c$ interpolation and continuum fits.
+
+The four 80,000-sweep chains at $c=0.5,N_t=3,N_s=80,\beta=4.4$ have the
+explicit flag \texttt{length\_outlier}. Their length differs from the
+8,000-sweep standard; the flag does not establish a physics bias. They are
+pooled with four independent 8,000-sweep chains of identical parameters.
+Eight 10,000-sweep chains are explicitly labelled prior inputs from the
+fixed-$\beta/N_t$ campaign, at $N_t=2,\beta=3.0$ and $2.1$.
+
+All defined estimates remain available for visual review. Flags identify
+window drift, incomplete error plateaus, limited block counts, chain
+differences, numerical covariance problems and interpolation sensitivity.
+They propagate to preliminary continuum results. The editable
+\path{analysis/mg_nt_fixed/review.csv} records manual window choices and
+inclusion decisions. No flag is silently converted into a rejection.
+
+\section*{How to read the results}
+Each ensemble lives at
+\path{analysis/mg_nt_fixed/c_<c>/Nt_<Nt>/Ns_<Ns>/beta_<beta>/}.
+It contains correlators, all fit windows, chain statistics and compact
+bootstrap arrays. Its \texttt{plots/} directory shows correlator fits,
+residuals and the full mass-window scan; \texttt{plots/first\_stage/}
+shows every chain's thermalization cut, bootstrap error versus block size,
+the selected block and block counts. Blocking examples are kept outside
+this PDF. Comparisons sit at the nearest common physics level.
+The CSV column guide is \path{docs/mg_nt_fixed/csv_columns.md}.
+
+\clearpage\section*{Theory: what is being held fixed?}
+The model is three-dimensional SU(2) Yang--Mills theory with Wilson action
+\[
+ S_W=-\frac{\beta}{2}\sum_p\operatorname{Re}\operatorname{Tr}U_p
+       +\text{constant}.
+\]
+Both transverse directions are periodic.
+Tangential links on two temporal Dirichlet surfaces are fixed to the identity
+\cite{nebbia}. The separation is $L=aN_t$; the transverse box size is
+$L_s=aN_s$. Current simulations store $N_t+1$ spatial-link slices and
+$N_t$ temporal-link layers, with no closing layer. Thus $N_t$ counts links
+between the fixed surfaces. Historical wrapping-sector outputs retain
+their original executable provenance. With fixed surface links their
+action factorizes into the physical slab and an independent auxiliary
+sector, so removing that sector preserves physical slab expectation values.
+
+For integer transverse separation $r$, define
+\begin{align*}
+ G(\mathbf{x})&=\prod_{t=0}^{N_t-1}U_t(\mathbf{x},t),\\
+ C_G(r)&=\left\langle\tfrac12\operatorname{Re}\operatorname{Tr}
+   [G(\mathbf{x})G^\dagger(\mathbf{x}+r\hat e)]\right\rangle.
+\end{align*}
+Origins and both transverse axes are averaged. The normalization gives
+$C_G(0)=1$. The residual boundary transformations act as
+$G\mapsto V_LGV_R^\dagger$; in $GG^\dagger$, the $V_R$ factors cancel and
+the trace removes the remaining $V_L$ conjugation. This is the
+$\mathrm{SU}(2)_L\times\mathrm{SU}(2)_R$ symmetry of the principal chiral
+model (PCM). At $N_t=1$ the slab plaquettes reduce exactly to nearest-neighbor
+PCM interactions \cite{nebbia}.
+
+The asymptotic decay of $C_G$ measures the lightest transverse screening
+scale with overlap in this holonomy channel, under single-state dominance.
+With $\widehat m=am_G$, the trajectory is
+\[
+ c=m_GL=\widehat m N_t\in\{0.5,1,2\},\qquad
+ \xi_{\exp}/a=1/\widehat m=N_t/c,\qquad \xi_{\exp}/L=1/c.
+\]
+The correlation length is twice, equal to, or half the slab thickness.
+These are geometry-to-correlation-length ratios; identifying a phase or a
+limiting effective theory requires additional evidence. The smallest target
+has only a factor-two length separation. A controlled PCM long-distance
+interpretation would benefit from $m_GL\ll1$ and agreement of further
+dimensionless observables. The present scope is the holonomy mass.
+
+Increasing $N_t$ at fixed $c$ gives, step by step,
+\[
+ a/L=1/N_t\to0,\qquad \widehat m=c/N_t\to0,\qquad
+ \xi_{\exp}/a=N_t/c\to\infty.
+\]
+Thus the same physical thickness is increasingly well resolved in lattice
+units, using the measured screening length as the ruler. The transverse
+volume is separately controlled through $m_GL_s=\widehat mN_s$.
+
+\clearpage\section*{From correlator to continuum mass}
+At each $N_t$, nearby couplings are simulated and their masses determine
+$\beta_\star$ satisfying $\widehat m(\beta_\star,N_t)N_t=c$.
+The tuning condition fixes $m_GL$ by construction. The nontrivial continuum
+information is the coupling required to satisfy it. In the isotropic Wilson
+convention $\beta=4/(ag_{3,0}^2)$ \cite{teper},
+\begin{align*}
+ g_{3,0}^2L&=(ag_{3,0}^2)N_t=4N_t/\beta_\star,\\
+ Q(N_t)\equiv m_G/g_{3,0}^2
+ &=\frac{am_G}{ag_{3,0}^2}
+ =\frac{\widehat m\beta_\star}{4}
+ =\frac{c\beta_\star}{4N_t}.
+\end{align*}
+The plots fit $Q(N_t)=Q_0+d/N_t$ only ($p=1$). The equivalent
+$\beta_\star/N_t$ plots are in each target's comparison directory.
+At finite spacing these are bare-coupling coordinates; interpretation in
+continuum coupling units assumes the usual continuum matching. At fixed
+boundary prescription and large transverse volume, the result determines
+the local inverse relation between $m_GL$ and $g_3^2L$.
+
+The $p=1$ form is a restricted cutoff ansatz. Fits using all resolutions
+and omitting the coarsest resolution show sensitivity to this choice.
+Two points determine a line with zero residual degrees of freedom and
+provide no residual test of the ansatz. Statistical bands are conditional
+on the chosen mass windows, interpolation windows and volumes. The CSV also
+reports a separate conservative linear-response bound on the continuum
+intercept from independently signed two-point interpolation shifts at each
+resolution. This bound is not added in quadrature to the statistical error.
+
+\section*{Mass analysis and correlated uncertainty}
+Each chain is cut independently with MSER-5 and a 500-sweep minimum;
+the largest cut across monitored observables is used. Profiles at cadence
+five enter as equilibration monitors. Integrated autocorrelation times use
+the self-consistent Sokal window and are reported in sweeps \cite{sokal}.
+One composite sweep is a heatbath update and five overrelaxation updates.
+Holonomy observables are measured every sweep.
+The second-moment length is monitored using ensemble structure factors,
+\[
+ \xi_{\rm 2nd}/a=\frac{1}{2\sin(\pi/N_s)}
+ \sqrt{\frac{\widetilde C_G(0)}{\widetilde C_G(p_{\min})}-1},
+ \qquad ap_{\min}=2\pi/N_s.
+\]
+The same joint replicas propagate its error. Ratios are formed after
+ensemble averaging; unresolved replicas are recorded explicitly.
+
+Complete nonoverlapping blocks are formed inside each chain. Candidate
+lengths scan the whole post-cut history, starting at five sweeps. The chosen
+length exceeds twice the largest measured autocorrelation time and uses
+the earliest common three-length error plateau when available. Each curve
+point is a separate 500-replica bootstrap SE. Plateau tolerances are 5\%
+or two approximate SE uncertainties, whichever is larger; the latter use
+Welch--Satterthwaite degrees of freedom and the Monte Carlo SE of 500 draws.
+This is a diagnostic stability criterion. Missing plateaus are flagged.
+Fewer than 30 complete blocks is a warning; 50 is the target.
+
+\clearpage\section*{Pooling, fitting and window review}
+If chain $k$ contributes $n_k$ complete blocks of $B_k$ measurements,
+$w_k=n_kB_k/\sum_j n_jB_j$. In each of exactly 500 replicas, draw $n_k$
+block vectors with replacement within chain $k$, then form
+$C^{(b)}=\sum_k w_k\overline C_k^{(b)}$ \cite{efron}.
+The draw acts on the entire separation vector. Chain identities and weights
+are fixed. The ensemble mean is $\sum_k w_k\overline C_k$.
+Independent chains retain their own cuts, autocorrelations and block
+boundaries. Split-history and between-chain discrepancies are reported
+separately; maxima over many correlated observables are review diagnostics.
+
+The asymptotic two-image model is \cite[Eq.~(4.14)]{nebbia}
+\[
+ C_G(r)\simeq A\{K_0(\widehat m r)+K_0[\widehat m(N_s-r)]\}.
+\]
+Its interpretation requires a stable long-distance window and finite-volume
+control. Additional images, excited contributions and lattice dispersion
+may matter outside that regime. Each central and bootstrap fit minimizes
+the diagonal-error objective. Parameter errors are the SD of the same fit
+over the 500 vector replicas. The complete covariance is used to report
+$\chi^2_{\rm full}=r^T\operatorname{Cov}^{-1}r$ after fitting.
+This statistic is descriptive: the fitted parameters do not minimize it,
+so a nominal analytic chi-square p-value is not appropriate. No p-value is
+computed and no chi-square gate is imposed. Singular covariance leaves this
+diagnostic undefined while retaining a defined diagonal fit.
+
+For the original fixed-$c$ ensembles, all contiguous windows with at least five points are fitted, with every
+positive $R_{\min}$ and $R_{\max}=N_s/2,N_s/2-2,\ldots\geq\lceil N_s/3\rceil$.
+The recommendation is the earliest stable $3\times3$ patch in adjacent
+endpoints, preferring the largest $R_{\max}$. Pairwise masses must differ
+by at most two combined bootstrap SEs. Overlapping windows are correlated;
+this rule is a heuristic for visual review. If no such patch exists, the
+least-drifting numerical patch is flagged and retained. Failed refit slots
+remain NaN in the saved 500-slot arrays; success counts and failure reasons
+are in CSV. Relative error above 25\%, low success fraction and a missing
+mass-error blocking plateau produce flags.
+
+For the new $N_t=1$ boxes with $N_s=512,2048$, the user approved a bounded
+endpoint scan: seven allowed upper endpoints and logarithmically spaced
+lower endpoints, followed by dense adjacent checks near three candidate
+plateaus. Every integer separation inside each window and all 500 refits
+are retained. The recommendation is the earliest stable patch among tested
+windows; it does not establish the exhaustive earliest patch. The $N_s=128$
+scan remains exhaustive. A covariance formed from 500 centered replicas
+has rank at most 499; windows with 500 or more separations therefore have
+undefined full-covariance $\chi^2$. Fewer independent block vectors can
+reduce the rank further. No inverse regularization is used to manufacture
+a goodness-of-fit statistic.
+
+\section*{Coupling windows and volume choices}
+For each $c,N_t$, all contiguous three-coupling windows are examined using
+$\log(\widehat mN_t)=a_0+b\beta$. Only centrally bracketed targets yield
+an interpolation; undefined slopes or unbracketed targets are recorded.
+Each aligned mass replica gives $\beta_\star^{(b)}=(\log c-a_0^{(b)})/b^{(b)}$.
+The median and 16--84\% interval are quoted. The largest shift relative to
+a target-bracketing two-point interpolation is a separate systematic.
+The closest bracketing window is suggested; manual choices remain editable.
+
+The larger $N_s=96$ boxes are primary at $c=1,N_t=4,\beta=4.95,5.3$;
+the $N_s=48$ versions remain volume diagnostics. At $c=0.5,N_t=4,
+\beta=5.58394149$, $N_s=96$ is primary and 128 is a matched-volume check.
+The $N_t=4,c=1$ confirmation ensemble now contributes to tuning. Its earlier
+independence applies to the historical interpolation only.
+
+\clearpage\section*{Coupling and continuum results}
+\begin{center}\small\input{docs/mg_nt_fixed/generated/tuning_table.tex}\end{center}
+All entries are preliminary and subject to visual review. The interpolation
+shift is kept separate from the statistical interval.
+\begin{center}\small\input{docs/mg_nt_fixed/generated/continuum_table.tex}\end{center}
+The second row for each target omits its coarsest resolution. Detailed flags,
+full-covariance residual statistics and bootstrap success counts are in the
+CSV tables. The chosen primary volumes are not a volume extrapolation.
+
+\textbf{Resolution dependence is the principal limitation of these extrapolations.}
+Omitting $N_t=2$ moves $Q_0$ from approximately $\QHalfAll$ to $\QHalfDrop$
+at $c=0.5$, $\QOneAll$ to $\QOneDrop$ at $c=1$, and $\QTwoAll$ to
+$\QTwoDrop$ at $c=2$. These shifts are much larger than the conditional
+bootstrap errors. They are explicitly flagged using the paired-replica
+uncertainty of the difference between the two fits. The tables retain all
+requested preliminary fits; their small statistical errors do not establish
+a controlled continuum mass. Finer resolutions and visual range selection
+are the priority before a precision continuum claim.
+
+\section*{Why earlier results changed}
+The original resampler included an outer draw of independent chain identities.
+The corrected method fixes those identities and resamples blocks within
+each chain. Earlier bootstrap counts and uncertainty prescriptions are
+preserved in the checksum-verified qbig archive; they are historical products.
+This reanalysis additionally pools matching short and long runs with fixed
+used-measurement weights and applies the requested 500-replica policy to all
+38 physical ensembles.
+
+Earlier acceptance also imposed fit p-value and window gates. In particular,
+the $c=2,N_t=3,N_s=32,\beta=3.25$ mass was unavailable after those gates,
+despite numerical windows that can be inspected for a plateau. The new
+analysis retains numerical windows, flags drift and lets visual review
+determine their use. The coupling fits previously rejected for local
+log-linearity are displayed in the comparison directories, including their
+residuals. Keeping these preliminary results increases coverage; their
+statistical errors remain conditional on the model and selected window.
+
+\section*{Next simulations to consider after review}
+First inspect flagged mass and coupling windows, especially the $\beta=3.25$
+case and the smallest remaining block counts. Additional independent
+8,000-sweep chains can improve precision and between-chain checks without
+adding another length outlier. At otherwise fixed conditions, doubling
+effective statistics reduces statistical error by approximately $\sqrt2$;
+halving it requires roughly four times the effective statistics. More sweeps
+cannot resolve a poor fit model or uncontrolled finite-volume effects.
+At a fixed block size $B$, obtaining 50 blocks within every chain requires
+at least its thermalization cut plus $50B$ sweeps: for a 500-sweep cut this
+is 10,500 sweeps at $B=200$ and 12,500 at $B=240$. Adding more 8,000-sweep
+chains improves combined statistics but leaves that per-chain count unchanged
+unless the selected block size changes.
+
+The largest current dataset supports three $c$ values, with four resolutions
+only at $c=1$. The next coverage priority is an $N_t=6$ bracket for $c=0.5$
+and $c=2$, followed by independent confirmation of the tuned couplings and
+volume/timing checks. No new simulation is authorized by this report.
+
+\clearpage\section*{New $N_t=1$ matched-coupling diagnostics}
+\begin{center}\small\input{docs/mg_nt_fixed/generated/nt1_table.tex}\end{center}
+All twelve chains completed with verified inputs, output counts, boundary
+conditions and checkpoints, using KLFT revision
+\texttt{f47421d895469b72d4af8a9b8479807f2b09a692} and its native A100 build.
+Total simulation time was 3.038 A100 GPU-hours. Holonomies were measured
+every sweep, profiles every five sweeps, and Wilson loops were disabled.
+The separate P100 validation job 290996 also passed all six CTests, CUDA
+memory checking and the benchmark; it launched no production.
+
+The transverse sizes 128, 512 and 2048 were explicit candidate input
+choices. The saved planning records label them unvalidated and contain no
+quantitative derivation establishing their necessity. At the largest
+coupling, the first-stage estimate is $\xi_{\rm 2nd}/a\simeq147\pm34$,
+giving $N_s/\xi_{\rm 2nd}\simeq14$ at the central value. This is preliminary
+because independent cuts range from 825 to 3625 sweeps, the maximum
+estimated autocorrelation time is about 317 sweeps, and $B=635$ leaves
+only 6--11 complete blocks per chain. The common blocking plateau is
+unresolved and split-history/between-chain differences require review.
+At $N_s=512$, $\xi_{\rm 2nd}/a\simeq40.6\pm2.9$ and $B=200$ leaves
+36--37 blocks; at $N_s=128$, $\xi_{\rm 2nd}/a\simeq7.35\pm0.23$ and
+$B=200$ leaves 37 blocks. These measured lengths explain why matched
+couplings cannot be interpreted as the source fixed-$c$ targets at $N_t=1$.
+
+The largest-volume statistics are the immediate concern. At the present
+block length, 50 complete blocks require 31,750 post-cut sweeps per chain;
+the most conservative observed cut would bring this to 35,375 total sweeps.
+This is a planning estimate: autocorrelation and thermalization must be
+rechecked after extending statistics. A smaller-volume comparison is needed
+before replacing 2048 by a smaller production size. Adding these untuned
+points does not extend the fixed-$c$ continuum resolution set.
+
+\plotpage{$N_t=1$: matched-coupling correlators}{analysis/mg_nt_fixed/comparison/nt1_correlators.pdf}{The three volumes correspond to different couplings. Their folder labels identify the source $N_t=2$ tuning. Error bars use independent-chain, pooled-with-boundaries bootstrap replicas.}
+\plotpage{$N_t=1$: preliminary screening masses}{analysis/mg_nt_fixed/comparison/nt1_masses.pdf}{Conditional bootstrap standard errors are shown. Window, blocking, chain-consistency and volume flags remain in the per-ensemble CSVs. These masses are excluded from fixed-$c$ continuum fits.}
+
+\plotpage{Continuum comparison: all targets}{analysis/mg_nt_fixed/comparison/continuum_all_targets_p1.pdf}{All three targets use the requested $p=1$ ansatz. Flags remain attached to their input points.}
+\plotpage{$c=0.5$: resolution sensitivity}{analysis/mg_nt_fixed/c_0p5/comparison/continuum_mass_in_coupling_units_p1.pdf}{The drop-coarsest line uses two resolutions and has zero residual degrees of freedom. Bands contain conditional statistical uncertainty only.}
+\plotpage{$c=1$: four measured resolutions}{analysis/mg_nt_fixed/c_1/comparison/continuum_mass_in_coupling_units_p1.pdf}{The available $N_t=6$ bracket extends the continuum comparison. Independent tuning confirmation and further cutoff control remain useful.}
+\plotpage{$c=2$: preliminary retained trajectory}{analysis/mg_nt_fixed/c_2/comparison/continuum_mass_in_coupling_units_p1.pdf}{Mass-window and interpolation concerns remain visible in the CSV flags and per-ensemble plots.}
+\plotpage{Previously gated mass: $N_t=3,N_s=32,\beta=3.25$}{analysis/mg_nt_fixed/c_2/Nt_3/Ns_32/beta_3p25/plots/mass_windows_Rmax_16.pdf}{Every numerical mass window at this endpoint is shown. The band marks the suggested mass; overlapping-window stability is a diagnostic heuristic. Other endpoints and the correlator residuals are saved alongside this plot.}
+\plotpage{Example coupling interpolation}{analysis/mg_nt_fixed/c_2/Nt_3/comparison/tuning.pdf}{The previously gated mass is retained as a preliminary input. All coupling windows and their residual plots are available in the same comparison directory.}
+
+\clearpage\section*{Ensemble result register}
+\small\input{docs/mg_nt_fixed/generated/ensemble_table.tex}\normalsize
+Uncertainties are bootstrap standard errors of $am_G$. The selected window
+and used statistics are included so a result can be traced to its CSV and
+raw-input hashes. The complete chain-level cuts, autocorrelation times,
+flags and block counts are in \texttt{chains.csv} and
+\texttt{autocorrelations.csv}; no chain histories are concatenated.
+
+\clearpage\begin{thebibliography}{9}
+\bibitem{nebbia} M. Nebbia, \emph{Effects of Dirichlet Boundary Conditions in Yang--Mills Theories}, MSc thesis (2024/2025), local reference \path{docs/marconebbia_tesi.pdf}.
+\bibitem{teper} M. Teper, SU($N$) Yang--Mills theory in $2+1$ dimensions, Phys. Rev. D 59, 014512 (1999), \href{https://arxiv.org/abs/hep-lat/9804008}{hep-lat/9804008}.
+\bibitem{sokal} A. D. Sokal, Monte Carlo Methods in Statistical Mechanics: Foundations and New Algorithms, in \emph{Functional Integration}, NATO ASI B 361 (1997), pp. 131--192.
+\bibitem{efron} B. Efron and R. J. Tibshirani, \emph{An Introduction to the Bootstrap}, Chapman \& Hall (1993), chapters 6 and 8.
+\end{thebibliography}
+\end{document}

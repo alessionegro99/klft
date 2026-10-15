@@ -9,23 +9,25 @@ PDFs. Direct volume and statistics checks remain necessary. Exact results and
 provenance are in
 [`docs/beta_nt_fixed/summary.md`](docs/beta_nt_fixed/summary.md).
 
-The separate nonperturbative fixed-`m_G Nt` campaign completed its pilot,
-both extensions, statistics and volume replacements, final tuning, and the
-independent `Nt=4,c=1` confirmation. All nine final tunings pass. The
-confirmation gives `m_G Nt=1.006200 +/- 0.006542` and passes its 3% agreement
-gate. The canonical report is
-[`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
+The separate fixed-`m_G Nt` reanalysis is complete: 38 physical ensembles
+(156 chains), exactly 500 bootstrap replicas, 10 flagged preliminary tuning
+points and three p=1 continuum comparisons. Omitting Nt=2 shifts the continuum
+intercepts by 2.2%, 2.5% and 9.2% for c=0.5, 1 and 2; finer-resolution checks
+are required before a precision continuum claim. All 53 targeted tests pass;
+6,224 mass windows and 1,017 plot PDFs were verified. No new simulations were
+submitted. Results, the cleaned physics tree and provenance are in the
+[campaign report](docs/mg_nt_fixed/summary.md) and [PDF logbook](docs/mg_nt_fixed/logbook.pdf).
 
 ## Local removal of the auxiliary wrapping sector
 
-The user subsequently approved twelve Nt=1 production chains on A100s. Four
-lnode19 workers started at 18:11:32 CEST on 14 October, each with one GPU,
-one CPU and a two-hour bound. At 18:13:48, the eight Ns=128/512 chains had
-completed and passed all output/checkpoint checks; four Ns=2048 chains were
-running. They reuse the original unused inputs at the three exact Nt=2 tuned
-beta values, with explicit A100 execution provenance. See the current
-[dispatch record](running_simulations.md#nt1-matched-beta-production--eight-complete-four-running-on-a100).
-No Nt=1 mass or fixed-c continuum point is inferred from the short tests.
+All twelve subsequently approved Nt=1 A100 production chains completed:
+96,000 sweeps and 3.0381 GPU-hours. Their qbig analysis uses exactly 500
+replicas. The combined physics tree has 41 ensembles and 168 chains;
+Nt=1 matched-beta diagnostics remain separate from fixed-c continuum inputs.
+Ns=2048 has preliminary xi2nd/a = 146.7 ± 33.6 and only 6--11 complete blocks
+per chain, requiring more statistics and an independent volume check.
+See the [campaign report](docs/mg_nt_fixed/summary.md),
+[logbook](docs/mg_nt_fixed/logbook.pdf) and [execution record](running_simulations.md).
 
 An additional user-authorized native A100 test completed successfully on
 lnode19 GPU 3 (manager PID `3180516`, exit 0), using the separate
@@ -114,9 +116,10 @@ GPU validation `290995` failed on `lnode17` in 13 seconds with
 driver stub. All six processes stopped during CUDA initialization, before
 numerical validation. Project commit `b314b01` makes both P100 GPU launchers
 preload only the installed driver, preserving the module CUDA/GCC libraries;
-a read-only loader check confirms that resolution. The unchanged binary is
-awaiting validation retry `290996`, PENDING (Resources) at 17:36:28 CEST on
-14 October. No P100 Nt=1 smoke, timing or production job has been submitted.
+a read-only loader check confirms that resolution. The unchanged binary
+passed retry `290996` on lnode16 on 15 October (38 seconds): all six CTests,
+CUDA memory checking and the benchmark passed. No P100 Nt=1 smoke, timing or
+production job was submitted.
 The [attempt record](data/mg_nt_fixed/open_slab_validation_attempts.json)
 preserves the failure and corrected-script hashes.
 

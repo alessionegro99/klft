@@ -69,6 +69,23 @@ recentered joint bootstrap using the same diagonal fit procedure.
 
 ## Testing and Reproducibility
 
+Use exactly 500 samples for every new bootstrap operation (user update,
+12 October 2026, superseding the previous 1000-sample policy). Preserve the
+recorded counts of historical products and label any historical exceptions.
+
+For `mg_nt_fixed`, update `docs/mg_nt_fixed/logbook.pdf` after every new
+analyzed result, including failed gates and revised conclusions. Review its
+`logbook.tex` narrative and `review.json`, then run on a qbig compute node
+`uv run --frozen python scripts/mg_nt_fixed_logbook.py`; verify freshness with
+the same command plus `--check`. Keep plots in `analysis/mg_nt_fixed/`:
+single-simulation figures belong in that simulation's `plots/` directory,
+thermalization and blocking examples in `plots/first_stage/`. Use the canonical
+`c_<c>/Nt_<Nt>/Ns_<Ns>/beta_<beta>/` tree in both data and analysis. Figures
+combining simulations belong in `comparison/` at their nearest common physics
+level. Keep dates, bootstrap counts and historical stages out of active folder
+names. Keep blocking-example figures outside the logbook PDF.
+All plots are grid-free. Keep the fixed-beta/Nt campaign separate.
+
 No root test framework or coverage threshold is configured. Place future Python tests beside the analysis code as `scripts/test_<module>.py`. Check small-volume or analytically known limits, and test KLFT changes with CTest. Every reported result must record the boundary conditions, lattice dimensions, coupling convention, seed, thermalization, measurement spacing, and dependency revision. Estimate Monte Carlo uncertainty with autocorrelation-aware binning, jackknife, or bootstrap; never use an independent-sample standard error for correlated chains.
 
 ## qbig Production Workflow
@@ -108,10 +125,40 @@ few large blocks remain.
 
 Determine the thermalization cut and estimate `tau_int` for each chain
 separately. Form blocks and perform within-chain resampling separately, then
-combine run-level estimates through their independent fluctuations. Use a
-hierarchical bootstrap when a joint covariance across correlator separations is
-required. Report every chain's cut, `tau_int`, block length, and retained block
+combine run-level estimates with equal chain weights. Keep chain identities
+fixed and independently resample complete block vectors within every chain;
+this preserves joint covariance across separations. Do not add an outer
+resampling of chain identities: these Markov replicas estimate the same
+equilibrium expectation (correction approved 12 October 2026). Assess chain
+consistency separately. Report every chain's cut, `tau_int`, block length, and retained block
 count. All quoted uncertainties must follow this chain-aware procedure.
+
+For `mg_nt_fixed`, the approved pooled-with-boundaries policy supersedes equal
+chain weights: use fixed weights proportional to the measurements retained in
+complete blocks. Preserve independent cuts, autocorrelations and resampling
+within each chain. Flag the four 80,000-sweep chains as `length_outlier`; this
+is a duration flag. Retain numerically defined mass and interpolation fits as
+preliminary, with diagnostic flags and manual review in `review.csv`. Use a
+mass-stability window recommendation; full-covariance chi-square is descriptive
+and no p-value gate is applied. Save all 500 window refits. Continuum fits use
+only p=1 and may include flagged preliminary inputs. Exclude undefined results
+and explicitly user-excluded points. Keep the fixed-beta/Nt policy unchanged.
+The canonical entry points are `scripts/mg_nt_fixed_analysis.py` (one physical
+ensemble), `scripts/mg_nt_fixed_campaign.py` (tables, tuning and p=1 continuum),
+`scripts/mg_nt_fixed_verify.py`, and `scripts/mg_nt_fixed_logbook.py`.
+`mg_nt_fixed_parallel.py` schedules the same window fits across the CPUs
+allocated by Slurm; it uses the same saved ensemble replicas. Older stage
+generators and their inputs are preserved in the qbig recovery archive.
+
+The Nt=1 matched-beta diagnostic uses `nt1_analysis_manifest.json` alongside
+the unchanged fixed-c manifest. Its c folders identify the source Nt=2
+target; keep `target_c: null` and `fixed_c_continuum_input: false` through
+all exports. For its Ns=512/2048 boxes, the user approved coarse endpoint
+scanning followed by dense adjacent plateau checks (`mg_nt_fixed_adaptive.py`).
+Keep every separation inside each window and all 500 refits; flag that the
+recommendation is earliest among tested patches. Covariance estimated from
+500 centered replicas has rank at most 499: report an undefined full-covariance
+chi-square when singular, retaining defined diagonal-fit masses for review.
 
 For the fixed-beta/Nt campaign, also scan the blocking error over the whole
 post-cut history for every primary and secondary observable. Block each

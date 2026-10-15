@@ -12,10 +12,14 @@ Current campaign status is documented separately. The
 [fixed `beta/Nt`](docs/beta_nt_fixed/summary.md) analysis has `p=1` continuum
 fits on the 1.8 and 2.0 lines, 64 comparison PDFs, and 30 per-ensemble
 first-stage PDFs; the 2.1 line remains incomplete. The separate
-[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign passes all nine final
-tunings and its independent `Nt=4,c=1` confirmation. All plots are grid-free;
-the fixed-mass report separates the historical pilot set from the focused
-checked plots.
+[fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has been reanalysed:
+41 physical ensembles (168 chains) in a `c/Nt/Ns/beta` tree, 500-replica errors,
+10 tuning points and three preliminary `p=1` continuum comparisons. Three
+new Nt=1 matched-beta ensembles are kept separate from fixed-c inputs. The
+continuum intercepts remain sensitive to the included resolutions. See its
+[PDF logbook](docs/mg_nt_fixed/logbook.pdf) and
+[analysis index](analysis/mg_nt_fixed/README.md). The twelve A100 production
+chains are complete; the largest box needs increased statistics.
 
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
 build. Set `temporal_dirichlet: true` in either update section. With it false,
@@ -295,14 +299,6 @@ fixed ratio. The cleaned analysis retains exactly 1,000 bootstrap replicas per
 operation and only `p=1` continuum fits. Exact status, failures, results, job
 IDs, and provenance are maintained in
 [`docs/beta_nt_fixed/summary.md`](docs/beta_nt_fixed/summary.md).
-
-### Nonperturbative fixed-`m_G Nt` campaign
-
-The separate `mg_nt_fixed` pilot tunes beta so that `c=m_G Nt` is fixed at
-`0.5`, `1.0`, or `2.0`. All 100 pilot chains and 25 mass analyses are complete;
-the required two-point extension is fully analyzed, and round-1 tuning passes
-eight of nine groups. Status and gates are maintained in
-[`docs/mg_nt_fixed/summary.md`](docs/mg_nt_fixed/summary.md).
 
 The completed initial Nt=2, 6, 12 campaign, quantitative thesis comparisons,
 and cluster-generated plots are documented in

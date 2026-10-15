@@ -1,0 +1,122 @@
+{
+  "archive_sha256": "84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6",
+  "moves": [
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/audit",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/audit"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/bootstrap_correction_20261012",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/bootstrap_correction_20261012"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/code_audit_20261012",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/code_audit_20261012"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/comparison/review_20261014",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/comparison/review_20261014"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/comparison/tuning_final",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/comparison/tuning_final"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/comparison/tuning_round2",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/comparison/tuning_round2"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/confirmation",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/confirmation"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/continuation_20261012",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/continuation_20261012"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/extensions",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/extensions"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/final_checks",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/final_checks"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/logbook",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/logbook"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/pilot",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/pilot"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/preliminary_checklist.md",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/preliminary_checklist.md"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/review_20261014",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/review_20261014"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/tuning",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/tuning"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/tuning_final",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/tuning_final"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/tuning_round1",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/tuning_round1"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/analysis/mg_nt_fixed/tuning_round2",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/analysis/mg_nt_fixed/tuning_round2"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/bootstrap_correction_20261012",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/bootstrap_correction_20261012"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/code_audit_20261012",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/code_audit_20261012"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/confirmation",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/confirmation"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/confirmation_manifest.tsv",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/confirmation_manifest.tsv"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/confirmation_tuning_summary_sha256.txt",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/confirmation_tuning_summary_sha256.txt"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/continuation_20261012",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/continuation_20261012"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/extensions",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/extensions"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/final_checks",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/final_checks"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/logbook",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/logbook"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/pilot",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/pilot"
+    },
+    {
+      "source": "/home/negro/phd/dirichlet/data/mg_nt_fixed/review_20261014",
+      "destination": "/tmp/mgnt-reorganization.YGtTDu/retired_local/data/mg_nt_fixed/review_20261014"
+    }
+  ],
+  "recovery": "/tmp/mgnt-reorganization.YGtTDu/retired_local"
+}

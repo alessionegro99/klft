@@ -1,6 +1,40 @@
 # Running simulations
 
-## Nt=1 matched-beta production — eight complete, four running on A100
+## Nt=1 matched-beta production — all twelve complete and analyzed
+
+Checked 15 October: all twelve 8,000-sweep production chains completed on
+14 October by 18:58:02 CEST, with validated counts, hashes and physical
+checkpoints. Total: 96,000 sweeps and 3.0381 A100 GPU-hours. All workers
+exited successfully; the longest chain took 44.38 minutes. The completion
+records are synchronized locally. The four worker result JSONs and each
+seed's `execution_result.json` preserve the actual A100 provenance.
+
+The requested analysis uses `nt1_analysis_manifest.json`, three physical
+ensembles, independent chain cuts/blocks and exactly 500 replicas. First-stage
+analysis ran on Slurm CPU nodes using
+`scripts/mg_nt_fixed_nt1_analysis.slurm --first-stage-only` (8 CPUs, 24 GiB,
+two-hour limit, no GPU). Job array 290998 completed all three first-stage
+analyses on lcpunode02/lnode03/lnode04. No new simulation is submitted.
+The user approved coarse endpoints followed by dense plateau checks on
+15 October; the large Ns=512/2048 analyses retain every integer separation
+inside each tested window and all 500 refits. Ns=128 retains the exhaustive
+scan. Recommendations from the adaptive scan are earliest among tested
+patches and are explicitly flagged for review. Raw histories remain on qbig.
+Mass-fit array 291001 completed all three tasks with exit 0: Ns=2048 on
+lcpunode02 (5m04s), Ns=512 on lnode03 (2m39s), and Ns=128 on lnode04 (7m24s).
+Preliminary masses are respectively 0.0067043124 ± 0.0000377466,
+0.0287938046 ± 0.0000630431, and 0.1411131263 ± 0.0002194111.
+The largest box has only 6--11 complete blocks per chain and unresolved
+blocking/chain-consistency diagnostics; these conditional fit errors do not
+include equilibration or fit-window bias. Collection/verification/logbook
+job 291004 completed with exit 0 in 1m23s. A final display/index rebuild is
+job 291005, completed with exit 0 in 1m22s, separately without Slurm dependencies.
+All 1,105 plot PDFs passed local single-page 16:9 checks. The 17-page
+logbook was visually inspected and its source/output freshness check passed.
+The fixed-c tuning and continuum CSV checksums are unchanged by the Nt=1
+addition. No further simulation or analysis job remains active for this task.
+P100 validation 290996 completed successfully on lnode16 on 15 October,
+05:03:35--05:04:13 CEST: six CTests, CUDA memory check and benchmark passed.
 
 The user approved A100 production after the native smoke/timing checks. The
 execution plan is [nt1_a100_production.json](data/mg_nt_fixed/nt1_a100_production.json).
@@ -51,7 +85,7 @@ SHA256 is `31b2ab1c5d9513e4effdcdd4063d9f5839b09305ff1b6e14900e89be562b292b`.
 The separate campaign Git branch is `dirichlet-campaign` in
 `git@github.com:alessionegro99/klft.git`; simulation source remains on
 `orbifold`. Existing unrelated uncommitted campaign work remains local.
-P100 validation `290996` remains queued independently and submits no production.
+P100 validation `290996` subsequently completed as recorded above and submits no production.
 
 ## A100 open-slab test — completed successfully
 
@@ -114,7 +148,7 @@ Compact [build](data/mg_nt_fixed/open_slab_a100_build.txt),
 raw histories remain on qbig. The P100 binary checksum is unchanged. Subsequent
 production approval and execution are recorded in the section above.
 
-## Open Dirichlet geometry and Nt=1 matched-beta runs — P100 validation retry queued
+## Open Dirichlet geometry — completed P100 validation and historical preparation
 
 KLFT `f47421d895469b72d4af8a9b8479807f2b09a692` is committed and pushed to
 `origin/orbifold`. It uses open storage with no closing temporal layer
@@ -131,8 +165,8 @@ plan is four independent 8,000-sweep hot chains per beta, five overrelaxations
 per heatbath sweep, holonomy every sweep, profiles every five sweeps and
 Wilson loops disabled. The provisional spatial sizes are respectively 2048,
 512 and 128. They require timing and a subsequent finite-volume assessment.
-The immutable production inputs are prepared; no production chain has started.
-The four short A100 tests above are complete.
+These were the original preparation settings. All twelve production chains
+subsequently completed on A100s; the current status is recorded above.
 
 After the goal was resumed, the committed source was transferred with the
 permission-gated SSH route. The verified Git bundle checksum is
@@ -171,11 +205,11 @@ SHA256. No raw history was moved or changed.
   loader check on `lnode17` resolves the real driver while retaining the module
   CUDA/GCC libraries. The binary and build provenance are unchanged. Five
   launcher safeguards and nineteen Nt=1 input/execution tests pass.
-- P100 validation retry `290996`: submitted at 17:36:10 CEST on 14 October;
-  PENDING (Resources) at 17:36:28. It requests one typed Pascal GPU, one CPU,
-  8 GB and 45 minutes, with no dependencies or follow-up submissions. All
-  P100-node CPUs are currently allocated. GPU occupancy is checked again
-  inside the allocation. The corrected script's local/remote SHA256 is
+- P100 validation retry `290996`: COMPLETED, exit 0, on lnode16,
+  05:03:35--05:04:13 CEST on 15 October. All six CTests, CUDA memory
+  checking and the benchmark passed. It requested one typed Pascal GPU,
+  one CPU, 8 GB and 45 minutes, with no dependencies or follow-up submissions.
+  The corrected script's local/remote SHA256 is
   `797d63c7920ce9f836e7244aaf3942bbb94607f7319f99325ebe7d9be23c6e77`.
   Log: `/qbigwork2/negro/dirichlet/logs/dir-open-check-290996.out`.
   [Attempt record](data/mg_nt_fixed/open_slab_validation_attempts.json).
@@ -219,6 +253,183 @@ in the flag-3 checkpoint. It records wall time and raw-file checksums. A
 separate manual timing gate requires projected costs <=2 GPU-hours per chain
 and <=12 GPU-hours total. No script submits follow-up jobs. All new analyses
 will use 500 bootstrap replicas.
+
+## Current fixed-mass status
+
+Canonical reanalysis is complete: 38 physical ensembles, 156 chains,
+10 preliminary tuning points and three p=1 continuum comparisons, all with
+500-replica bootstrap propagation. Final collection `290908` completed with
+exit zero in 1m25s; scientific verification covers 6,224 mass windows. Local
+Poppler checks passed for 1,017 single-page 16:9 plot PDFs. All 53 targeted
+tests pass. No new simulation was submitted and no campaign analysis job
+remains active. See [the current report](docs/mg_nt_fixed/summary.md) and the
+canonical reanalysis execution record at the end of this file.
+
+The stage-named checkpoints below are historical. Their original compact
+products and inputs are preserved in the checksum-verified qbig archive;
+current local products use only the `c/Nt/Ns/beta` tree.
+
+## Fixed-mass completed-result review, 2026-10-14
+
+At the 10:04 CEST check, production `290687_[0-19]`, historical reanalysis
+`290658_[0-27]`, and continuation analysis `290707_[0-4]` are all COMPLETED
+with exit zero. No fixed-mass production or mass-analysis job remains active.
+The longest continuation analysis took 1h40m07s (Ns=128). All 33 compact
+analysis products are downloaded; raw histories remain on qbig.
+
+- CPU collection `290835`: COMPLETED, exit 0, 15 s; recomputes the nine
+  historical tuning groups using corrected 500-sample mass distributions.
+  Script: `data/mg_nt_fixed/bootstrap_correction_20261012/qbig/collect.slurm`.
+- Current code snapshot: `/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_review_20261014/`.
+  Review/plot submission script: `data/mg_nt_fixed/review_20261014/qbig/review.slurm`.
+  One CPU, 4 GB, 15-minute limit, no dependencies; no simulation is launched.
+  Review products: `analysis/mg_nt_fixed/review_20261014/`; multi-ensemble
+  figures: `analysis/mg_nt_fixed/comparison/review_20261014/`.
+- `290836`: review and plotting on lnode11, failed after 3m21s while moving
+  temporary comparison PDFs across filesystems. All numerical results and
+  per-simulation plots were already saved. A tested `shutil.move` fallback
+  fixes the reporting error; recovery regenerates comparisons without bootstrap.
+- `290838`: COMPLETED, exit 0, 1m01s; rejection diagnostics, all 396 raw
+  checksum rechecks, and one new 500-replica tuning using the existing Ns=96
+  near-target point. That refinement passes; six of ten current groups pass.
+  Script: `data/mg_nt_fixed/review_20261014/qbig/rejected_fits.slurm`.
+- `290839`: report preflight failed (one of 28 tests) because the fresh code
+  snapshot lacked `uv.lock`; numerical analysis was unaffected. The original
+  `uv.lock` and `pyproject.toml` are now staged, without changing dependencies.
+  Report script: `data/mg_nt_fixed/review_20261014/qbig/report.slurm`.
+- `290840`: all 28 tests passed, comparison plots and 70-record PDF built;
+  final freshness check correctly failed after the plotting source was updated
+  during the job. Rerun with unchanged sources before final publication.
+- `290841`: COMPLETED, exit 0, 55 s; all 28 regression tests pass, comparison
+  plots recovered without resampling, corrected confirmation gate passes,
+  20-page logbook with 70 historical/current records built. The final
+  `mg_nt_fixed_logbook.py --check` passes and LaTeX reports no overflow warnings.
+  Final build provenance: `analysis/mg_nt_fixed/logbook/build_manifest.json`.
+  No fixed-mass jobs remain active after this review; no new simulation submitted.
+
+The dated checkpoints below are historical. Current gate decisions are in
+`docs/mg_nt_fixed/summary.md` and the PDF logbook.
+
+## Fixed-mass correction and continuation, 2026-10-12
+
+The user approved the fixed-chain block-bootstrap correction and dispatch.
+All new bootstrap operations use exactly 500 samples on qbig compute nodes.
+
+- `290656`: corrected-estimator validation, one CPU/8 GB, completed on
+  `lnode11` in 44 s, exit 0. All 18 targeted tests, IID and AR(1) variance
+  checks pass. Confirmation fixed-window checks at B=30/80/160 remain within
+  the 3% target tolerance. This diagnostic does not replace the full gates.
+- `290657`: continuation smoke/timing job, one typed P100, two CPUs/5 GB,
+  15-minute limit; failed after 18 s on lnode17 in the final awk projection,
+  after all four histories and output checks completed successfully.
+  `290659` rechecks the completed inputs and corrected projection, passes in
+  11 s, exit 0. Gate PASS: slowest 100 sweeps 3.15 s, longest projected
+  chain 0.07 GPU-hours, total 1.4 GPU-hours. No history was overwritten.
+  Four short runs cover Nt=6,Ns=96 and Nt=4,Ns=128;
+  production requires correct counts, C_G(0)=1, hashes, and projections
+  below two GPU-hours per chain and 12 total.
+- `290687_[0-19]`: all 20 tasks COMPLETED, exit 0, after being observed running
+  beyond one minute on nodes 13/14/17. One P100, two CPUs, 5 GB,
+  two-hour limit each. No dependencies or concurrency cap.
+  Every chain reached 8000 sweeps and passed all output checks. Total
+  executable time 0.768017 GPU-hours; allocation time 0.935278 GPU-hours.
+  Longest Slurm task 4m30s. Raw histories remain on qbig.
+- `290707_[0-4]`: new-ensemble analyses submitted after production completion,
+  one CPU/8 GB/four hours each, no dependency. Each writes first-stage
+  thermalization and blocking PDFs before the full mass scan.
+- `290658_[0-27]`: full corrected mass reanalysis running on CPU nodes
+  11, 03, 04 and lcpunode02, one CPU/8 GB/four hours per ensemble.
+  P100 nodes excluded from CPU analysis allocation. Logs:
+  `/qbigwork2/negro/dirichlet/logs/mgnt-corrected-mass-290658_<index>.out`.
+  At 12:07:42 CEST, 11 completed and 17 were running; no failures.
+- Immutable inputs: `data/mg_nt_fixed/continuation_20261012/manifest.tsv`:
+  Nt=6,c=1,Ns=96,beta=6.40/6.70/7.00 and
+  Nt=4,c=0.5,Ns=96/128,beta=5.58394149; four hot 8000-sweep chains each.
+  Explicit seeds are master-seed 20260724 draws 133--152 (zero based);
+  draws 153--156 are short validation runs. Cadences 1/5; Wilson loops off.
+  The matched-volume beta is the historical near-target value; corrected
+  target acceptance remains pending. No new tuning is claimed by placement.
+- Sole unchanged P100 binary: `build/klft/binaries/heatbath`, SHA-256
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`,
+  KLFT `7eed1f7d9bb0948621a2d4020706d19c56406001`. No dependency edits/rebuild.
+- Remote input root `/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/continuation_20261012/`;
+  raw root `/qbigwork2/negro/dirichlet/data/mg_nt_fixed/continuation_20261012/`;
+  logs `/qbigwork2/negro/dirichlet/logs/mgnt-cont-{validate,prod}-*.out`.
+  All jobs are dependency-free; production has no concurrency cap.
+  Node 16 is excluded because its direct occupancy check is blocked by host-key
+  verification. Fresh checks found eight free P100s each on 13/14/15/17;
+  node 15 has no free CPUs. Slurm assigns one typed Pascal GPU per task.
+- The 27 selected old tuning inputs plus the independent confirmation are
+  catalogued for complete reanalysis under
+  `analysis/mg_nt_fixed/bootstrap_correction_20261012/`; historical outputs
+  remain unchanged. Code snapshot:
+  `/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_corrected_20261012/`.
+
+## Fixed-mass pre-dispatch code audit, 2026-10-12
+
+Historical audit status before the subsequent correction approval:
+production had not been submitted; the analysis estimator required review.
+The requested continuation remains `Nt=6,c=1,Ns=96,beta=6.4,6.7,7.0`
+and a matched `Nt=4,c=0.5,beta=5.58394,Ns=96,128` volume check.
+New bootstrap operations use exactly 500 samples, superseding the earlier
+1000 policy. All new numerical work runs on qbig.
+
+- `290651`: one CPU, 8 GB, 20-minute limit; completed on `lnode11` in 34 s,
+  exit 0. It audits the IID bootstrap limit, refits existing confirmation
+  histories at blocks 30/80/160 with the fixed accepted window, and times
+  deterministic synthetic fits. No new Monte Carlo history is generated.
+- `290652`: one typed Pascal GPU, two CPUs, 5 GB, 10-minute limit,
+  single-node request `lnode13`; finished in 22 s, exit 8. Four of five
+  CTests pass. `gradient_flow_check` fails with a device-memory access error;
+  both Dirichlet and both partitioning tests pass. Gradient flow is disabled
+  in the campaign. No rebuild was attempted.
+- Report jobs `290653` and `290655`: one CPU, 4 GB, 15-minute limits;
+  both completed on `lnode11` (49 s and 32 s), exit 0. All 12
+  policy/routing/tuning tests pass. Final job `290655` builds the 14-page
+  logbook and grid-free diagnostic plots and passes the source/output
+  freshness check. The PDF and compact analysis products were synchronized
+  after dry runs. No numerical analysis or plotting ran locally.
+- All jobs are dependency-free. Sources and Slurm scripts are recorded under
+  `data/mg_nt_fixed/code_audit_20261012/` and remote snapshot
+  `/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_20261012/`.
+  Compact outputs: `/qbigwork2/negro/dirichlet/analysis/mg_nt_fixed/code_audit_20261012/`.
+  Logs: `/qbigwork2/negro/dirichlet/logs/mgnt-code-audit-290651.out` and
+  `mgnt-code-ctest-290652.out`. Only the 9-KB JSON/test log was downloaded,
+  after a dry run; raw data remains on qbig.
+- At submission, `lnode13` was mixed with 12 unallocated CPUs and eight
+  P100s without compute processes. Direct checks also found no GPU compute
+  processes on nodes 14, 15 and 17; node 15's CPUs were fully allocated.
+  Node 16's direct occupancy check was blocked by SSH host-key verification;
+  that security check was not bypassed. Availability must be rechecked.
+- The sole P100 executable still has SHA-256
+  `41fc9502a1f74106894ff077a3d9e2905dd6a75f7bf65c96971150a74132ed57`.
+  Remote KLFT HEAD is `7eed1f7d9bb0948621a2d4020706d19c56406001`, with five
+  dirty Wilson-related source/test files, preserved unchanged. Findings and
+  the next-step decision are in `docs/mg_nt_fixed/summary.md` and the logbook.
+
+## Fixed-mass logbook check, 2026-10-12
+
+At 10:16 CEST, qbig had no active fixed-mass campaign jobs. Final tuning
+`289431`, confirmation production `289432_[0-3]`, diagnostics `289436`,
+analysis `289437`, and gate `289438` are `COMPLETED`, exit code zero.
+The local and remote final tuning and confirmation-summary SHA-256 hashes
+match. Other projects have active jobs; the August idle-GPU snapshot below
+is historical.
+
+A two-CPU, 4-GB, 15-minute Slurm task `290650` completed in 19 seconds
+with exit code zero. It exported compact
+100-sweep presentation means for three logbook examples: the confirmation,
+the 80000-sweep beta-4.40 replacement, and the beta-6.20 pilot. It reads
+existing raw histories on qbig and performs no bootstrap or simulation.
+Script: `data/mg_nt_fixed/logbook/qbig/export_histories.slurm`;
+output: `analysis/mg_nt_fixed/logbook/history_examples_20261012.json`;
+logs: `/qbigwork2/negro/dirichlet/logs/mgnt-logbook-290650.out`.
+The 185-KB JSON was synchronized after a dry run. No raw histories were
+transferred and no new GPU simulation was submitted. The logbook is
+`docs/mg_nt_fixed/logbook.pdf`; per-simulation examples are under each
+result's `plots/first_stage/` directory. Every new bootstrap uses exactly
+500 replicas under the subsequent user update; the August 10000-replica
+results below are historical.
 
 As checked on 2026-08-28 at 10:52 CEST, the user queue was empty,
 `lnode13`--`lnode17` were Slurm-idle, and direct inspection found no GPU
@@ -1011,3 +1222,72 @@ No thesis-scale chains should be submitted until an `Ns=64` timing run passes.
 - Logs: `/qbigwork2/negro/dirichlet/logs/analysis-259734_<task>.out` and `/qbigwork2/negro/dirichlet/logs/plots-{259737,259738}.out`
 - Compact outputs: `/qbigwork2/negro/dirichlet/analysis/Nt_<Nt>_Ns_64_b_12p15266/`
 - Local compact outputs: `analysis/dirichlet_thesis/`; raw histories were not synchronized
+# Canonical fixed-mG Nt reanalysis
+
+Implementation complete: no new Monte Carlo simulations submitted.
+CPU validation job `290845` completed with 13 tests passing, checking fixed-chain weighted pooling and
+the unchanged shared bootstrap. Resources: batch, 1 CPU, 4 GB, 20 minutes,
+excluding P100 nodes. Log: `/qbigwork2/negro/dirichlet/logs/mgnt-canonical-tests-290845.out`.
+Code snapshot: `/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_reorganization`.
+Immutable inventory: `data/mg_nt_fixed/manifest.json` (38 ensembles, 156 chains,
+1,552,000 sweeps). The four 80,000-sweep chains are explicitly flagged.
+Original raw paths and input hashes are retained in that manifest; no raw
+history is downloaded or moved. Exactly 500 replicas per bootstrap operation.
+Pre-reorganization local products, including uncommitted work, are recoverable
+from the verified qbig archive recorded in the manifest (SHA256
+`84b0b7ca8e3c6b07f6ea8dc0dd07976e6cb0a57e90dc2499ee459abc4169aef6`).
+Smoke analysis `290846_34` completed, exit 0, in 2m03s. It reanalysed the
+existing Nt3 Ns32 beta3.25 ensemble with a 20-sweep block and retained its
+numerical mass, 0.4748065091 ± 0.0018962661, flagged for between-chain review.
+Full canonical reanalysis array `290847` covers indices `0-33,35-37` of the
+immutable manifest (37 remaining ensembles). Each task requests one CPU,
+8 GB and four hours, excluding P100 nodes, without dependencies or a
+concurrency cap. Logs: `/qbigwork2/negro/dirichlet/logs/mgnt-canonical-290847_<index>.out`.
+No simulation executable is rebuilt or run; all raw inputs remain unchanged.
+Array `290847` was inspected running after more than one minute on CPU nodes
+lnode03--06, lnode11 and lcpunode02. The initial input hashes/counts pass,
+including the pooled eight-chain case. Regression job `290885` failed on a
+logbook string-escaping error, which was corrected before report generation.
+Job `290886` then passed 32 active fixed-mass tests and 13 fixed-beta analysis
+tests; six historical generator/workflow test modules are skipped when their
+archived inputs are absent. Together with the six shared-bootstrap tests in
+`290845`, there are 51 distinct passing tests. The retired generators and their
+test fixtures remain reproducible in the checksum-verified pre-change archive.
+Parallel-scheduler test `290889` passed exact equality of serial/parallel
+500-replica parameter arrays and window selections (one additional test).
+The serial Ns128 scan required about 17 minutes for its first 118/550 windows.
+Tasks `290847_13`, `_24` and `_27` were cancelled to replace their independent
+window scans with eight-CPU jobs `290891_[13,24,27]` (8 GB, two hours,
+P100 nodes excluded). Their partial diagnostics are recoverable under the
+verified archive's `superseded_partial_analyses/` directory. Remaining tasks
+continue without modification. Bootstrap inputs and the fit objective are
+unchanged. `290887` found no selected-block changes after eliminating numerical
+roundoff in exactly fixed observables for the then-completed ensembles.
+All 38 ensemble analyses are now complete, exit zero: smoke `290846_34`,
+34 completed tasks of `290847`, and three replacements in `290891`.
+Parallel replacements completed in 7m52s (Ns128), 5m40s (Nt4 beta4.95),
+and 4m25s (Nt6 beta6.7). Campaign/input-identity tests `290894` passed,
+including positive-slope flagging without automatic rejection. There are
+53 distinct passing tests in total. No new Monte Carlo simulation was run.
+Collection `290896` produced 38 masses, 10 tuning points and three continuum
+targets, then failed a metadata-parser check: the scalar YAML regex consumed
+a section newline. The parser was restricted to horizontal indentation.
+Collection `290897` passed the scientific array/input checks but stopped
+because qbig has no `pdfinfo`. Statistical verification stays on qbig;
+single-page 16:9 PDF metadata and rendered layout are checked locally with
+Poppler, without transferring raw histories or performing local resampling.
+Collection `290908` completed with exit zero in 1m25s. All 38 ensemble products,
+156 chains and 6,224 mass windows passed scientific verification; all 1,017
+plot PDFs passed local single-page 16:9 geometry checks. The 14-page logbook
+passed its source/result freshness check and was visually reviewed page by
+page. Superseded local data/analysis stage entries were moved to recoverable
+storage only after archive-checksum and new-product verification. Raw histories
+remain unchanged on qbig. The three continuum trajectories are retained as
+preliminary: omitting Nt=2 shifts their intercepts well beyond bootstrap errors.
+The same superseded compact analysis entries on qbig were moved into the
+archive's `retired_remote/` directory; original raw input/output paths remain
+unchanged. Post-cleanup inventory/report job `290924` passed in 25 s.
+Final layout build `290931` passed in 24 s on lnode11 (one CPU, 4 GB,
+10-minute limit, P100 nodes excluded, no dependencies). Its LaTeX log has no
+overflow warnings and its freshness check passes. Both canonical trees were
+checksum-compared against qbig after synchronization; every file matches.
