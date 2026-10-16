@@ -16,6 +16,7 @@ export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 cd "$project/project"
 case "${1:-}" in
   --collect-only) steps=(mg_nt_fixed_campaign mg_nt_fixed_verify);;
+  --plots-only) steps=(mg_nt_fixed_scaling_plots);;
   --logbook-only) steps=(mg_nt_fixed_logbook);;
   "") steps=(mg_nt_fixed_campaign mg_nt_fixed_verify mg_nt_fixed_logbook);;
   *) exit 2;;
@@ -23,6 +24,6 @@ esac
 for script in "${steps[@]}"; do
   "$project/bin/uv" run --frozen python "$snapshot/scripts/$script.py"
 done
-if [[ "${1:-}" != "--collect-only" ]]; then
+if [[ "${1:-}" != "--collect-only" && "${1:-}" != "--plots-only" ]]; then
   "$project/bin/uv" run --frozen python "$snapshot/scripts/mg_nt_fixed_logbook.py" --check
 fi

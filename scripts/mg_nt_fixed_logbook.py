@@ -65,6 +65,7 @@ def source_hashes() -> dict[str,str]:
     for target in sorted(RESULTS.glob('c_*')):
         paths += [p for p in target.rglob('*') if p.is_file() and p.suffix in ('.json','.csv','.npz','.pdf')]
     paths += list((RESULTS/'comparison').glob('*.pdf'))
+    paths += list((RESULTS/'comparison').glob('*.json'))
     return {str(p.relative_to(ROOT)):sha256(p) for p in sorted(set(paths))}
 
 

@@ -1,12 +1,14 @@
 """Matched-y comparisons from saved 500-slot replicas; no new resampling."""
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 import numpy as np
 
 from mg_nt_fixed_canonical_plots import finish, title
-from mg_nt_fixed_inventory import write_csv
+from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, write_csv, write_json
 from mg_nt_fixed_statistics import bootstrap_error, xi_second
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
@@ -40,11 +42,11 @@ def effective_powers(points: list[dict]) -> list[dict]:
     return rows
 
 
-def plot_scaling(results: list[dict], root: Path) -> None:
+def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = None) -> None:
     """Update the visual collapse and explicit matched-y/volume diagnostics."""
     if not any(p['campaign_type']=='matched_y_scaling' for p in results):
         return
-    plot_lengths(results, root)
+    plot_lengths(results, root, pending)
     points = [p for p in results if p['physical_Nt'] >= 2 and p['include']
               and p['mass'] is not None and p['mass_error'] is not None]
     for p in results:
@@ -62,6 +64,9 @@ def plot_scaling(results: list[dict], root: Path) -> None:
                 **pu.data(i, markerfacecolor=pu.color_dict[i]))
         heading = ('Preliminary masses; filled markers: matched-y batch' if exponent==0 else
                    "Lorenzo's trial $N_t^{1.5}$ collapse\nAssumed exponent; filled markers: new batch")
+        if pending:
+            fig.text(.99, .01, f'{len(pending)} ensemble analysis pending; plotted inputs in scaling_plot_status.json',
+                     ha='right', fontsize=13)
         finish(fig, ax, root/'comparison'/f'{name}.pdf', r'$\beta/N_t$',
                r'$am_G$' if exponent==0 else r'$am_G N_t^{1.5}$', heading)
 
@@ -73,6 +78,11 @@ def plot_scaling(results: list[dict], root: Path) -> None:
     volumes = sorted([p for p in points if p['reference_c']==.5 and p['physical_Nt']==4
                       and np.isclose(p['beta'], 6.2, atol=1.e-12, rtol=0)], key=lambda p:p['Ns'])
     plot_volume(volumes, root)
+    write_json(root/'comparison/scaling_plot_status.json', dict(
+        status='partial' if pending else 'complete', pending_ensembles=pending or [],
+        available_ensembles=[p['ensemble'] for p in results],
+        analysis_sha256={p['ensemble']:sha256(root/p['ensemble']/'analysis.json') for p in results},
+        bootstrap_samples=500, new_bootstrap_operations=0, job_id=os.environ.get('SLURM_JOB_ID')))
 
 
 def squared_length_error(result: dict) -> float | None:
@@ -83,7 +93,7 @@ def squared_length_error(result: dict) -> float | None:
     return bootstrap_error(xi_second(samples, result['Ns'])**2)
 
 
-def plot_lengths(results: list[dict], root: Path) -> None:
+def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = None) -> None:
     """Show both xi_2nd and its square for every defined measured coupling.
 
     Physical normalization is xi/L = (xi/a)/Nt. The companion trial exponent
@@ -116,6 +126,9 @@ def plot_lengths(results: list[dict], root: Path) -> None:
                        r'Lorenzo-style trial normalization: $\xi_{\rm 2nd}/N_t^{1.5}$')
             if power==2:
                 heading += '\nSquared estimator; errors from squared bootstrap replicas'
+            if pending:
+                fig.text(.99, .01, f'{len(pending)} ensemble analysis pending; plotted inputs in scaling_plot_status.json',
+                         ha='right', fontsize=13)
             finish(fig, ax, root/'comparison'/f'{tag}_{suffix}.pdf',
                    r'$\beta$' if exponent==0 else r'$\beta/N_t$',
                    '$'+numerator+denominator+'$', heading)
@@ -211,3 +224,29 @@ def plot_volume(volumes: list[dict], root: Path) -> None:
     ax.set_yscale('symlog', linthresh=max(max(p['C_G_error']) for p in volumes))
     finish(fig, ax, folder/'volume_beta_6p2_correlators.pdf', r'$R/a$', r'$C_G(R)$',
            r'$N_t=4,\ \beta=6.2$: volume comparison of the correlator')
+
+
+def main() -> None:
+    """Refresh these plots from available completed analyses on a compute node."""
+    if not os.environ.get('SLURM_JOB_ID'):
+        raise RuntimeError('comparison plotting must run on a qbig compute node')
+    root = ROOT/'analysis/mg_nt_fixed'
+    results, pending = [], []
+    for group in load_campaign_manifest()['ensembles']:
+        path = root/group['ensemble']/'analysis.json'
+        if not path.exists():
+            pending.append(group['ensemble'])
+            continue
+        result = json.loads(path.read_text())
+        result.setdefault('include', result['mass'] is not None)
+        result['_boot'] = np.load(path.parent/'bootstrap.npz')
+        selected = result['selected_window_index']
+        result['_mass_samples'] = (result['_boot']['window_parameters'][selected,:,1]
+                                   if selected is not None else np.full(500, np.nan))
+        results.append(result)
+    plot_scaling(results, root, pending)
+    print(f'Plotted {len(results)} completed ensembles; {len(pending)} pending; no new resampling.')
+
+
+if __name__ == '__main__':
+    main()
