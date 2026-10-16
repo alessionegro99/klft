@@ -1,6 +1,6 @@
 # Running simulations
 
-## Matched-y scaling diagnostic — all sixteen complete; analysis pending access
+## Matched-y scaling diagnostic — all sixteen complete; analysis running
 
 Checked on lnode19 at 07:36 UTC on 16 October: the scheduler finished
 successfully at 04:05:22 UTC. All sixteen production execution records report
@@ -11,18 +11,49 @@ The smoke/timing stage started at 03:58:21 UTC, and all three production
 workers launched at 03:59:22 UTC. No scheduler or production worker remains
 active. GPU 6 was excluded throughout.
 
-The requested download and analysis is **pending authentication**. Initial
-SSH status checks and transfer dry runs succeeded; both actual compact-JSON
-transfers then failed with `Permission denied (publickey,password)`.
-No raw history was downloaded, no new analysis job was submitted, and the
-local scheduler snapshot still records its previous 15 October check.
-Output counts and checkpoint checks are reported by the remote execution
-records; independent post-transfer hash verification remains pending.
-After access is restored, retrieve compact completion records, inventory the
-four untuned ensembles, and run the existing chain-aware analysis on Slurm
-CPU nodes with exactly 500 replicas. Keep `target_c=null` and
-`fixed_c_continuum_input=false`; update canonical tables, comparisons and
-the logbook after the new results are verified.
+SSH access is restored. Compact execution records were synchronized after a
+dry run; all 16 production records pass input, identity, geometry, cadence
+and unique-seed checks. Raw histories remain on qbig. The earlier failed
+download changed no numerical results.
+
+CPU analysis array `291008_[0-3]` uses the immutable
+`data/mg_nt_fixed/scaling_analysis_manifest.json` (SHA256
+`39576b223df2e060e0d1734ee7b881bcabf4095e4042f1872040907c5fa56106`).
+Indices are Nt3 Ns96 beta4.5; Nt4 Ns160 beta6; Nt4 Ns160 beta6.2;
+Nt6 Ns320 beta9. Each task requests 8 CPUs, 24 GB, two hours, batch partition,
+excluding P100 nodes, with no dependencies or concurrency cap. Snapshot:
+`/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_scaling`; logs:
+`/qbigwork2/negro/dirichlet/logs/mgnt-scaling-analysis-291008_<index>.out`.
+The unchanged chain-aware estimator uses exactly 500 replicas and exhaustive
+window scans, independently checking each raw observable's saved hash.
+Code commit `31b0fdf`; metadata commit `35d4fe3`; 29 targeted tests pass.
+All four groups retain `target_c=null`, `fixed_c_continuum_input=false`.
+No new Monte Carlo simulation is launched by this analysis.
+
+Tasks 291008_0, _1 and _2 completed with exit 0 in 3m32s, 8m57s and 10m49s,
+on lcpunode02, lnode03 and lnode04. Their masses are 0.1386481 ± 0.0003485,
+0.0941488 ± 0.0001933, and 0.0821284 ± 0.0001862; errors are bootstrap SEs.
+Task _3 remains active on lnode05. Every new chain has a 500-sweep cut.
+Blocks are 80, 60, 80 and 240 sweeps for indices 0--3, retaining 93,125,93,31
+complete blocks per chain, respectively. The Nt=6 group needs increased
+statistics to reach the 50-block target at its present block length.
+
+Plot-only collection job `291012` uses one CPU, 8 GB and a one-hour limit,
+excluding P100 nodes, with no dependency. It renders Lorenzo's supplied
+trial-exponent collapse and both second-moment length and squared-length
+comparisons using only completed compact results. Pending coverage is
+explicit in `comparison/scaling_plot_status.json` and figure footnotes.
+Log: `/qbigwork2/negro/dirichlet/logs/mgnt-scaling-collect-291012.out`.
+It completed with exit 0 in 43 seconds on lnode11, plotting 44 completed
+ensembles and recording Nt6 beta9 as pending.
+
+Regression job `291013` completed with exit 0 in 30 seconds on lnode11:
+48 targeted tests passed in the locked environment (two CPUs, 8 GB,
+one-hour limit, no GPU or dependency). This includes inventory/role checks,
+parallel-fit equivalence, covariance-rank accounting and direct-ratio
+xi-squared uncertainty propagation. Scheduler-launch messages in its unit-test
+log are mocked tests; no simulation was launched. Log:
+`/qbigwork2/negro/dirichlet/logs/mgnt-scaling-collect-291013.out`.
 
 ### Approved inputs and execution history
 

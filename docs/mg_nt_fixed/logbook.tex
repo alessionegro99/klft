@@ -28,6 +28,13 @@ For these rows, the folder's $c_{\rm ref}$ denotes that source target;
 the actual $N_t=1$ mass is measured without imposing $m_GN_t=c_{\rm ref}$.
 They are excluded from fixed-$c$ interpolation and continuum fits.
 
+Four matched-$y$ ensembles, $y=\beta/N_t$, add sixteen 8,000-sweep chains
+completed on 16 October. Three extend $y=1.5$ to $N_t=3,4,6$; the fourth
+checks $N_s=160$ against 96 at $N_t=4,\beta=6.2$. These rows also have
+\texttt{target\_c=null}, with $c_{\rm ref}=0.5$ identifying their source
+family. They enter correlator and scaling comparisons. Fixed-$c$ tuning
+and its continuum inputs remain unchanged.
+
 The four 80,000-sweep chains at $c=0.5,N_t=3,N_s=80,\beta=4.4$ have the
 explicit flag \texttt{length\_outlier}. Their length differs from the
 8,000-sweep standard; the flag does not establish a physics bias. They are
@@ -187,7 +194,7 @@ so a nominal analytic chi-square p-value is not appropriate. No p-value is
 computed and no chi-square gate is imposed. Singular covariance leaves this
 diagnostic undefined while retaining a defined diagonal fit.
 
-For the original fixed-$c$ ensembles, all contiguous windows with at least five points are fitted, with every
+For the fixed-$c$ and matched-$y$ ensembles, all contiguous windows with at least five points are fitted, with every
 positive $R_{\min}$ and $R_{\max}=N_s/2,N_s/2-2,\ldots\geq\lceil N_s/3\rceil$.
 The recommendation is the earliest stable $3\times3$ patch in adjacent
 endpoints, preferring the largest $R_{\max}$. Pairwise masses must differ
@@ -209,6 +216,13 @@ has rank at most 499; windows with 500 or more separations therefore have
 undefined full-covariance $\chi^2$. Fewer independent block vectors can
 reduce the rank further. No inverse regularization is used to manufacture
 a goodness-of-fit statistic.
+
+The collector enforces the additional block-count bound
+$\operatorname{rank}(\operatorname{Cov})\leq\min[499,\sum_k(n_k-1)]$:
+within each chain, centered resampling multiplicities sum to zero, leaving
+at most $n_k-1$ independent directions. Wider windows have undefined full
+$\chi^2$ even if roundoff allows Cholesky factorization. Diagonal-fit masses
+and their 500 refits are unchanged by this diagnostic correction.
 
 \section*{Coupling windows and volume choices}
 For each $c,N_t$, all contiguous three-coupling windows are examined using
@@ -312,6 +326,60 @@ This is a planning estimate: autocorrelation and thermalization must be
 rechecked after extending statistics. A smaller-volume comparison is needed
 before replacing 2048 by a smaller production size. Adding these untuned
 points does not extend the fixed-$c$ continuum resolution set.
+
+\clearpage\section*{Matched-$y$ extension near $\beta/N_t=1.5$}
+\begin{center}\small\input{docs/mg_nt_fixed/generated/scaling_table.tex}\end{center}
+Each new ensemble has four independent 8,000-sweep hot-start chains, measured
+every sweep (profiles every five). The A100 batch used 0.2745 GPU-hours on
+lnode19, preserving one free GPU. The inputs, executable revision
+\texttt{f47421d895469b72d4af8a9b8479807f2b09a692}, checkpoints and recorded
+output counts passed validation. CPU array 291008 applies the same
+500-replica chain-aware estimator and exhaustive mass-window scan as the
+fixed-$c$ analysis. Its raw-observable hashes are independently rechecked.
+
+The purpose is to test the proposed collapse where the screening mass is
+small, and to check transverse-volume sensitivity. The existing
+$N_t=2,N_s=64,\beta=3$ point joins the three new $y=1.5$ points. From the
+Wilson coupling convention,
+\[
+ y=\beta/N_t=\frac{4}{ag_{3,0}^2N_t}
+   =\frac{4}{g_{3,0}^2L}.
+\]
+Thus fixed $y$ holds the bare slab-coupling coordinate fixed while the
+resolution changes. Measuring $am_GN_t$ tests its approach to a finite
+physical screening scale. If that limit is nonzero, $am_G$ ultimately
+scales as $1/N_t$, up to cutoff and coupling-matching corrections.
+
+The displayed $am_GN_t^{1.5}$ collapse uses the user's trial exponent;
+no exponent was fitted. For successive resolutions we also tabulate
+\[
+ \alpha_{\rm eff}(N_1,N_2)=
+   \frac{\log[\widehat m(N_1)/\widehat m(N_2)]}{\log(N_2/N_1)}.
+\]
+Substitution of $\widehat m=A N_t^{-\alpha}$ gives
+$\log[(N_2/N_1)^\alpha]/\log(N_2/N_1)=\alpha$.
+For measured finite-spacing masses this is a diagnostic log ratio, with
+errors propagated through the saved 500 replicas. Window, volume and
+thermalization uncertainties remain separate from these conditional
+statistical errors. The fixed-$c$ continuum fit continues to use its
+existing independently tuned inputs.
+
+The companion comparison plots include both $\xi_{\rm 2nd}/a$ and
+$(\xi_{\rm 2nd}/a)^2$ for every measured coupling, including the $N_t=1$
+diagnostics. The physically normalized coordinates are
+$\xi_{\rm 2nd}/L=(\xi_{\rm 2nd}/a)/N_t$ and its square, plotted against
+$y$. Additional plots use the trial normalization $N_t^{1.5}$ and its
+square to parallel Lorenzo's mass plot. For the squared estimator, evaluate
+$(\widetilde C(0)/\widetilde C(p_{\min})-1)/[4\sin^2(\pi/N_s)]$ on each
+of the same 500 joint replicas before computing its SD. This equals the
+square of a real length and also retains negative noisy squared-moment
+estimates, avoiding a truncated error distribution. The existing ensemble
+CSVs contain both central values and uncertainties.
+
+\plotpage{Lorenzo's trial collapse with the matched-$y$ batch}{analysis/mg_nt_fixed/comparison/lorenzo_scaling_collapse.pdf}{Reproduction of Lorenzo's supplied $am_GN_t^{1.5}$ versus $\beta/N_t$ plot, using the current mass table. Filled markers identify the four new ensembles; open markers show earlier mass estimates. The exponent 1.5 is an assumed illustrative choice. All defined flagged masses remain visible, with bootstrap standard errors conditional on their chosen windows.}
+\plotpage{Measured screening scale at $y=1.5$}{analysis/mg_nt_fixed/c_0p5/comparison/matched_y_mass_Nt.pdf}{The new $N_t=3,4,6$ ensembles extend the earlier $N_t=2$ point. No fixed-$c$ target is imposed on this comparison and no additional continuum fit is performed.}
+\plotpage{Second-moment length in slab units}{analysis/mg_nt_fixed/comparison/xi_2nd_slab_scaled.pdf}{All measured couplings in this campaign are shown, including the separately labelled $N_t=1$ matched-coupling diagnostics. The logarithmic vertical scale accommodates their larger lengths. The squared-length and trial-scaled companion figures are in the same comparison directory. Error bars use 500 joint replicas and retain the original volume and statistics limitations.}
+\plotpage{Transverse-volume check at $N_t=4,\beta=6.2$}{analysis/mg_nt_fixed/c_0p5/Nt_4/comparison/volume_beta_6p2.pdf}{Independent $N_s=96$ and 160 ensembles are compared using their selected mass windows. The companion CSV reports the difference and its 500-replica uncertainty; other windows and correlator curves remain available for visual review.}
 
 \plotpage{$N_t=1$: matched-coupling correlators}{analysis/mg_nt_fixed/comparison/nt1_correlators.pdf}{The three volumes correspond to different couplings. Their folder labels identify the source $N_t=2$ tuning. Error bars use independent-chain, pooled-with-boundaries bootstrap replicas.}
 \plotpage{$N_t=1$: preliminary screening masses}{analysis/mg_nt_fixed/comparison/nt1_masses.pdf}{Conditional bootstrap standard errors are shown. Window, blocking, chain-consistency and volume flags remain in the per-ensemble CSVs. These masses are excluded from fixed-$c$ continuum fits.}

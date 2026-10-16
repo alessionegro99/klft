@@ -13,10 +13,28 @@ They are excluded from fixed-c tuning and continuum fits regardless of
 the manual numerical-inclusion flag. `comparison/nt1_ensembles.csv` is
 the compact three-row Nt=1 register.
 
+`matched_y_scaling` rows are the four new matched-beta/Nt diagnostics. Their
+folder c=0.5 identifies the source reference family; `target_c` is empty and
+`fixed_c_continuum_input=False`. They are included in the existing global and
+physics-level tables. `c_0p5/comparison/matched_y_ensembles.csv` compares the
+beta/Nt=1.5 line, including the explicitly identified existing Nt=2 point.
+`matched_y_effective_powers.csv` reports adjacent-resolution log mass ratios
+divided by log(Nt_high/Nt_low), using the saved 500 mass replicas. These are
+finite-spacing diagnostics; the 1.5 exponent on the collapse plot is a visual
+trial supplied by the user. No exponent or new continuum fit is inferred.
+The reproduced figure is `comparison/lorenzo_scaling_collapse.pdf`.
+`c_0p5/Nt_4/comparison/volume_beta_6p2.csv` compares independent volumes,
+with the mass-difference error propagated from the same 500 saved slots.
+
 - `ensembles.csv`: one physical `(c,Nt,Ns,beta)`; chain/sweep totals, used
   measurements, mass and bootstrap standard error, selected R window, flags.
   `mass_Nt` and `mass_Ns` use the measured mass at that coupling;
   `Ns_over_xi_2nd` is the ensemble structure-factor volume diagnostic.
+  `xi_2nd_squared` is the square of the central second-moment length;
+  `xi_2nd_squared_error` is the SD of the squared-moment estimator evaluated
+  directly on 500 joint structure-factor replicas. Negative noisy estimates
+  are retained in this squared-moment distribution; no linearized error
+  formula or positivity truncation is used.
 - `chains.csv`: one independent seed; original qbig path, source campaign,
   total/cut/retained/used sweeps, discarded final partial block, block size,
   block count, fixed pooled weight, representative and maximum tau, flags.
@@ -28,6 +46,10 @@ the compact three-row Nt=1 register.
 - `fit_windows.csv`: every mass window, including undefined fits; mass and
   amplitude errors, full covariance chi-square, nominal dof, covariance
   condition number, number of successful refits, selected window and flags.
+  `covariance_rank_limit=min(499, sum_k(n_blocks_k-1))` is the algebraic rank
+  bound from centered block vectors. Wider windows have undefined full chi-square
+  even if floating-point roundoff allows a Cholesky decomposition. The central
+  and replica diagonal-fit masses are unchanged by this diagnostic correction.
   For the large Nt=1 boxes, `scan_stage` distinguishes coarse endpoints
   from dense adjacent checks; every integer R inside each window is used.
   `adaptive_endpoint_scan_review` means that the recommendation is earliest
@@ -85,6 +107,15 @@ correlator covariance, all-window parameter draws, blocking scans and chain
 estimates. Failed refits remain NaN in their original slots; no replacement
 draws are made. The sample SD is conditional on successful refits, with their
 count recorded. Operation seeds and input/code hashes are in `analysis.json`.
+
+The comparison folder contains `xi_2nd_*` and `xi_2nd_squared_*` plots for all
+measured couplings, including Nt=1. `vs_beta` uses unscaled lattice lengths;
+`slab_scaled` shows xi/Nt or (xi/Nt)^2 against beta/Nt; `lorenzo_scaled` uses
+the trial normalization xi/Nt^1.5 or its square. Vertical log scales keep the
+long Nt=1 lengths visible alongside Nt>=2. These plots retain the original
+volume and chain-statistics limitations and do not fit an exponent.
+The two `lorenzo_scaled_Nt_ge_2` companion plots show the same Nt=2,3,4,6
+range as Lorenzo's mass figure, while the full-range figures retain Nt=1.
 
 Import RNG seeds and hashes as text when using spreadsheet software; 64-bit
 bootstrap seeds can exceed a spreadsheet's exact numeric-integer precision.

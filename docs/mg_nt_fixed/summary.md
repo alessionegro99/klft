@@ -1,6 +1,6 @@
 # Fixed mG Nt campaign
 
-## Completed matched-y simulations; analysis pending
+## Completed matched-y simulations; analysis in progress
 
 The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =
 (3,96,4.5), (4,160,6.0), (6,320,9.0), (4,160,6.2), each with four independent
@@ -10,17 +10,50 @@ The current plan uses three lnode19 A100s (GPUs 3--5), leaving GPU 6 free.
 All sixteen production chains completed on 16 October by 04:05:18 UTC
 (06:05:18 CEST), reporting 128,000 sweeps and 0.274520466 A100 GPU-hours.
 Automatic dispatch passed its smoke/timing checks and used GPUs 3--5.
-The scheduler exited successfully at 04:05:22 UTC. These completion records
-were inspected remotely; independent output-hash verification is pending.
-SSH authentication failed during the subsequent compact-record download,
-after successful status checks and transfer dry runs. No new mass analysis
-has run. Existing numerical results and the PDF logbook remain unchanged.
+The scheduler exited successfully at 04:05:22 UTC. SSH access is now restored;
+compact completion records were downloaded and verified. CPU analysis array
+291008 applies the existing chain-aware 500-replica analysis and independently
+checks raw-observable hashes. Three ensembles are complete; the Nt=6,Ns=320
+exhaustive window scan is still running. The PDF logbook will be rebuilt after
+collection and visual review. No new Monte Carlo simulations are launched.
 The earlier guarded manual attempt is preserved in the dispatch history.
-Inputs and launch code are committed and pushed; 47 targeted tests pass.
+Inputs and analysis code are committed and pushed; 48 targeted tests pass.
 Inputs use the canonical c=0.5 reference-family tree, with target_c=null and
-fixed_c_continuum_input=false. Existing numerical results remain unchanged.
+fixed_c_continuum_input=false. Existing fixed-c tuning inputs remain unchanged.
+The combined immutable inventory now has 45 ensembles, 184 chains and
+1,776,000 measured sweeps. Plot-only job 291012 refreshes Lorenzo's trial
+collapse and both xi2nd and xi2nd-squared comparisons from the 44 completed
+analyses while explicitly recording the one pending ensemble.
 See [execution status](../../running_simulations.md) and
 [immutable inputs](../../data/mg_nt_fixed/scaling_manifest.json).
+
+| Nt | Ns | beta | amG (bootstrap SE) | xi2nd/a (bootstrap SE) | B (sweeps) | blocks/chain |
+|---:|---:|---:|---:|---:|---:|---:|
+| 3 | 96 | 4.5 | 0.138648 ± 0.000348 | 7.110 ± 0.210 | 80 | 93 |
+| 4 | 160 | 6.0 | 0.094149 ± 0.000193 | 11.601 ± 0.506 | 60 | 125 |
+| 4 | 160 | 6.2 | 0.082128 ± 0.000186 | 11.806 ± 0.583 | 80 | 93 |
+| 6 | 320 | 9.0 | scan running | pending collection | 240 | 31 |
+
+Every new chain has a 500-sweep thermalization cut. The first mass has a
+split-history flag; the beta=6 mass has a between-chain flag. All masses
+remain preliminary, conditional on the suggested windows. Full scans and
+readable selected-window zooms are kept in the per-ensemble plots folders.
+
+At Nt=4,beta=6.2, the independent Ns=160 minus Ns=96 mass difference is
+-0.0003541 ± 0.0003835 (0.92 bootstrap standard deviations). This comparison
+supports agreement at the selected windows; window and old-volume flags
+remain relevant. The corresponding
+[volume plot](../../analysis/mg_nt_fixed/c_0p5/Nt_4/comparison/volume_beta_6p2.pdf)
+and CSV retain the individual estimates.
+
+The root comparison folder includes Lorenzo's supplied trial amG Nt^1.5
+collapse, plus xi2nd and xi2nd-squared versus beta and beta/Nt. Full-range
+plots retain Nt=1; focused trial-normalized versions use Nt>=2. The exponent
+1.5 is assumed, not fitted. Squared-length errors use the squared-moment
+ratio on all 500 joint replicas without positivity truncation. CPU regression
+job 291013 passed all 48 targeted tests. Plot-only job 291012 completed with
+exit zero in 43 seconds; its current products explicitly mark the pending
+Nt=6 ensemble.
 
 ## Last completed analysis
 

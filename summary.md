@@ -4,9 +4,10 @@ A four-ensemble matched-beta/Nt diagnostic batch is approved: 16 new chains
 of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
 All sixteen chains completed by 06:05 CEST on 16 October: 128,000 sweeps and
 0.274520466 A100 GPU-hours, according to the remote completion records.
-Download and analysis are pending restored SSH authentication; the transfer
-failed after successful status checks. Existing numerical results remain
-unchanged. Code and inputs are pushed; all 47 targeted tests pass.
+SSH is restored and compact completion records are downloaded. CPU array
+291008 has completed three new ensemble analyses; the Nt=6,Ns=320 mass-window
+scan continues. Exactly 500 replicas are used. Code and inputs are pushed;
+48 targeted tests pass. No new simulations are launched by this analysis.
 See the [campaign report](docs/mg_nt_fixed/summary.md)
 and [execution record](running_simulations.md).
 
