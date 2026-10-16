@@ -9,7 +9,7 @@ import numpy as np
 
 from mg_nt_fixed_canonical_plots import finish, title
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, write_csv, write_json
-from mg_nt_fixed_statistics import bootstrap_error, xi_second
+from mg_nt_fixed_statistics import bootstrap_error
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 
@@ -87,11 +87,20 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
 
 
 def squared_length_error(result: dict) -> float | None:
-    """Propagate xi_2nd squared through the same joint 500 ensemble vectors."""
+    """Propagate the squared second-moment estimator through 500 joint vectors.
+
+    xi_2nd**2 = (Ctilde(0)/Ctilde(pmin)-1)/(4*sin(pi/Ns)**2).
+    Evaluate the ratio directly: this agrees with squaring a real length,
+    while retaining negative noisy squared-length estimates instead of
+    silently truncating their bootstrap distribution at zero.
+    """
     samples = result['_boot']['samples']
     if samples.shape[0] != 500:
         raise ValueError('length propagation requires exactly 500 replicas')
-    return bootstrap_error(xi_second(samples, result['Ns'])**2)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        squared = (samples[:,2]/samples[:,3]-1)/(4*np.sin(np.pi/result['Ns'])**2)
+    squared[samples[:,3] <= 0] = np.nan
+    return bootstrap_error(squared)
 
 
 def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = None,
@@ -100,7 +109,8 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
 
     Physical normalization is xi/L = (xi/a)/Nt. The companion trial exponent
     uses (xi/a)/Nt**1.5, the reciprocal scaling coordinate of Lorenzo's plot.
-    For each square, transform all saved joint replicas before taking its SD.
+    For each squared estimator, transform the joint structure-factor replicas
+    directly before taking its SD, without discarding a negative noisy ratio.
     """
     points = [p for p in results if p['xi_2nd'] is not None and p['xi_2nd'] > 0
               and p['xi_2nd_error'] is not None and p['physical_Nt'] >= nt_min]
@@ -134,7 +144,7 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
             if nt_min==2:
                 heading = r'Trial $N_t^{1.5}$ correlation-length scaling; $N_t\geq2$'
             if power==2:
-                heading += '\nSquared estimator; errors from squared bootstrap replicas'
+                heading += '\nSquared estimator; errors from joint bootstrap replicas'
             if pending:
                 fig.text(.99, .01, f'{len(pending)} ensemble analysis pending; plotted inputs in scaling_plot_status.json',
                          ha='right', fontsize=13)

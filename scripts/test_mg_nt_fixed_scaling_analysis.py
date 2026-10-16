@@ -60,7 +60,8 @@ class ScalingAnalysisTest(unittest.TestCase):
 
     def test_squared_length_error_transforms_all_replicas(self) -> None:
         ns = 32
-        squared = np.linspace(1., 16., 500, dtype=np.float64)
+        # Negative noisy estimates remain in the squared-moment distribution.
+        squared = np.linspace(-1., 16., 500, dtype=np.float64)
         samples = np.zeros((500,4), dtype=np.float64)
         samples[:,3] = 1.
         samples[:,2] = 1.+4*np.sin(np.pi/ns)**2*squared
