@@ -1,6 +1,30 @@
 # Running simulations
 
-## Matched-y scaling diagnostic — automatic dispatch active; waiting for idle GPUs
+## Matched-y scaling diagnostic — all sixteen complete; analysis pending access
+
+Checked on lnode19 at 07:36 UTC on 16 October: the scheduler finished
+successfully at 04:05:22 UTC. All sixteen production execution records report
+`complete`, with 128,000 measured sweeps. The last chain finished at
+04:05:18 UTC (06:05:18 CEST). Total recorded heatbath time is
+0.274520466 A100 GPU-hours; chain times range from 45.23 to 100.95 seconds.
+The smoke/timing stage started at 03:58:21 UTC, and all three production
+workers launched at 03:59:22 UTC. No scheduler or production worker remains
+active. GPU 6 was excluded throughout.
+
+The requested download and analysis is **pending authentication**. Initial
+SSH status checks and transfer dry runs succeeded; both actual compact-JSON
+transfers then failed with `Permission denied (publickey,password)`.
+No raw history was downloaded, no new analysis job was submitted, and the
+local scheduler snapshot still records its previous 15 October check.
+Output counts and checkpoint checks are reported by the remote execution
+records; independent post-transfer hash verification remains pending.
+After access is restored, retrieve compact completion records, inventory the
+four untuned ensembles, and run the existing chain-aware analysis on Slurm
+CPU nodes with exactly 500 replicas. Keep `target_c=null` and
+`fixed_c_continuum_input=false`; update canonical tables, comparisons and
+the logbook after the new results are verified.
+
+### Approved inputs and execution history
 
 The user approved this four-ensemble first batch and use of available A100s,
 with one of the four free lnode19 GPUs left unused. Execution uses GPUs 3,4,5

@@ -1,20 +1,22 @@
 # Fixed mG Nt campaign
 
-## Approved next simulations
+## Completed matched-y simulations; analysis pending
 
 The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =
 (3,96,4.5), (4,160,6.0), (6,320,9.0), (4,160,6.2), each with four independent
 8,000-sweep hot chains. They test the proposed scaling collapse near beta/Nt=1.5
 and volume dependence against the existing Nt=4,Ns=96,beta=6.2 result.
 The current plan uses three lnode19 A100s (GPUs 3--5), leaving GPU 6 free.
-Automatic dispatch is active on lnode19: it checks GPUs 3--5 every 30 seconds,
-requiring two consecutive process-free checks. Smoke and timing checks run
-first; passing gates allow the three production workers to start as their
-assigned devices become free. The scheduler started at 12:20:52 UTC on
-15 October and accepts new starts for 48 hours. GPUs remain occupied at the
-activation check; no simulation has started. The earlier guarded manual
-attempt is preserved in the dispatch history. Inputs and launch code are
-committed and pushed; 47 targeted tests pass.
+All sixteen production chains completed on 16 October by 04:05:18 UTC
+(06:05:18 CEST), reporting 128,000 sweeps and 0.274520466 A100 GPU-hours.
+Automatic dispatch passed its smoke/timing checks and used GPUs 3--5.
+The scheduler exited successfully at 04:05:22 UTC. These completion records
+were inspected remotely; independent output-hash verification is pending.
+SSH authentication failed during the subsequent compact-record download,
+after successful status checks and transfer dry runs. No new mass analysis
+has run. Existing numerical results and the PDF logbook remain unchanged.
+The earlier guarded manual attempt is preserved in the dispatch history.
+Inputs and launch code are committed and pushed; 47 targeted tests pass.
 Inputs use the canonical c=0.5 reference-family tree, with target_c=null and
 fixed_c_continuum_input=false. Existing numerical results remain unchanged.
 See [execution status](../../running_simulations.md) and

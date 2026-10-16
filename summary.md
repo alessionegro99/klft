@@ -2,10 +2,11 @@
 
 A four-ensemble matched-beta/Nt diagnostic batch is approved: 16 new chains
 of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
-Automatic dispatch is active, checking GPUs 3--5 every 30 seconds and requiring
-smoke/timing gates before production. It is waiting for idle devices; no new
-simulation has started at activation. New starts expire on 17 October at
-12:20 UTC. Code and inputs are pushed; all 47 targeted tests pass.
+All sixteen chains completed by 06:05 CEST on 16 October: 128,000 sweeps and
+0.274520466 A100 GPU-hours, according to the remote completion records.
+Download and analysis are pending restored SSH authentication; the transfer
+failed after successful status checks. Existing numerical results remain
+unchanged. Code and inputs are pushed; all 47 targeted tests pass.
 See the [campaign report](docs/mg_nt_fixed/summary.md)
 and [execution record](running_simulations.md).
 
