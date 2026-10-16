@@ -47,6 +47,7 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
     if not any(p['campaign_type']=='matched_y_scaling' for p in results):
         return
     plot_lengths(results, root, pending)
+    plot_lengths(results, root, pending, nt_min=2)
     points = [p for p in results if p['physical_Nt'] >= 2 and p['include']
               and p['mass'] is not None and p['mass_error'] is not None]
     for p in results:
@@ -93,7 +94,8 @@ def squared_length_error(result: dict) -> float | None:
     return bootstrap_error(xi_second(samples, result['Ns'])**2)
 
 
-def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = None) -> None:
+def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = None,
+                 nt_min: int = 1) -> None:
     """Show both xi_2nd and its square for every defined measured coupling.
 
     Physical normalization is xi/L = (xi/a)/Nt. The companion trial exponent
@@ -101,15 +103,17 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
     For each square, transform all saved joint replicas before taking its SD.
     """
     points = [p for p in results if p['xi_2nd'] is not None and p['xi_2nd'] > 0
-              and p['xi_2nd_error'] is not None]
+              and p['xi_2nd_error'] is not None and p['physical_Nt'] >= nt_min]
     if not points:
         return
     square_errors = {p['ensemble']:squared_length_error(p) for p in points}
     nts = sorted({p['physical_Nt'] for p in points})
     palette = {nt:i+1 for i,nt in enumerate(n for n in nts if n != 1)}
     palette[1] = 0
+    variants = ((1.5, 'lorenzo_scaled_Nt_ge_2'),) if nt_min==2 else (
+        (0., 'vs_beta'), (1., 'slab_scaled'), (1.5, 'lorenzo_scaled'))
     for power, tag in ((1, 'xi_2nd'), (2, 'xi_2nd_squared')):
-        for exponent, suffix in ((0., 'vs_beta'), (1., 'slab_scaled'), (1.5, 'lorenzo_scaled')):
+        for exponent, suffix in variants:
             fig, ax = plt.subplots(figsize=FIGURE_SIZE)
             for nt in nts:
                 same = sorted((p for p in points if p['physical_Nt']==nt), key=lambda p:p['beta'])
@@ -121,9 +125,14 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
             ax.set_yscale('log')
             numerator = r'(\xi_{\rm 2nd}/a)' if power==1 else r'(\xi_{\rm 2nd}/a)^2'
             denominator = '' if exponent==0 else rf'/N_t^{{{exponent*power:g}}}'
+            ylabel = '$'+numerator+denominator+'$'
+            if exponent==1:
+                ylabel = r'$\xi_{\rm 2nd}/L$' if power==1 else r'$(\xi_{\rm 2nd}/L)^2$'
             heading = ('All measured couplings; 500-replica errors' if exponent==0 else
                        'Correlation length relative to slab thickness' if exponent==1 else
-                       r'Lorenzo-style trial normalization: $\xi_{\rm 2nd}/N_t^{1.5}$')
+                       r'Lorenzo-style trial normalization: $(\xi_{\rm 2nd}/a)/N_t^{1.5}$')
+            if nt_min==2:
+                heading = r'Trial $N_t^{1.5}$ correlation-length scaling; $N_t\geq2$'
             if power==2:
                 heading += '\nSquared estimator; errors from squared bootstrap replicas'
             if pending:
@@ -131,7 +140,7 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
                          ha='right', fontsize=13)
             finish(fig, ax, root/'comparison'/f'{tag}_{suffix}.pdf',
                    r'$\beta$' if exponent==0 else r'$\beta/N_t$',
-                   '$'+numerator+denominator+'$', heading)
+                   ylabel, heading)
 
 
 def plot_window_zoom(result: dict, root: Path) -> None:
