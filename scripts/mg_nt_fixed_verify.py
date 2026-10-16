@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import csv
 import json
 import os
@@ -42,6 +43,9 @@ def verify() -> dict:
     for name in ('ensembles','chains','autocorrelations','correlators','fit_windows'):
         exported=read_rows(analysis/f'{name}.csv')
         assert {r['ensemble'] for r in exported}==expected_ensembles, name
+        counts=Counter(r['ensemble'] for r in exported)
+        for key in expected_ensembles:
+            assert counts[key]==len(read_rows(analysis/key/f'{name}.csv')), (name,key)
         for row in exported:
             if row['campaign_type'] in ('nt1_matched_beta','matched_y_scaling'):
                 assert row['target_c']=='' and row['fixed_c_continuum_input']=='False', (name,row['ensemble'])
