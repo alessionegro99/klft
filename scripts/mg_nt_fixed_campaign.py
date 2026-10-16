@@ -22,7 +22,7 @@ from mg_nt_fixed_canonical_plots import finish, plot_ensemble, title
 from mg_nt_fixed_ensemble import clean
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, token, write_csv, write_json
 from mg_nt_fixed_statistics import bootstrap_error, fit_window, review_window
-from mg_nt_fixed_scaling_plots import plot_scaling
+from mg_nt_fixed_scaling_plots import plot_scaling, squared_length_error
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 RESULTS = ROOT/'analysis/mg_nt_fixed'
@@ -324,6 +324,8 @@ def aggregate() -> None:
                               mass_Nt_error=p['mass_error']*p['physical_Nt'] if p['mass_error'] is not None else None,
                               mass_Ns=p['mass']*p['Ns'] if p['mass'] else None,
                               xi_2nd=p['xi_2nd'],xi_2nd_error=p['xi_2nd_error'],
+                              xi_2nd_squared=p['xi_2nd']**2 if p['xi_2nd'] is not None else None,
+                              xi_2nd_squared_error=squared_length_error(p),
                               Ns_over_xi_2nd=p['Ns']/p['xi_2nd'] if p['xi_2nd'] else None,
                               r_min=fit.get('r_min'),r_max=fit.get('r_max'),chi2_full=fit.get('chi2_full'),nominal_dof=fit.get('nominal_dof'),
                               bootstrap_samples=500,include=p['include'],review_status=p['review_status'],flags=p['flags']))

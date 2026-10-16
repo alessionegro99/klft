@@ -7,7 +7,7 @@ import numpy as np
 
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
 from mg_nt_fixed_scaling_inventory import build_inventory
-from mg_nt_fixed_scaling_plots import effective_powers
+from mg_nt_fixed_scaling_plots import effective_powers, squared_length_error
 
 
 class ScalingAnalysisTest(unittest.TestCase):
@@ -57,6 +57,17 @@ class ScalingAnalysisTest(unittest.TestCase):
         points = [dict(physical_Nt=nt, beta=4.) for nt in (2, 3)]
         with self.assertRaisesRegex(ValueError, 'same beta/Nt'):
             effective_powers(points)
+
+    def test_squared_length_error_transforms_all_replicas(self) -> None:
+        ns = 32
+        squared = np.linspace(1., 16., 500, dtype=np.float64)
+        samples = np.zeros((500,4), dtype=np.float64)
+        samples[:,3] = 1.
+        samples[:,2] = 1.+4*np.sin(np.pi/ns)**2*squared
+        result = dict(Ns=ns, _boot=dict(samples=samples))
+        self.assertAlmostEqual(squared_length_error(result), np.std(squared, ddof=1), places=12)
+        with self.assertRaisesRegex(ValueError, 'exactly 500'):
+            squared_length_error(dict(Ns=ns, _boot=dict(samples=samples[:499])))
 
 
 if __name__ == '__main__':
