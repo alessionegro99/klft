@@ -24,6 +24,7 @@ ACTIVE_SOURCE_PATHS = (
     'scripts/mg_nt_fixed_nt1_inventory.py', 'scripts/mg_nt_fixed_nt1_inputs.py',
     'scripts/mg_nt_fixed_nt1_run.py', 'scripts/mg_nt_fixed_nt1_a100.py',
     'scripts/mg_nt_fixed_scaling_inventory.py', 'scripts/mg_nt_fixed_scaling_plots.py',
+    'scripts/mg_nt_fixed_replot.py',
     'scripts/mg_nt_fixed_scaling_inputs.py', 'scripts/mg_nt_fixed_scaling_run.py',
     'scripts/beta_nt_fixed/analysis.py', 'scripts/dirichlet_analysis.py',
     'scripts/pcm_beta_pilot_analysis.py', 'scripts/thermalization_diagnostics.py',

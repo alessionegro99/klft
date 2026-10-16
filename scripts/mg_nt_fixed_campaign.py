@@ -566,6 +566,13 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                               'Edit review.csv to choose mass windows or exclude points, then rerun the campaign collector and logbook on qbig.',
                               'The four 80,000-sweep chains carry length_outlier; eight prior-input chains have 10,000 sweeps.',
                               '','[Logbook](../../docs/mg_nt_fixed/logbook.pdf) · [CSV column guide](../../docs/mg_nt_fixed/csv_columns.md).','']
+                if relative=='comparison':
+                    lines += ['All simulations are included in the existing top-level tables:',
+                              '[Ensembles](../ensembles.csv) · [Correlators](../correlators.csv) · '
+                              '[Chains](../chains.csv) · [Autocorrelations](../autocorrelations.csv) · '
+                              '[All mass windows](../fit_windows.csv).',
+                              'Untuned diagnostics retain their explicit campaign role; fixed-c tuning uses only its tuned input set.',
+                              'Plot titles and footer notes are omitted; parameters, flags and completion status are recorded in the tables and logbook.', '']
             else:
                 lines += ['Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.','']
                 if relative=='.':

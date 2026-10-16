@@ -1,5 +1,6 @@
 """Completed matched-y runs retain their untuned role in all inventories."""
 import json
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
@@ -8,6 +9,9 @@ import numpy as np
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
 from mg_nt_fixed_scaling_inventory import build_inventory
 from mg_nt_fixed_scaling_plots import effective_powers, squared_length_error
+from mg_nt_fixed_replot import saved_scan
+from mg_nt_fixed_canonical_plots import finish
+from plot_thesis_results import FIGURE_SIZE, plt
 
 
 class ScalingAnalysisTest(unittest.TestCase):
@@ -69,6 +73,33 @@ class ScalingAnalysisTest(unittest.TestCase):
         self.assertAlmostEqual(squared_length_error(result), np.std(squared, ddof=1), places=12)
         with self.assertRaisesRegex(ValueError, 'exactly 500'):
             squared_length_error(dict(Ns=ns, _boot=dict(samples=samples[:499])))
+
+    def test_plot_has_axes_but_no_title_or_footer(self) -> None:
+        fig, ax = plt.subplots(figsize=FIGURE_SIZE)
+        ax.set_title('old title')
+        fig.text(.5, .01, 'old footer')
+        try:
+            with patch('mg_nt_fixed_canonical_plots.save_figure'):
+                finish(fig, ax, Path('/tmp/mgnt-style-test.pdf'), 'x', 'y', 'new title', legend=False)
+            self.assertEqual(ax.get_title(), '')
+            self.assertEqual(fig.texts, [])
+            self.assertEqual((ax.get_xlabel(), ax.get_ylabel()), ('x', 'y'))
+        finally:
+            plt.close(fig)
+
+    def test_replot_recovers_saved_error_curves_and_counts(self) -> None:
+        result = dict(labels=['Ctilde_0'], block_length_sweeps=240,
+                      chains=[dict(retained_sweeps=n, tau_int_max_sweeps=48.8) for n in (7500,7250)])
+        rows = [dict(observable=label, block_length_sweeps=str(length), bootstrap_error='.2',
+                     se_uncertainty_approx='.01', min_blocks=str(7250//length), max_blocks=str(7500//length))
+                for length in (80,240) for label in ('Ctilde_0','xi_2nd','Ns_over_xi_2nd')]
+        scan = saved_scan(result, rows)
+        self.assertEqual(scan['counts'], [[93,90],[31,30]])
+        self.assertEqual(scan['minimum_length'], 100)
+        np.testing.assert_array_equal(scan['errors'], np.full((2,3), .2))
+        rows[0]['min_blocks']='1'
+        with self.assertRaisesRegex(ValueError, 'block counts'):
+            saved_scan(result, rows)
 
 
 if __name__ == '__main__':

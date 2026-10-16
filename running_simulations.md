@@ -55,6 +55,13 @@ xi-squared uncertainty propagation. Scheduler-launch messages in its unit-test
 log are mocked tests; no simulation was launched. Log:
 `/qbigwork2/negro/dirichlet/logs/mgnt-scaling-collect-291013.out`.
 
+Plot-only refresh `291014` completed with exit 0 in 36 seconds on lnode11,
+adding focused Nt>=2 length and squared-length comparisons. All sixteen
+simulations were already complete: its pending label referred only to the
+Nt6 mass-window analysis. The user subsequently requested title-free,
+footer-free figures and complete coverage in the existing top-level tables.
+The plotting refresh preserves every saved cut, block choice and fit result.
+
 ### Approved inputs and execution history
 
 The user approved this four-ensemble first batch and use of available A100s,

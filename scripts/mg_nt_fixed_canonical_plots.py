@@ -19,9 +19,12 @@ def title(result: dict) -> str:
 
 def finish(fig: plt.Figure, ax: plt.Axes, path: Path, xlabel: str,
            ylabel: str, heading: str, legend: bool = True) -> None:
-    """Apply the repository style and preserve the 16:9 PDF canvas."""
+    """Keep axes and legends, with no displayed title or footer (user policy)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    pu.style_axes(ax, xlabel=xlabel, ylabel=ylabel, title=heading, legend=legend,
+    ax.set_title('')
+    for annotation in list(fig.texts):
+        annotation.remove()
+    pu.style_axes(ax, xlabel=xlabel, ylabel=ylabel, legend=legend,
                   grid=False, legend_kwargs={'fontsize': 18, 'loc': 'best'})
     ax.grid(False, which='both')
     save_figure(fig, path)

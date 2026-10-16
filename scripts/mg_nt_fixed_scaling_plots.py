@@ -65,9 +65,6 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
                 **pu.data(i, markerfacecolor=pu.color_dict[i]))
         heading = ('Preliminary masses; filled markers: matched-y batch' if exponent==0 else
                    "Lorenzo's trial $N_t^{1.5}$ collapse\nAssumed exponent; filled markers: new batch")
-        if pending:
-            fig.text(.99, .01, f'{len(pending)} ensemble analysis pending; plotted inputs in scaling_plot_status.json',
-                     ha='right', fontsize=13)
         finish(fig, ax, root/'comparison'/f'{name}.pdf', r'$\beta/N_t$',
                r'$am_G$' if exponent==0 else r'$am_G N_t^{1.5}$', heading)
 
@@ -80,7 +77,8 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
                       and np.isclose(p['beta'], 6.2, atol=1.e-12, rtol=0)], key=lambda p:p['Ns'])
     plot_volume(volumes, root)
     write_json(root/'comparison/scaling_plot_status.json', dict(
-        status='partial' if pending else 'complete', pending_ensembles=pending or [],
+        status='partial' if pending else 'complete', simulation_status='complete',
+        analysis_status='partial' if pending else 'complete', pending_ensembles=pending or [],
         available_ensembles=[p['ensemble'] for p in results],
         analysis_sha256={p['ensemble']:sha256(root/p['ensemble']/'analysis.json') for p in results},
         bootstrap_samples=500, new_bootstrap_operations=0, job_id=os.environ.get('SLURM_JOB_ID')))
@@ -145,9 +143,6 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
                 heading = r'Trial $N_t^{1.5}$ correlation-length scaling; $N_t\geq2$'
             if power==2:
                 heading += '\nSquared estimator; errors from joint bootstrap replicas'
-            if pending:
-                fig.text(.99, .01, f'{len(pending)} ensemble analysis pending; plotted inputs in scaling_plot_status.json',
-                         ha='right', fontsize=13)
             finish(fig, ax, root/'comparison'/f'{tag}_{suffix}.pdf',
                    r'$\beta$' if exponent==0 else r'$\beta/N_t$',
                    ylabel, heading)

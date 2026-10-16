@@ -38,6 +38,13 @@ def verify() -> dict:
     data=ROOT/'data/mg_nt_fixed';analysis=ROOT/'analysis/mg_nt_fixed'
     manifest=load_campaign_manifest(data)
     roots=read_rows(analysis/'ensembles.csv');chains=read_rows(analysis/'chains.csv')
+    expected_ensembles={g['ensemble'] for g in manifest['ensembles']}
+    for name in ('ensembles','chains','autocorrelations','correlators','fit_windows'):
+        exported=read_rows(analysis/f'{name}.csv')
+        assert {r['ensemble'] for r in exported}==expected_ensembles, name
+        for row in exported:
+            if row['campaign_type'] in ('nt1_matched_beta','matched_y_scaling'):
+                assert row['target_c']=='' and row['fixed_c_continuum_input']=='False', (name,row['ensemble'])
     assert len(roots)==manifest['ensemble_count'] and len(chains)==manifest['chain_count']
     assert len({r['raw_path'] for r in chains})==manifest['chain_count']
     assert sum(int(r['sweeps']) for r in chains)==manifest['total_sweeps']

@@ -23,6 +23,9 @@ divided by log(Nt_high/Nt_low), using the saved 500 mass replicas. These are
 finite-spacing diagnostics; the 1.5 exponent on the collapse plot is a visual
 trial supplied by the user. No exponent or new continuum fit is inferred.
 The reproduced figure is `comparison/lorenzo_scaling_collapse.pdf`.
+Every ensemble also appears in the existing top-level `ensembles.csv`,
+`correlators.csv`, `chains.csv`, `autocorrelations.csv` and `fit_windows.csv`;
+the comparison directory links to these authoritative tables.
 `c_0p5/Nt_4/comparison/volume_beta_6p2.csv` compares independent volumes,
 with the mass-difference error propagated from the same 500 saved slots.
 
@@ -116,6 +119,13 @@ long Nt=1 lengths visible alongside Nt>=2. These plots retain the original
 volume and chain-statistics limitations and do not fit an exponent.
 The two `lorenzo_scaled_Nt_ge_2` companion plots show the same Nt=2,3,4,6
 range as Lorenzo's mass figure, while the full-range figures retain Nt=1.
+All campaign figures omit displayed titles and footer notes. Axis labels and
+legends remain; the directory paths and CSVs identify parameters and flags.
+`comparison/scaling_plot_status.json` distinguishes simulation completion
+from analysis completion. `scripts/mg_nt_fixed_replot.py` regenerates
+per-ensemble figures from saved cuts, error curves and 500-slot fit arrays;
+it reads raw histories only for display on qbig and performs no new fits or
+bootstrap draws.
 
 Import RNG seeds and hashes as text when using spreadsheet software; 64-bit
 bootstrap seeds can exceed a spreadsheet's exact numeric-integer precision.

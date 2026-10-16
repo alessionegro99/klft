@@ -84,7 +84,10 @@ thermalization and blocking examples in `plots/first_stage/`. Use the canonical
 combining simulations belong in `comparison/` at their nearest common physics
 level. Keep dates, bootstrap counts and historical stages out of active folder
 names. Keep blocking-example figures outside the logbook PDF.
-All plots are grid-free. Keep the fixed-beta/Nt campaign separate.
+All plots are grid-free. For `mg_nt_fixed`, omit displayed plot titles and
+footer notes; retain axis labels and legends. Put parameters, diagnostics
+and completion status in the tables, directory indexes and logbook.
+Keep the fixed-beta/Nt campaign separate.
 
 No root test framework or coverage threshold is configured. Place future Python tests beside the analysis code as `scripts/test_<module>.py`. Check small-volume or analytically known limits, and test KLFT changes with CTest. Every reported result must record the boundary conditions, lattice dimensions, coupling convention, seed, thermalization, measurement spacing, and dependency revision. Estimate Monte Carlo uncertainty with autocorrelation-aware binning, jackknife, or bootstrap; never use an independent-sample standard error for correlated chains.
 
