@@ -1,0 +1,33 @@
+{
+  "stage": "production",
+  "worker": 2,
+  "pid": 3457436,
+  "node": "lnode19",
+  "gpu_uuid": "GPU-97c59efd-ea9e-94d9-7f18-1959e77798e4",
+  "cpu": 34,
+  "manifest_sha256": "f4b2c2b96afc6834e3f068b269f5326f737aa15637f7d8a739b7f42ca6bbc396",
+  "execution_plan_sha256": "6cc4d57bff2b212054805207972d5d06c0f49e78f61c91853ac7648ef3696053",
+  "started_at": "2026-10-16T03:59:23.772015+00:00",
+  "seeds": [
+    1636737046,
+    1999456795,
+    1876858385,
+    734628251,
+    1766896381
+  ],
+  "source_sha256": {
+    "mg_nt_fixed_scaling_run.py": "f8d4e619d74a1203c7d43b236f4d550a134c2d7af8f8e93c2ab422c98571806d",
+    "mg_nt_fixed_nt1_a100.py": "4fcfb74ea7bccc1cfb62017e16cdeb13fa51f44fc7366cec91607ad486792878",
+    "mg_nt_fixed_nt1_run.py": "62caae6cc25807f1dbf9490efea9a2c270d2457c67ca5decc70d5f22ab580ef9",
+    "run_scaling_a100.sh": "760d496ee289db5e48ffe53eb90cf32d78af0be4358d073763c917cf798fc36b"
+  },
+  "status": "complete",
+  "completed_at": "2026-10-16T04:05:18.869308+00:00",
+  "completed_seeds": [
+    1636737046,
+    1999456795,
+    1876858385,
+    734628251,
+    1766896381
+  ]
+}

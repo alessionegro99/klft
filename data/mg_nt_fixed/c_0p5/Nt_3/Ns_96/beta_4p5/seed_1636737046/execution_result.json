@@ -1,0 +1,72 @@
+{
+  "purpose": "production",
+  "chain_index": 2,
+  "campaign_type": "matched_y_scaling",
+  "reference_c": 0.5,
+  "target_c": null,
+  "fixed_c_continuum_input": false,
+  "beta_over_nt": 1.5,
+  "physical_Nt": 3,
+  "stored_L2": 4,
+  "Ns": 96,
+  "beta": 4.5,
+  "beta_text": "4.5",
+  "seed": 1636737046,
+  "sweeps": 8000,
+  "n_overrelax": 5,
+  "measurement_interval": 1,
+  "dirichlet_suite_measurement_interval": 5,
+  "boundary_wilson_enabled": false,
+  "ensemble": "c_0p5/Nt_3/Ns_96/beta_4p5",
+  "input": "c_0p5/Nt_3/Ns_96/beta_4p5/seed_1636737046/input.yaml",
+  "klft_commit": "f47421d895469b72d4af8a9b8479807f2b09a692",
+  "heatbath_sha256": "1d0b2d0bacc008b3b3ca16e6aa6c96dafac31f82f48047af0634f8c51b100cd8",
+  "volume_status": "unvalidated",
+  "start": "hot",
+  "raw_path": "/qbigwork2/negro/dirichlet/data/mg_nt_fixed/c_0p5/Nt_3/Ns_96/beta_4p5/seed_1636737046",
+  "input_sha256": "bb71614a043e712711899e3cfa0442bc03ff3209e4f23551615cc6b51ba7bbd7",
+  "stage": "production",
+  "worker": 2,
+  "pid": 3457436,
+  "node": "lnode19",
+  "gpu_uuid": "GPU-97c59efd-ea9e-94d9-7f18-1959e77798e4",
+  "cpu": 34,
+  "manifest_sha256": "f4b2c2b96afc6834e3f068b269f5326f737aa15637f7d8a739b7f42ca6bbc396",
+  "execution_plan_sha256": "6cc4d57bff2b212054805207972d5d06c0f49e78f61c91853ac7648ef3696053",
+  "started_at": "2026-10-16T03:59:24.236456+00:00",
+  "seeds": [
+    1636737046,
+    1999456795,
+    1876858385,
+    734628251,
+    1766896381
+  ],
+  "source_sha256": {
+    "mg_nt_fixed_scaling_run.py": "f8d4e619d74a1203c7d43b236f4d550a134c2d7af8f8e93c2ab422c98571806d",
+    "mg_nt_fixed_nt1_a100.py": "4fcfb74ea7bccc1cfb62017e16cdeb13fa51f44fc7366cec91607ad486792878",
+    "mg_nt_fixed_nt1_run.py": "62caae6cc25807f1dbf9490efea9a2c270d2457c67ca5decc70d5f22ab580ef9",
+    "run_scaling_a100.sh": "760d496ee289db5e48ffe53eb90cf32d78af0be4358d073763c917cf798fc36b"
+  },
+  "status": "complete",
+  "completed_at": "2026-10-16T04:00:11.996640+00:00",
+  "elapsed_seconds": 47.283307319507,
+  "checks": {
+    "summary_measurements": 8000,
+    "correlator_rows": 392000,
+    "profile_measurements": 1600,
+    "profile_rows": 11200,
+    "checkpoint": {
+      "boundary_flag": 3,
+      "physical_Nt": 3,
+      "stored_L2": 4,
+      "physical_links": 101376,
+      "max_squared_norm_error": 4.440892098500626e-16
+    }
+  },
+  "output_sha256": {
+    "holonomy_correlator.out": "11965161883d0ec65b749e16c14d7141ff561d7d78719081fc937b5f2c576806",
+    "holonomy_summary.out": "db9ee1676ed1c60d44f4869e6f7744edcbff0bed2180f6c664944055780b6feb",
+    "plaquette_profile.out": "74ede389d34cc4d96806c320eb09632786e5f6cd18f7edd5109304ec504c3cd4",
+    "configuration_final.klft": "ec6575a625ca7a934ae5c539bbe50f36f345c3dafeddcc6bf2bdf46958c37b13"
+  }
+}
