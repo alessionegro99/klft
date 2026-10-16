@@ -42,7 +42,7 @@ def verify() -> dict:
     assert len({r['raw_path'] for r in chains})==manifest['chain_count']
     assert sum(int(r['sweeps']) for r in chains)==manifest['total_sweeps']
     for row in roots:
-        if row['physical_Nt']=='1':
+        if row['campaign_type'] in ('nt1_matched_beta', 'matched_y_scaling'):
             assert row['target_c']=='' and row['fixed_c_continuum_input']=='False'
     assert sum('length_outlier' in r['flags'] for r in chains)==4
     assert all((int(r['sweeps'])==80000)==('length_outlier' in r['flags']) for r in chains)

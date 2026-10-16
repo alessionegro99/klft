@@ -23,6 +23,8 @@ ACTIVE_SOURCE_PATHS = (
     'scripts/mg_nt_fixed_verify.py', 'scripts/mg_nt_fixed_logbook.py',
     'scripts/mg_nt_fixed_nt1_inventory.py', 'scripts/mg_nt_fixed_nt1_inputs.py',
     'scripts/mg_nt_fixed_nt1_run.py', 'scripts/mg_nt_fixed_nt1_a100.py',
+    'scripts/mg_nt_fixed_scaling_inventory.py', 'scripts/mg_nt_fixed_scaling_plots.py',
+    'scripts/mg_nt_fixed_scaling_inputs.py', 'scripts/mg_nt_fixed_scaling_run.py',
     'scripts/beta_nt_fixed/analysis.py', 'scripts/dirichlet_analysis.py',
     'scripts/pcm_beta_pilot_analysis.py', 'scripts/thermalization_diagnostics.py',
     'scripts/plot_thesis_results.py', 'uv.lock',
@@ -53,6 +55,9 @@ def source_hashes() -> dict[str,str]:
     paths = [REPORT/'logbook.tex',REPORT/'review.json',ROOT/'data/mg_nt_fixed/manifest.json']
     paths += list((ROOT/'data/mg_nt_fixed').glob('nt1_*manifest.json'))
     paths += list((ROOT/'data/mg_nt_fixed').glob('nt1_a100*json'))
+    paths += list((ROOT/'data/mg_nt_fixed').glob('scaling_*manifest.json'))
+    paths += [ROOT/'data/mg_nt_fixed'/name for name in
+              ('scaling_execution.json', 'scaling_schedule_status.json', 'scaling_timing_gate.json')]
     # Retired stage helpers are archived separately. Requiring every matching
     # filename made a published report depend on unrelated unversioned files.
     paths += [ROOT/path for path in ACTIVE_SOURCE_PATHS]
@@ -139,6 +144,14 @@ def build() -> None:
             number(row['mass']),number(row['mass_error'],3),number(row['xi_2nd'],4),row['min_blocks']])+r'\\')
     lines += [r'\bottomrule',r'\end{tabular}']
     (PRODUCTS/'nt1_table.tex').write_text('\n'.join(lines)+'\n')
+    scaling = [r for r in rows if r.get('campaign_type')=='matched_y_scaling']
+    lines=[r'\begin{tabular}{rrrrrrr}',r'\toprule',
+           r'$N_t$ & $N_s$ & $\beta$ & $am_G$ & boot. SE & $m_G L$ & min. blocks\\\midrule']
+    for row in scaling:
+        lines.append(' & '.join([row['physical_Nt'],row['Ns'],number(row['beta']),
+            number(row['mass']),number(row['mass_error'],3),number(row['mass_Nt']),row['min_blocks']])+r'\\')
+    lines += [r'\bottomrule',r'\end{tabular}']
+    (PRODUCTS/'scaling_table.tex').write_text('\n'.join(lines)+'\n')
     command=['pdflatex','-interaction=nonstopmode','-halt-on-error',f'-output-directory={PRODUCTS}',str(REPORT/'logbook.tex')]
     for _ in range(2):
         completed=subprocess.run(command,cwd=ROOT,text=True,capture_output=True)
@@ -146,7 +159,7 @@ def build() -> None:
         if completed.returncode:
             raise RuntimeError(completed.stdout[-6000:])
     shutil.copy2(PRODUCTS/'logbook.pdf',REPORT/'logbook.pdf')
-    outputs=[REPORT/'logbook.pdf',PRODUCTS/'numbers.tex',PRODUCTS/'tuning_table.tex',PRODUCTS/'continuum_table.tex',PRODUCTS/'ensemble_table.tex',PRODUCTS/'nt1_table.tex']
+    outputs=[REPORT/'logbook.pdf',PRODUCTS/'numbers.tex',PRODUCTS/'tuning_table.tex',PRODUCTS/'continuum_table.tex',PRODUCTS/'ensemble_table.tex',PRODUCTS/'nt1_table.tex',PRODUCTS/'scaling_table.tex']
     write_json(PRODUCTS/'build_manifest.json',dict(source_sha256=source_hashes(),
                output_sha256={str(p.relative_to(ROOT)):sha256(p) for p in outputs},
                build_job=os.environ.get('SLURM_JOB_ID'),bootstrap_operations=0))

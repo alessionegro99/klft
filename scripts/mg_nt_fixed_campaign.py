@@ -22,6 +22,7 @@ from mg_nt_fixed_canonical_plots import finish, plot_ensemble, title
 from mg_nt_fixed_ensemble import clean
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, token, write_csv, write_json
 from mg_nt_fixed_statistics import bootstrap_error, fit_window, review_window
+from mg_nt_fixed_scaling_plots import plot_scaling
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 RESULTS = ROOT/'analysis/mg_nt_fixed'
@@ -367,11 +368,18 @@ def aggregate() -> None:
         plot_continuum(pairs,output,c)
     write_csv(RESULTS/'continuum.csv',continuum)
     plot_all_targets(continuum,continuum_details,summaries)
-    plot_matched_nt1([p for p in results if not p['fixed_c_continuum_input']])
+    plot_matched_nt1([p for p in results if p['campaign_type']=='nt1_matched_beta'])
+    diagnostics = [p for p in results if p['campaign_type']=='matched_y_scaling']
+    for (c, nt), group in groupby(sorted(diagnostics, key=lambda p:(p['reference_c'],p['physical_Nt'])),
+                                key=lambda p:(p['reference_c'],p['physical_Nt'])):
+        plot_comparisons(list(group), RESULTS/f'c_{token(c)}/Nt_{nt}/comparison')
+    plot_scaling(results, RESULTS)
     write_readmes(manifest,results,tunings,continuum)
     write_json(RESULTS/'campaign.json',dict(campaign_type='nonperturbative_mg_nt',bootstrap_samples=500,
                ensembles=len(results),chains=sum(len(p['chains']) for p in results),
-               fixed_c_ensembles=len(fixed_results),matched_beta_ensembles=len(results)-len(fixed_results),
+               fixed_c_ensembles=len(fixed_results),
+               matched_beta_ensembles=sum(p['campaign_type']=='nt1_matched_beta' for p in results),
+               matched_y_ensembles=sum(p['campaign_type']=='matched_y_scaling' for p in results),
                total_sweeps=sum(r['total_sweeps'] for r in summaries),
                retained_sweeps=sum(r['retained_sweeps'] for r in summaries),used_sweeps=sum(r['used_sweeps'] for r in summaries),
                length_outlier_chains=sum('length_outlier' in c['flags'] for r in results for c in r['chains']),
@@ -419,7 +427,9 @@ def plot_comparisons(points: list[dict], output: Path) -> None:
             ax.errorbar(r[keep],np.asarray(p['C_G'])[keep],np.asarray(p['C_G_error'])[keep],
                         label=rf'$\beta={p["beta"]:g}$',**pu.data(1+i%9,markersize=5))
         ax.set_yscale('symlog',linthresh=max(max(p['C_G_error']) for p in same))
-        finish(fig,ax,folder/'correlators.pdf',r'$R/a$',r'$C_G(R)$',rf'$c={same[0]["target_c"]:g},\ N_t={same[0]["physical_Nt"]},\ N_s={ns}$')
+        c_label = (rf'c={same[0]["target_c"]:g}' if same[0]['target_c'] is not None
+                   else rf'c_{{\rm ref}}={same[0]["reference_c"]:g}')
+        finish(fig,ax,folder/'correlators.pdf',r'$R/a$',r'$C_G(R)$',rf'${c_label},\ N_t={same[0]["physical_Nt"]},\ N_s={ns}$')
     for beta in sorted({p['beta'] for p in points}):
         same=[p for p in points if p['beta']==beta and p['mass'] is not None]
         if len(same)<2:
@@ -491,7 +501,7 @@ def plot_all_targets(rows: list[dict],details: list[dict],summaries: list[dict])
         selected=[(j,r) for j,r in enumerate(summaries) if r['reference_c']==c]
         ax.plot([j+1 for j,r in selected],[r['retained_sweeps'] for j,r in selected],label=rf'$c\ {{\rm or}}\ c_{{\rm ref}}={c:g}$',**pu.data_noerr(1+i))
     ax.set_yscale('log')
-    finish(fig,ax,folder/'statistics_inventory.pdf','ensemble row in ensembles.csv','post-cut measured sweeps','Statistics inventory; Nt=1 uses reference targets; long chains flagged')
+    finish(fig,ax,folder/'statistics_inventory.pdf','ensemble row in ensembles.csv','post-cut measured sweeps','Statistics inventory; untuned points use reference targets; long chains flagged')
 
 
 def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continuum: list[dict]) -> None:
@@ -524,10 +534,11 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                               f"Review: {same['review_status']}. Flags: {', '.join(same['flags']) or 'none' }.",
                               '','[Correlator and window plots](plots/) · [Cuts and blocking](plots/first_stage/).','']
                     if not same['fixed_c_continuum_input']:
-                        lines += [f"Nt=1 matched-beta diagnostic. Folder c={same['reference_c']} is the source Nt=2 target; target_c=null. Excluded from fixed-c continuum fits.",'']
+                        role = 'Nt=1 matched-beta' if same['campaign_type']=='nt1_matched_beta' else 'Matched-beta/Nt'
+                        lines += [f"{role} diagnostic. Folder c={same['reference_c']} is a reference family; target_c=null. Excluded from fixed-c continuum fits.",'']
                 if relative=='.':
                     lines += [f"{manifest['ensemble_count']} physical ensembles; {manifest['chain_count']} independent chains; exactly 500 replicas per operation.",
-                              'Nt=1 matched-beta rows have target_c=null; their folder c is the source Nt=2 reference target. They do not enter fixed-c tuning or continuum fits.',
+                              'Nt=1 matched-beta and matched-beta/Nt diagnostics have target_c=null; their folder c is a reference family. They do not enter fixed-c tuning or continuum fits.',
                               'All numerical results are preliminary and available for visual review. Full-covariance chi-square is descriptive.',
                               'Edit review.csv to choose mass windows or exclude points, then rerun the campaign collector and logbook on qbig.',
                               'The four 80,000-sweep chains carry length_outlier; eight prior-input chains have 10,000 sweeps.',
@@ -537,9 +548,13 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                 if relative=='.':
                     lines += ['[Immutable manifest](manifest.json) · [Simulation build](build_provenance.json) · [Migration map](migration.csv).',
                               '[Nt=1 analysis inventory](nt1_analysis_manifest.json): matched-beta diagnostics; folder c is the source Nt=2 reference target, and target_c is null.',
+                              '[Matched-y inputs](scaling_manifest.json) · [Completed matched-y analysis inventory](scaling_analysis_manifest.json) · [Execution plan](scaling_execution.json) · [Scheduler completion](scaling_schedule_status.json).',
                               'The manifest records the checksum-verified qbig recovery archive. Historical stage directories are retired after product verification.','']
                 if '/Nt_1' in relative:
                     lines += ['Matched-beta Nt=1 diagnostic. The c folder is a source Nt=2 reference target; these inputs are excluded from fixed-c continuum fits.','']
+                same = next((p for p in results if p['ensemble']==relative), None)
+                if same and same['campaign_type']=='matched_y_scaling':
+                    lines += ['Matched-beta/Nt diagnostic; target_c=null. The c folder is a reference family; excluded from fixed-c continuum fits.','']
             children=[p for p in sorted(directory.iterdir()) if p.is_dir() and (p.name.startswith(('c_','Nt_','Ns_','beta_','seed_')) or p.name=='comparison')]
             lines += [f'- [{p.name}]({p.name}/)' for p in children]
             lines += ['']+[f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.csv'))]

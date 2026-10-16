@@ -3,8 +3,11 @@ import json
 import unittest
 from unittest.mock import patch
 
+import numpy as np
+
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
 from mg_nt_fixed_scaling_inventory import build_inventory
+from mg_nt_fixed_scaling_plots import effective_powers
 
 
 class ScalingAnalysisTest(unittest.TestCase):
@@ -39,6 +42,21 @@ class ScalingAnalysisTest(unittest.TestCase):
         self.assertEqual(len(fixed), 38)
         self.assertEqual(len(matched), 4)
         self.assertEqual(sum(len(g['chains']) for g in fixed), 156)
+
+    def test_effective_power_known_limit_and_failed_slot(self) -> None:
+        points = [dict(ensemble=f'Nt_{nt}', physical_Nt=nt, beta=1.5*nt,
+                       mass=nt**(-1.5), _mass_samples=np.full(500, nt**(-1.5)),
+                       flags=['preliminary']) for nt in (2, 3, 4, 6)]
+        points[1]['_mass_samples'][7] = np.nan
+        rows = effective_powers(points)
+        np.testing.assert_allclose([p['effective_power'] for p in rows], 1.5)
+        self.assertEqual([p['bootstrap_successes'] for p in rows], [499,499,500])
+        self.assertTrue(all('preliminary' in p['flags'] for p in rows))
+
+    def test_effective_power_requires_matched_y(self) -> None:
+        points = [dict(physical_Nt=nt, beta=4.) for nt in (2, 3)]
+        with self.assertRaisesRegex(ValueError, 'same beta/Nt'):
+            effective_powers(points)
 
 
 if __name__ == '__main__':
