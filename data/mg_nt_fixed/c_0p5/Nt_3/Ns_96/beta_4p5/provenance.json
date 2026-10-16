@@ -313,5 +313,6 @@
       "execution_result_sha256": "fb7fc81251aa0a96a311af6616e6676ab13a4175c316fe0782e3ef4739b062f3"
     }
   ],
-  "index": 0
+  "index": 0,
+  "metadata_verified_on_qbig": true
 }

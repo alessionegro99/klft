@@ -1,0 +1,5 @@
+ensemble,campaign_type,target_c,fixed_c_continuum_input,Nt,Ns,beta,beta_over_Nt,mass,mass_error,mass_Nt,mass_Nt_error,mass_Ns,bootstrap_samples,flags
+c_0p5/Nt_2/Ns_64/beta_3,nonperturbative_mg_nt,0.5,True,2,64,3.0,1.5,0.2451319225576089,0.00045601289205518373,0.4902638451152178,0.0009120257841103675,15.68844304368697,500,below_50_blocks;prior_10000_sweeps
+c_0p5/Nt_3/Ns_96/beta_4p5,matched_y_scaling,,False,3,96,4.5,1.5,0.1386481290715917,0.0003484967821640296,0.4159443872147751,0.001045490346492089,13.310220390872804,500,split_history_review
+c_0p5/Nt_4/Ns_160/beta_6,matched_y_scaling,,False,4,160,6.0,1.5,0.09414881012816011,0.0001933257385472621,0.37659524051264043,0.0007733029541890484,15.063809620505618,500,between_chain_review;late_window_drift
+c_0p5/Nt_6/Ns_320/beta_9,matched_y_scaling,,False,6,320,9.0,1.5,0.05630645737136939,0.00012571931629897244,0.33783874422821636,0.0007543158977938347,18.018066358838205,500,below_50_blocks;late_window_drift;observable_blocking_plateau_unresolved;singular_full_covariance

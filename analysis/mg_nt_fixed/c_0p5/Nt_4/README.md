@@ -1,6 +1,7 @@
 # c_0p5/Nt_4
 
 - [Ns_128](Ns_128/)
+- [Ns_160](Ns_160/)
 - [Ns_96](Ns_96/)
 - [comparison](comparison/)
 

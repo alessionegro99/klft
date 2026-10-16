@@ -1,0 +1,12 @@
+{
+  "analysis_sha256": "4ecc2896d91cf363b7f26902f47c5cfb08fbc0bc3e0f11ddc71d28216b0e26ea",
+  "bootstrap_sha256": "8a328fb4c3fa34db8adecfef2db19d4b7872aab23adfcebd0da96ff54e43dfa9",
+  "source_sha256": {
+    "scripts/mg_nt_fixed_replot.py": "e66a4a7f6cfc1cf87f5af15db0db7ca77f0834dff1bb60974cf3ad8bdfb7a244",
+    "scripts/mg_nt_fixed_canonical_plots.py": "140c6a6c6a32f68fd24f98eb9d5d7f81b055f3bd8d8295a0de77268ba5c5de0a"
+  },
+  "job_id": "291017",
+  "new_bootstrap_operations": 0,
+  "displayed_titles": false,
+  "displayed_footnotes": false
+}

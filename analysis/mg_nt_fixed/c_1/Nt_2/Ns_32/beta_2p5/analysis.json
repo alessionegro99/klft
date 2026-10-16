@@ -272,7 +272,8 @@
       "failure": null,
       "stable_three_by_three_patch": true,
       "selected": true,
-      "patch_max_pairwise_z": 1.1087147357166607
+      "patch_max_pairwise_z": 1.1087147357166607,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 2,
@@ -291,7 +292,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 3,
@@ -310,7 +312,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 4,
@@ -329,7 +332,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 5,
@@ -348,7 +352,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 6,
@@ -367,7 +372,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 7,
@@ -386,7 +392,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 8,
@@ -405,7 +412,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 9,
@@ -424,7 +432,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": false,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 10,
@@ -443,7 +452,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": false,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 11,
@@ -464,7 +474,8 @@
       ],
       "failure": null,
       "stable_three_by_three_patch": false,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 12,
@@ -485,7 +496,8 @@
       ],
       "failure": null,
       "stable_three_by_three_patch": false,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 1,
@@ -504,7 +516,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 2,
@@ -523,7 +536,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 3,
@@ -542,7 +556,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 4,
@@ -561,7 +576,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 5,
@@ -580,7 +596,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 6,
@@ -599,7 +616,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 7,
@@ -618,7 +636,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 8,
@@ -637,7 +656,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 9,
@@ -656,7 +676,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": false,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 10,
@@ -675,7 +696,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": false,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 1,
@@ -694,7 +716,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 2,
@@ -713,7 +736,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 3,
@@ -732,7 +756,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 4,
@@ -751,7 +776,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 5,
@@ -770,7 +796,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 6,
@@ -789,7 +816,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 7,
@@ -808,7 +836,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     },
     {
       "r_min": 8,
@@ -827,7 +856,8 @@
       "flags": [],
       "failure": null,
       "stable_three_by_three_patch": true,
-      "selected": false
+      "selected": false,
+      "covariance_rank_limit": 496
     }
   ],
   "pairwise_chain_diagnostics": [

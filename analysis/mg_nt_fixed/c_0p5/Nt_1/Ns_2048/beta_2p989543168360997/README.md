@@ -5,7 +5,7 @@ Review: pending_visual_review. Flags: adaptive_endpoint_scan_review, below_30_bl
 
 [Correlator and window plots](plots/) · [Cuts and blocking](plots/first_stage/).
 
-Nt=1 matched-beta diagnostic. Folder c=0.5 is the source Nt=2 target; target_c=null. Excluded from fixed-c continuum fits.
+Nt=1 matched-beta diagnostic. Folder c=0.5 is a reference family; target_c=null. Excluded from fixed-c continuum fits.
 
 
 - [autocorrelations.csv](autocorrelations.csv)

@@ -312,5 +312,6 @@
       "execution_result_sha256": "b77749749d0822b330f1f3f0645b7c6d19f730e9f18750d83ca66109d70db349"
     }
   ],
-  "index": 1
+  "index": 1,
+  "metadata_verified_on_qbig": true
 }

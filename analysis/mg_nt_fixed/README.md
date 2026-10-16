@@ -1,7 +1,7 @@
 # Fixed mG Nt
 
-41 physical ensembles; 168 independent chains; exactly 500 replicas per operation.
-Nt=1 matched-beta rows have target_c=null; their folder c is the source Nt=2 reference target. They do not enter fixed-c tuning or continuum fits.
+45 physical ensembles; 184 independent chains; exactly 500 replicas per operation.
+Nt=1 matched-beta and matched-beta/Nt diagnostics have target_c=null; their folder c is a reference family. They do not enter fixed-c tuning or continuum fits.
 All numerical results are preliminary and available for visual review. Full-covariance chi-square is descriptive.
 Edit review.csv to choose mass windows or exclude points, then rerun the campaign collector and logbook on qbig.
 The four 80,000-sweep chains carry length_outlier; eight prior-input chains have 10,000 sweeps.

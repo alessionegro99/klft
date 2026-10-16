@@ -3,4 +3,5 @@
 Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.
 
 - [Ns_80](Ns_80/)
+- [Ns_96](Ns_96/)
 

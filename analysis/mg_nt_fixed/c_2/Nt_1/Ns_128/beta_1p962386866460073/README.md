@@ -5,7 +5,7 @@ Review: pending_visual_review. Flags: below_50_blocks, late_window_drift.
 
 [Correlator and window plots](plots/) · [Cuts and blocking](plots/first_stage/).
 
-Nt=1 matched-beta diagnostic. Folder c=2.0 is the source Nt=2 target; target_c=null. Excluded from fixed-c continuum fits.
+Nt=1 matched-beta diagnostic. Folder c=2.0 is a reference family; target_c=null. Excluded from fixed-c continuum fits.
 
 
 - [autocorrelations.csv](autocorrelations.csv)

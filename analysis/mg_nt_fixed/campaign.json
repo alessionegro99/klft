@@ -1,22 +1,24 @@
 {
   "campaign_type": "nonperturbative_mg_nt",
   "bootstrap_samples": 500,
-  "ensembles": 41,
-  "chains": 168,
+  "ensembles": 45,
+  "chains": 184,
   "fixed_c_ensembles": 38,
   "matched_beta_ensembles": 3,
-  "total_sweeps": 1648000,
-  "retained_sweeps": 1556340,
-  "used_sweeps": 1547750,
+  "matched_y_ensembles": 4,
+  "total_sweeps": 1776000,
+  "retained_sweeps": 1676340,
+  "used_sweeps": 1667030,
   "length_outlier_chains": 4,
-  "numerical_masses": 41,
+  "numerical_masses": 45,
   "tuning_points": 10,
   "continuum_targets": 3,
   "manifest_sha256": "8317949c3b0477f4a786ec97e55a663b93ac77150f3bf38b6bbd4ae9c1eb5946",
-  "review_sha256": "24484e930b4083822ec73971c0cea2c02ea48ebc119342745c77643c80c52082",
+  "review_sha256": "4f1adc67a8a0e5b8baa3d28dd828e289d592a2697b730c59d82a29bdfb93ea34",
   "source_manifest_sha256": {
     "manifest.json": "8317949c3b0477f4a786ec97e55a663b93ac77150f3bf38b6bbd4ae9c1eb5946",
-    "nt1_analysis_manifest.json": "b2bfa84a51d27e194da3f73a38330a2efaff40c11131fc88675d7fc23bda2e1e"
+    "nt1_analysis_manifest.json": "b2bfa84a51d27e194da3f73a38330a2efaff40c11131fc88675d7fc23bda2e1e",
+    "scaling_analysis_manifest.json": "39576b223df2e060e0d1734ee7b881bcabf4095e4042f1872040907c5fa56106"
   },
   "analysis_jobs": [
     "290846",
@@ -59,7 +61,11 @@
     "290893",
     "291001",
     "291002",
-    "291003"
+    "291003",
+    "291008",
+    "291009",
+    "291010",
+    "291011"
   ],
-  "report_job": "291005"
+  "report_job": "291015"
 }
