@@ -1,6 +1,6 @@
 # Running simulations
 
-## Matched-y scaling diagnostic — all sixteen complete; analysis running
+## Matched-y scaling diagnostic — simulations and mass analyses complete
 
 Checked on lnode19 at 07:36 UTC on 16 October: the scheduler finished
 successfully at 04:05:22 UTC. All sixteen production execution records report
@@ -33,7 +33,8 @@ No new Monte Carlo simulation is launched by this analysis.
 Tasks 291008_0, _1 and _2 completed with exit 0 in 3m32s, 8m57s and 10m49s,
 on lcpunode02, lnode03 and lnode04. Their masses are 0.1386481 ± 0.0003485,
 0.0941488 ± 0.0001933, and 0.0821284 ± 0.0001862; errors are bootstrap SEs.
-Task _3 remains active on lnode05. Every new chain has a 500-sweep cut.
+Task _3 completed with exit 0 in 1h12m47s on lnode05, with mass
+0.05630646 ± 0.00012572. Every new chain has a 500-sweep cut.
 Blocks are 80, 60, 80 and 240 sweeps for indices 0--3, retaining 93,125,93,31
 complete blocks per chain, respectively. The Nt=6 group needs increased
 statistics to reach the 50-block target at its present block length.
@@ -62,6 +63,30 @@ Nt6 mass-window analysis. The user subsequently requested title-free,
 footer-free figures and complete coverage in the existing top-level tables.
 The plotting refresh preserves every saved cut, block choice and fit result.
 
+Final collection `291015` completed with exit 0 in 1m42s on lnode11,
+verifying 45 ensembles, 184 chains, 1,776,000 measured sweeps and 12,721
+mass windows. All five top-level statistical tables contain the full set,
+with row counts checked against the per-ensemble tables. The fixed-c tuning
+and p=1 continuum CSV checksums are unchanged. Regression `291016` passed
+50 tests in the locked environment (exit 0, 31 seconds, lnode11).
+
+Title-free refresh `291017` requests four CPUs, 16 GB and one hour, with no
+GPU or dependency. It regenerates per-ensemble figures from saved estimates
+and error curves, loading raw histories only for thermalization display.
+No new fit or bootstrap draw is performed. It then repeats product
+verification. Logs use `logs/mgnt-scaling-collect-<job>.out` under the same
+remote root. Source commits: `e09009b`, `b0b1ba4`.
+The refresh completed with exit 0 in 4m47s on lnode11; all 45 ensembles were
+replotted and repeated verification passed for 1,267 PDFs and 12,721 windows.
+Local Poppler QA passed for all 1,267 single-page 16:9 plot PDFs. Logbook
+build `291018` completed with exit 0 in 29 seconds on lnode11; its freshness
+check passed. The final visual review adds the Nt6 positive-tail caveat and
+removes two nearly empty spill pages. Final logbook build `291019` completed
+with exit 0 in 30 seconds on lnode11. The resulting 22-page PDF passed visual
+review, has no LaTeX layout warnings, and passes freshness checks on qbig
+and locally. No simulation or mass-window analysis remains pending in this
+mg_nt register.
+
 ### Approved inputs and execution history
 
 The user approved this four-ensemble first batch and use of available A100s,
@@ -86,7 +111,8 @@ bootstrap replicas with the approved chain-aware mg_nt policy.
 These points test matched beta/Nt scaling, with a direct Ns=96 versus 160
 comparison at Nt=4,beta=6.2. The canonical `c_0p5` folder is the source grid
 reference only: `target_c=null`, `fixed_c_continuum_input=false`, campaign type
-`matched_y_scaling`. They are not added to the fixed-c analysis inventory yet.
+`matched_y_scaling`. They enter the combined register through a separate
+immutable inventory and remain excluded from fixed-c tuning.
 The immutable [manifest](data/mg_nt_fixed/scaling_manifest.json) and
 [execution plan](data/mg_nt_fixed/scaling_execution.json) preserve this role.
 All 21 new seeds (one smoke, four timings and sixteen production chains) are

@@ -1,29 +1,32 @@
 # Fixed mG Nt campaign
 
-## Completed matched-y simulations; analysis in progress
+## Completed matched-y simulations and mass analyses
 
 The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =
 (3,96,4.5), (4,160,6.0), (6,320,9.0), (4,160,6.2), each with four independent
 8,000-sweep hot chains. They test the proposed scaling collapse near beta/Nt=1.5
 and volume dependence against the existing Nt=4,Ns=96,beta=6.2 result.
-The current plan uses three lnode19 A100s (GPUs 3--5), leaving GPU 6 free.
+The batch used three lnode19 A100s (GPUs 3--5), leaving GPU 6 free.
 All sixteen production chains completed on 16 October by 04:05:18 UTC
 (06:05:18 CEST), reporting 128,000 sweeps and 0.274520466 A100 GPU-hours.
 Automatic dispatch passed its smoke/timing checks and used GPUs 3--5.
 The scheduler exited successfully at 04:05:22 UTC. SSH access is now restored;
 compact completion records were downloaded and verified. CPU analysis array
 291008 applies the existing chain-aware 500-replica analysis and independently
-checks raw-observable hashes. Three ensembles are complete; the Nt=6,Ns=320
-exhaustive window scan is still running. The PDF logbook will be rebuilt after
-collection and visual review. No new Monte Carlo simulations are launched.
+checks raw-observable hashes. All four ensembles are complete; the Nt=6,Ns=320
+exhaustive scan finished successfully in 1h12m47s. Collection 291015 verified
+the complete register; plotting refresh 291017 removes displayed titles and
+footer notes using the saved statistical results. No new Monte Carlo simulations are launched.
 The earlier guarded manual attempt is preserved in the dispatch history.
-Inputs and analysis code are committed and pushed; 48 targeted tests pass.
+Inputs and analysis code are committed and pushed; 50 targeted tests pass on qbig.
 Inputs use the canonical c=0.5 reference-family tree, with target_c=null and
 fixed_c_continuum_input=false. Existing fixed-c tuning inputs remain unchanged.
 The combined immutable inventory now has 45 ensembles, 184 chains and
-1,776,000 measured sweeps. Plot-only job 291012 refreshes Lorenzo's trial
-collapse and both xi2nd and xi2nd-squared comparisons from the 44 completed
-analyses while explicitly recording the one pending ensemble.
+1,776,000 measured sweeps and 12,721 mass windows. All five existing top-level
+tables (ensembles, correlators, chains, autocorrelations and fit windows)
+include every ensemble. Lorenzo's trial collapse and both xi2nd and
+xi2nd-squared comparisons include the completed batch. The earlier pending
+label referred to mass analysis only; all sixteen simulations had finished.
 See [execution status](../../running_simulations.md) and
 [immutable inputs](../../data/mg_nt_fixed/scaling_manifest.json).
 
@@ -32,12 +35,26 @@ See [execution status](../../running_simulations.md) and
 | 3 | 96 | 4.5 | 0.138648 ± 0.000348 | 7.110 ± 0.210 | 80 | 93 |
 | 4 | 160 | 6.0 | 0.094149 ± 0.000193 | 11.601 ± 0.506 | 60 | 125 |
 | 4 | 160 | 6.2 | 0.082128 ± 0.000186 | 11.806 ± 0.583 | 80 | 93 |
-| 6 | 320 | 9.0 | scan running | pending collection | 240 | 31 |
+| 6 | 320 | 9.0 | 0.056306 ± 0.000126 | 21.889 ± 1.492 | 240 | 31 |
 
 Every new chain has a 500-sweep thermalization cut. The first mass has a
-split-history flag; the beta=6 mass has a between-chain flag. All masses
+split-history flag; the beta=6 mass has between-chain and later-window drift flags. All masses
 remain preliminary, conditional on the suggested windows. Full scans and
 readable selected-window zooms are kept in the per-ensemble plots folders.
+The Nt=6 selected window is R=6--160 with 500/500 successful refits and a
+later-window drift flag. Its
+mass-error plateau spans B=160,200,240, while the common plateau across all
+monitored observables remains unresolved. The four chains retain 31 blocks
+each, below the target of 50. At the current cut and block size, that target
+requires 12,500 total sweeps per chain, followed by a fresh autocorrelation
+and blocking assessment. Its full covariance has rank at most 120 for 155
+fit points; full chi-square is undefined, while the diagonal-fit mass and
+bootstrap uncertainty remain available for review.
+Its correlator flattens above the selected K0 curve at separations beyond
+roughly R=90. Later lower-endpoint choices move the mass downward with
+growing errors. This visible tail remains unexplained; retain the result
+with its window and equilibration warnings and prioritize statistical and
+window review before a precision interpretation.
 
 At Nt=4,beta=6.2, the independent Ns=160 minus Ns=96 mass difference is
 -0.0003541 ± 0.0003835 (0.92 bootstrap standard deviations). This comparison
@@ -51,11 +68,21 @@ collapse, plus xi2nd and xi2nd-squared versus beta and beta/Nt. Full-range
 plots retain Nt=1; focused trial-normalized versions use Nt>=2. The exponent
 1.5 is assumed, not fitted. Squared-length errors use the squared-moment
 ratio on all 500 joint replicas without positivity truncation. CPU regression
-job 291013 passed all 48 targeted tests. Plot-only job 291012 completed with
-exit zero in 43 seconds; its current products explicitly mark the pending
-Nt=6 ensemble.
+job 291016 passed all 50 targeted tests. Collection 291015 completed with
+exit zero in 1m42s. Title-free refresh 291017 completed in 4m47s; all 1,267
+plot PDFs passed the local single-page 16:9 geometry check.
+Plot titles and footer notes are omitted; axis labels and legends remain.
+The parameters, flags and completion status are recorded in CSVs and the logbook.
+Final logbook build 291019 completed with exit zero in 30 seconds on lnode11.
+The 22-page PDF passed visual review and remote/local freshness checks,
+with no LaTeX layout warnings. No simulation or mass analysis is pending.
+At y=1.5, the adjacent-resolution effective powers are 1.4054 ± 0.0077
+(Nt=2 to 3), 1.3455 ± 0.0111 (3 to 4), and 1.2678 ± 0.0075 (4 to 6).
+This is finite-spacing drift with conditional statistical errors; the trial
+exponent 1.5 is a visual comparison, with no fitted asymptotic exponent.
+The fixed-c tuning and p=1 continuum CSVs remain byte-for-byte unchanged.
 
-## Last completed analysis
+## Fixed-c and earlier Nt=1 results
 
 The fixed-c reanalysis retains **38 physical ensembles, 156 independent
 chains, 10 preliminary tuning points and three p=1 continuum comparisons**.
@@ -66,7 +93,7 @@ Twelve subsequently authorized Nt=1 A100 chains have completed, adding three
 matched-beta diagnostic ensembles and 96,000 sweeps. Their canonical leaves
 use the source Nt=2 reference c; `target_c` is null and
 `fixed_c_continuum_input=false`. They do not extend the fixed-c continuum fit.
-The combined inventory contains 41 ensembles and 168 chains, with 1,648,000
+Before the matched-y extension, the inventory contained 41 ensembles and 168 chains, with 1,648,000
 measured sweeps. Inputs and actual execution records are in the same physics
 tree; the original immutable fixed-c manifest is preserved, with a separate
 immutable `nt1_analysis_manifest.json` for these untuned diagnostics.
@@ -115,7 +142,7 @@ numerically defined diagonal-fit masses remain available with flags.
 These are conditional preliminary mass estimates. In the largest box,
 xi_exp/a is approximately 149 and mG Ns approximately 13.7; the unresolved
 blocking and equilibration diagnostics remain separate limitations.
-Collection job 291004 completed in 1m23s. Numerical verification covers
+Collection job 291004 completed in 1m23s. Its numerical verification covered
 41 ensembles, 168 unique chains, 1,648,000 sweeps, 7,123 mass windows and
 1,105 plot PDFs. The original fixed-c tuning and p=1 continuum values are
 retained; new Nt=1 points are shown in dedicated comparison plots.

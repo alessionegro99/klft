@@ -1,13 +1,18 @@
 # Numerical validation summary
 
-A four-ensemble matched-beta/Nt diagnostic batch is approved: 16 new chains
+A four-ensemble matched-beta/Nt diagnostic batch has completed: 16 chains
 of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
 All sixteen chains completed by 06:05 CEST on 16 October: 128,000 sweeps and
 0.274520466 A100 GPU-hours, according to the remote completion records.
 SSH is restored and compact completion records are downloaded. CPU array
-291008 has completed three new ensemble analyses; the Nt=6,Ns=320 mass-window
-scan continues. Exactly 500 replicas are used. Code and inputs are pushed;
-48 targeted tests pass. No new simulations are launched by this analysis.
+291008 completed all four ensemble analyses. Collection 291015 verified
+45 ensembles, 184 chains and 12,721 mass windows, with exactly 500 replicas.
+The existing top-level tables contain every ensemble. Regression 291016
+passed 50 tests. All 1,267 plots are title-free, footer-free and grid-free,
+with single-page 16:9 geometry verified. The updated 22-page logbook passed
+visual review and freshness checks. No mg_nt simulation or mass analysis
+remains pending.
+No new simulations are launched by this analysis.
 See the [campaign report](docs/mg_nt_fixed/summary.md)
 and [execution record](running_simulations.md).
 
@@ -33,7 +38,7 @@ submitted. Results, the cleaned physics tree and provenance are in the
 
 All twelve subsequently approved Nt=1 A100 production chains completed:
 96,000 sweeps and 3.0381 GPU-hours. Their qbig analysis uses exactly 500
-replicas. The combined physics tree has 41 ensembles and 168 chains;
+replicas. That batch brought the physics tree to 41 ensembles and 168 chains;
 Nt=1 matched-beta diagnostics remain separate from fixed-c continuum inputs.
 Ns=2048 has preliminary xi2nd/a = 146.7 ± 33.6 and only 6--11 complete blocks
 per chain, requiring more statistics and an independent volume check.

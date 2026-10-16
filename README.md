@@ -13,13 +13,14 @@ Current campaign status is documented separately. The
 fits on the 1.8 and 2.0 lines, 64 comparison PDFs, and 30 per-ensemble
 first-stage PDFs; the 2.1 line remains incomplete. The separate
 [fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has been reanalysed:
-41 physical ensembles (168 chains) in a `c/Nt/Ns/beta` tree, 500-replica errors,
+45 physical ensembles (184 chains) in a `c/Nt/Ns/beta` tree, 500-replica errors,
 10 tuning points and three preliminary `p=1` continuum comparisons. Three
-new Nt=1 matched-beta ensembles are kept separate from fixed-c inputs. The
+Nt=1 matched-beta and four matched-beta/Nt ensembles are kept separate from fixed-c inputs. The
 continuum intercepts remain sensitive to the included resolutions. See its
 [PDF logbook](docs/mg_nt_fixed/logbook.pdf) and
-[analysis index](analysis/mg_nt_fixed/README.md). The twelve A100 production
-chains are complete; the largest box needs increased statistics.
+[analysis index](analysis/mg_nt_fixed/README.md). All production chains and
+mass scans are complete. The top-level tables include every ensemble;
+comparison plots include Lorenzo's trial collapse, ξ₂nd and ξ₂nd².
 
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
 build. Set `temporal_dirichlet: true` in either update section. With it false,
