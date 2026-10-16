@@ -39,9 +39,9 @@ class Nt1AnalysisTest(unittest.TestCase):
 
     def test_combined_inventory_keeps_physics_roles(self) -> None:
         result = load_campaign_manifest()
-        self.assertEqual(result['ensemble_count'], 41)
-        self.assertEqual(result['chain_count'], 168)
-        self.assertEqual(result['total_sweeps'], 1648000)
+        self.assertEqual(result['ensemble_count'], 45)
+        self.assertEqual(result['chain_count'], 184)
+        self.assertEqual(result['total_sweeps'], 1776000)
         fixed = [g for g in result['ensembles'] if g['fixed_c_continuum_input']]
         self.assertEqual(len(fixed), 38)
         self.assertTrue(all(g['physical_Nt'] > 1 for g in fixed))

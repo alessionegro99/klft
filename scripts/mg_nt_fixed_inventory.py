@@ -60,13 +60,14 @@ def write_csv(path: Path, rows: list[dict], fields: list[str] | None = None) -> 
 def load_campaign_manifest(data: Path | None = None) -> dict:
     """Combine immutable physics-role inventories without modifying originals.
 
-    A matched-beta Nt=1 ensemble belongs in the canonical tree and global
-    statistics register, but cannot enter fixed-c tuning or extrapolation.
+    Untuned matched-beta and matched-y ensembles belong in the canonical tree
+    and statistics register, but cannot enter fixed-c tuning or extrapolation.
     """
     data = ROOT/'data/mg_nt_fixed' if data is None else data
     paths = [data/'manifest.json']
-    if (data/'nt1_analysis_manifest.json').exists():
-        paths.append(data/'nt1_analysis_manifest.json')
+    for name in ('nt1_analysis_manifest.json', 'scaling_analysis_manifest.json'):
+        if (data/name).exists():
+            paths.append(data/name)
     inventories = [json.loads(p.read_text()) for p in paths]
     groups = [dict(g, campaign_type=g.get('campaign_type', m['campaign_type']),
                    reference_c=g.get('reference_c', g['target_c']),
@@ -75,6 +76,8 @@ def load_campaign_manifest(data: Path | None = None) -> dict:
     chains = [c for g in groups for c in g['chains']]
     if len({g['ensemble'] for g in groups}) != len(groups) or len({c['raw_path'] for c in chains}) != len(chains):
         raise ValueError('overlapping ensemble or raw-chain inventories')
+    if len({c['seed'] for c in chains}) != len(chains):
+        raise ValueError('reused seed across campaign inventories')
     if any(g['fixed_c_continuum_input'] and g['target_c'] is None for g in groups):
         raise ValueError('fixed-c input must declare its target')
     groups.sort(key=lambda g:(g['reference_c'], g['physical_Nt'], g['Ns'], g['beta']))
