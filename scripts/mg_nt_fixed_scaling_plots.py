@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from mg_nt_fixed_canonical_plots import finish
+from mg_nt_fixed_canonical_plots import finish, title
 from mg_nt_fixed_inventory import write_csv
 from mg_nt_fixed_statistics import bootstrap_error
 from plot_thesis_results import FIGURE_SIZE, plt, pu
@@ -46,6 +46,9 @@ def plot_scaling(results: list[dict], root: Path) -> None:
         return
     points = [p for p in results if p['physical_Nt'] >= 2 and p['include']
               and p['mass'] is not None and p['mass_error'] is not None]
+    for p in results:
+        if p['campaign_type']=='matched_y_scaling' and p['selected_window_index'] is not None:
+            plot_window_zoom(p, root)
     for exponent, name in ((0., 'mass_vs_beta_over_Nt'), (1.5, 'mass_scaling_Nt_power_1p5')):
         fig, ax = plt.subplots(figsize=FIGURE_SIZE)
         for i, nt in enumerate(sorted({p['physical_Nt'] for p in points}), start=1):
@@ -69,6 +72,27 @@ def plot_scaling(results: list[dict], root: Path) -> None:
     volumes = sorted([p for p in points if p['reference_c']==.5 and p['physical_Nt']==4
                       and np.isclose(p['beta'], 6.2, atol=1.e-12, rtol=0)], key=lambda p:p['Ns'])
     plot_volume(volumes, root)
+
+
+def plot_window_zoom(result: dict, root: Path) -> None:
+    """Show nearby endpoints on a readable scale; retain every full-range plot."""
+    fit = result['fit_windows'][result['selected_window_index']]
+    nt = result['physical_Nt']
+    high_values = sorted({p['r_max'] for p in result['fit_windows']},
+                         key=lambda high:(abs(high-fit['r_max']), -high))[:3]
+    fig, ax = plt.subplots(figsize=FIGURE_SIZE)
+    for i, high in enumerate(high_values, start=1):
+        rows = [p for p in result['fit_windows'] if p['r_max']==high and p['mass_error'] is not None]
+        ax.errorbar([p['r_min'] for p in rows], [p['mass']*nt for p in rows],
+                    [p['mass_error']*nt for p in rows], label=rf'$R_{{\max}}={high}$',
+                    **pu.data(i, markersize=5))
+    ax.axhspan((fit['mass']-fit['mass_error'])*nt, (fit['mass']+fit['mass_error'])*nt,
+               color=pu.color_dict[2], alpha=.15, label='recommended mass and bootstrap SE')
+    ax.axvline(fit['r_min'], **pu.fit(0))
+    width = max(.2*fit['mass'], 8*fit['mass_error'])*nt
+    ax.set_ylim(fit['mass']*nt-width, fit['mass']*nt+width)
+    finish(fig, ax, root/result['ensemble']/'plots/mass_windows_selected_zoom.pdf',
+           r'$R_{\min}/a$', r'$m_GN_t$', title(result)+'\nZoom; full-range windows retained separately')
 
 
 def plot_matched_y(matched: list[dict], root: Path) -> None:

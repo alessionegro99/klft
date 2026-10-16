@@ -1,10 +1,24 @@
 """Coupling and continuum propagation retain flags and all 500 slots."""
 import unittest
 import numpy as np
-from mg_nt_fixed_campaign import continuum_fit, line_fit, primary_volumes, tuning_windows
+from mg_nt_fixed_campaign import (continuum_fit, enforce_covariance_rank_bound,
+                                 line_fit, primary_volumes, tuning_windows)
 
 
 class CampaignTest(unittest.TestCase):
+    def test_block_rank_bound_retains_diagonal_mass(self) -> None:
+        result = dict(chains=[dict(n_complete_blocks=31) for _ in range(4)],
+            fit_windows=[dict(n_points=n, mass=.1, mass_error=.001,
+                              chi2_full=3., chi2_full_per_dof=.1, flags=[]) for n in (120,121)])
+        enforce_covariance_rank_bound(result)
+        first, second = result['fit_windows']
+        self.assertEqual(first['chi2_full'], 3.)
+        self.assertEqual(second['covariance_rank_limit'], 120)
+        self.assertIsNone(second['chi2_full'])
+        self.assertEqual(second['mass'], .1)
+        self.assertEqual(second['mass_error'], .001)
+        self.assertIn('singular_full_covariance', second['flags'])
+
     def test_line_and_covariance(self) -> None:
         x=np.array([.25,.333333333333,.5]);y=.7+.2*x
         rng=np.random.default_rng(17);bs=y+rng.normal(size=(500,3))*.003

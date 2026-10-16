@@ -85,6 +85,26 @@ def read_review(manifest: dict) -> dict[tuple[str,str],dict]:
     return dict(zip(keys,rows))
 
 
+def enforce_covariance_rank_bound(result: dict) -> bool:
+    """Leave chi-square undefined when the block inventory proves singularity.
+
+    Within a chain with n blocks, resampling multiplicity deviations sum to
+    zero, so its centered replicas span at most n-1 directions. Fixed-weight
+    pooling therefore has rank at most sum_k(n_k-1), also bounded by 499 for
+    500 centered replicas. Roundoff can otherwise make Cholesky succeed for
+    a mathematically singular covariance. Fit parameters/refits are unchanged.
+    """
+    limit = min(499, sum(c['n_complete_blocks']-1 for c in result['chains']))
+    selected_changed = False
+    for i, row in enumerate(result['fit_windows']):
+        row['covariance_rank_limit'] = limit
+        if row['n_points'] > limit:
+            selected_changed |= i == result.get('selected_window_index') and row['chi2_full'] is not None
+            row.update(chi2_full=None, chi2_full_per_dof=None)
+            row['flags'] = sorted(set(row['flags']+['singular_full_covariance']))
+    return selected_changed
+
+
 def load_ensembles(manifest: dict, reviews: dict) -> list[dict]:
     """Load each physical set once and apply explicit manual choices."""
     results = []
@@ -93,6 +113,7 @@ def load_ensembles(manifest: dict, reviews: dict) -> list[dict]:
         result = json.loads((leaf/'analysis.json').read_text())
         result.update(reference_c=group['reference_c'],
                       fixed_c_continuum_input=group['fixed_c_continuum_input'])
+        rank_diagnostic_changed = enforce_covariance_rank_bound(result)
         # Older prior-input manifests predate the campaign's hash fields.
         # Recover those fields from the original run metadata on qbig, and
         # retain a checksum of that metadata alongside the raw-file checksums.
@@ -145,7 +166,7 @@ def load_ensembles(manifest: dict, reviews: dict) -> list[dict]:
         write_json(leaf/'analysis.json',clean({k:v for k,v in result.items() if not k.startswith('_')}))
         write_csv(leaf/'fit_windows.csv',[dict(ensemble=group['ensemble'],window_index=i,**row) for i,row in enumerate(result['fit_windows'])])
         write_csv(leaf/'chain_consistency.csv',[dict(ensemble=group['ensemble'],**row) for row in result['pairwise_chain_diagnostics']])
-        if selected != suggested:
+        if selected != suggested or rank_diagnostic_changed:
             plot_ensemble(leaf,result,boot)
     return results
 

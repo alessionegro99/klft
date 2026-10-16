@@ -50,6 +50,16 @@ def verify() -> dict:
     for group in manifest['ensembles']:
         leaf=analysis/group['ensemble'];result=json.loads((leaf/'analysis.json').read_text())
         assert result['fixed_c_continuum_input']==group['fixed_c_continuum_input']
+        if group['campaign_type']=='matched_y_scaling':
+            assert result['target_c'] is None
+            for chain in group['chains']:
+                raw=Path(chain['raw_path'])
+                # Observable hashes were recomputed by the ensemble analysis;
+                # independently rehash the unused restart as a completion audit.
+                for name,digest in chain['output_sha256'].items():
+                    observed=(sha256(raw/name) if name=='configuration_final.klft' else
+                              result['provenance']['raw_sha256'][str(raw/name)])
+                    assert observed==digest,(raw,name)
         with np.load(leaf/'bootstrap.npz') as boot:
             # NpzFile decompresses on every lookup: cache the all-window
             # array once rather than rereading it for each of hundreds of fits.
@@ -68,6 +78,10 @@ def verify() -> dict:
                 assert row['bootstrap_successes']==int(valid.sum())
                 assert row['n_points']>=5
                 assert not any('p_value' in field for field in row)
+                rank_limit=min(499, sum(c['n_complete_blocks']-1 for c in result['chains']))
+                assert row['covariance_rank_limit']==rank_limit
+                if row['n_points']>rank_limit:
+                    assert row['chi2_full'] is None and row['chi2_full_per_dof'] is None
             window_count+=len(result['fit_windows'])
         for c in result['chains']:
             assert c['used_sweeps']==c['n_complete_blocks']*c['block_length_sweeps']
