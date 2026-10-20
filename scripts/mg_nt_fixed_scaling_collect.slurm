@@ -30,7 +30,7 @@ case "${1:-}" in
   --collect-only) steps=(mg_nt_fixed_campaign mg_nt_fixed_verify);;
   --plots-only) steps=(mg_nt_fixed_scaling_plots);;
   --replot-only) steps=(mg_nt_fixed_replot mg_nt_fixed_verify);;
-  --logbook-only) steps=(mg_nt_fixed_logbook);;
+  --logbook-only) steps=(mg_nt_fixed_verify mg_nt_fixed_logbook);;
   "") steps=(mg_nt_fixed_campaign mg_nt_fixed_verify mg_nt_fixed_logbook);;
   *) exit 2;;
 esac

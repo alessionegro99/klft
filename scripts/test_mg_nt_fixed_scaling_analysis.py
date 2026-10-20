@@ -24,7 +24,7 @@ class ScalingAnalysisTest(unittest.TestCase):
 
         def capture(fig, ax, path, *args) -> None:
             plots[path.stem] = {
-                line.get_label(): (line.lines[0].get_xdata(), line.lines[0].get_ydata(),
+                line.get_label(): (line.lines[0].get_xdata(orig=False), line.lines[0].get_ydata(orig=False),
                                    line.lines[2][0].get_segments())
                 for line in ax.containers if line.get_label()
                 and not line.get_label().startswith('_')}
