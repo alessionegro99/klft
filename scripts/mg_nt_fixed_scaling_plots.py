@@ -13,6 +13,16 @@ from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, write_cs
 from mg_nt_fixed_statistics import bootstrap_error
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
+NT_PALETTE = {1: 0, 2: 1, 3: 2, 4: 3, 6: 4}
+SCALING_PDFS = (
+    'mass_vs_beta_over_Nt.pdf', 'mass_Nt_vs_beta_over_Nt.pdf',
+    'lorenzo_scaling_collapse.pdf',
+    'xi_2nd_vs_beta_over_Nt.pdf', 'xi_2nd_slab_scaled.pdf',
+    'xi_2nd_lorenzo_scaled.pdf',
+    'xi_2nd_squared_vs_beta_over_Nt.pdf', 'xi_2nd_squared_slab_scaled.pdf',
+    'xi_2nd_squared_lorenzo_scaled.pdf',
+)
+
 
 def effective_powers(points: list[dict]) -> list[dict]:
     """Adjacent-resolution log ratios at fixed y, with joint replica errors.
@@ -47,8 +57,7 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
     """Update the visual collapse and explicit matched-y/volume diagnostics."""
     if not any(p['campaign_type']=='matched_y_scaling' for p in results):
         return
-    plot_lengths(results, root, pending)
-    plot_lengths(results, root, pending, nt_min=2)
+    plot_lengths(results, root)
     plot_masses(results, root)
     points = [p for p in results if p['include']
               and p['mass'] is not None and p['mass_error'] is not None]
@@ -68,6 +77,10 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
         analysis_status='partial' if pending else 'complete', pending_ensembles=pending or [],
         available_ensembles=[p['ensemble'] for p in results],
         analysis_sha256={p['ensemble']:sha256(root/p['ensemble']/'analysis.json') for p in results},
+        scaling_pdfs=list(SCALING_PDFS), x_coordinate='beta/Nt',
+        scaling_exponents=[0., 1., 1.5],
+        ordinates=['amG * Nt**p', '(xi_2nd/a) / Nt**p', '(xi_2nd/a)**2 / Nt**(2*p)'],
+        marker_policy='open markers for every ensemble; Nt-only legends; fixed Nt palette',
         bootstrap_samples=500, new_bootstrap_operations=0, job_id=os.environ.get('SLURM_JOB_ID')))
 
 
@@ -76,28 +89,22 @@ def plot_masses(results: list[dict], root: Path) -> None:
 
     Multiplication by the exact lattice extent scales the saved bootstrap
     standard error by the same factor; no fit or resampling is performed.
-    Keep Nt>=2 styles unchanged and use the shared Nt=1 length-plot style.
+    A single open marker per point retains the established Nt palette.
     """
     points = [p for p in results if p['include'] and p['physical_Nt'] >= 1
               and p['mass'] is not None and p['mass_error'] is not None]
     nts = sorted({p['physical_Nt'] for p in points})
-    palette = {nt:i+1 for i,nt in enumerate(n for n in nts if n != 1)}
-    palette[1] = 0
     for exponent, name, ylabel in (
             (0., 'mass_vs_beta_over_Nt', r'$am_G$'),
-            (1., 'mass_Nt_vs_beta_over_Nt', r'$m_G L=am_G N_t$'),
-            (1.5, 'lorenzo_scaling_collapse', r'$am_G N_t^{1.5}$')):
+            (1., 'mass_Nt_vs_beta_over_Nt', r'$am_G N_t$'),
+            (1.5, 'lorenzo_scaling_collapse', r'$am_G N_t^{3/2}$')):
         fig, ax = plt.subplots(figsize=FIGURE_SIZE)
         for nt in nts:
-            i = palette[nt]
+            i = NT_PALETTE[nt]
             same = sorted((p for p in points if p['physical_Nt']==nt), key=lambda p:p['beta'])
-            label = rf'$N_t={nt}$' + (' (matched-coupling diagnostic)' if nt==1 else '')
             ax.errorbar([p['beta']/nt for p in same], [p['mass']*nt**exponent for p in same],
-                [p['mass_error']*nt**exponent for p in same], label=label, **pu.data(i))
-            new = [p for p in same if p['campaign_type']=='matched_y_scaling']
-            ax.errorbar([p['beta']/nt for p in new], [p['mass']*nt**exponent for p in new],
-                [p['mass_error']*nt**exponent for p in new],
-                **pu.data(i, markerfacecolor=pu.color_dict[i]))
+                [p['mass_error']*nt**exponent for p in same], label=rf'$N_t={nt}$',
+                **pu.data(i, markerfacecolor='none'))
         finish(fig, ax, root/'comparison'/f'{name}.pdf', r'$\beta/N_t$',
                ylabel, '')
 
@@ -119,8 +126,7 @@ def squared_length_error(result: dict) -> float | None:
     return bootstrap_error(squared)
 
 
-def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = None,
-                 nt_min: int = 1) -> None:
+def plot_lengths(results: list[dict], root: Path) -> None:
     """Show both xi_2nd and its square for every defined measured coupling.
 
     Physical normalization is xi/L = (xi/a)/Nt. The companion trial exponent
@@ -129,41 +135,32 @@ def plot_lengths(results: list[dict], root: Path, pending: list[str] | None = No
     directly before taking its SD, without discarding a negative noisy ratio.
     """
     points = [p for p in results if p['xi_2nd'] is not None and p['xi_2nd'] > 0
-              and p['xi_2nd_error'] is not None and p['physical_Nt'] >= nt_min]
+              and p['xi_2nd_error'] is not None and p['physical_Nt'] >= 1
+              and p.get('review', {}).get('decision') != 'exclude'
+              and p.get('review_status') != 'user_excluded']
     if not points:
         return
     square_errors = {p['ensemble']:squared_length_error(p) for p in points}
     nts = sorted({p['physical_Nt'] for p in points})
-    palette = {nt:i+1 for i,nt in enumerate(n for n in nts if n != 1)}
-    palette[1] = 0
-    variants = ((1.5, 'lorenzo_scaled_Nt_ge_2'),) if nt_min==2 else (
-        (0., 'vs_beta'), (1., 'slab_scaled'), (1.5, 'lorenzo_scaled'))
+    variants = ((0., 'vs_beta_over_Nt'), (1., 'slab_scaled'), (1.5, 'lorenzo_scaled'))
     for power, tag in ((1, 'xi_2nd'), (2, 'xi_2nd_squared')):
         for exponent, suffix in variants:
             fig, ax = plt.subplots(figsize=FIGURE_SIZE)
             for nt in nts:
                 same = sorted((p for p in points if p['physical_Nt']==nt), key=lambda p:p['beta'])
-                x = [p['beta']/(nt if exponent else 1) for p in same]
+                x = [p['beta']/nt for p in same]
                 y = [(p['xi_2nd']/nt**exponent)**power for p in same]
                 errors = [(p['xi_2nd_error'] if power==1 else square_errors[p['ensemble']])
                           /nt**(exponent*power) for p in same]
-                ax.errorbar(x, y, errors, label=rf'$N_t={nt}$', **pu.data(palette[nt]))
+                ax.errorbar(x, y, errors, label=rf'$N_t={nt}$',
+                            **pu.data(NT_PALETTE[nt], markerfacecolor='none'))
             ax.set_yscale('log')
             numerator = r'(\xi_{\rm 2nd}/a)' if power==1 else r'(\xi_{\rm 2nd}/a)^2'
-            denominator = '' if exponent==0 else rf'/N_t^{{{exponent*power:g}}}'
+            nt_power = '3/2' if exponent*power==1.5 else f'{exponent*power:g}'
+            denominator = '' if exponent==0 else rf'/N_t^{{{nt_power}}}'
             ylabel = '$'+numerator+denominator+'$'
-            if exponent==1:
-                ylabel = r'$\xi_{\rm 2nd}/L$' if power==1 else r'$(\xi_{\rm 2nd}/L)^2$'
-            heading = ('All measured couplings; 500-replica errors' if exponent==0 else
-                       'Correlation length relative to slab thickness' if exponent==1 else
-                       r'Lorenzo-style trial normalization: $(\xi_{\rm 2nd}/a)/N_t^{1.5}$')
-            if nt_min==2:
-                heading = r'Trial $N_t^{1.5}$ correlation-length scaling; $N_t\geq2$'
-            if power==2:
-                heading += '\nSquared estimator; errors from joint bootstrap replicas'
             finish(fig, ax, root/'comparison'/f'{tag}_{suffix}.pdf',
-                   r'$\beta$' if exponent==0 else r'$\beta/N_t$',
-                   ylabel, heading)
+                   r'$\beta/N_t$', ylabel, '')
 
 
 def plot_window_zoom(result: dict, root: Path) -> None:

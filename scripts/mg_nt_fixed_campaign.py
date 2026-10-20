@@ -22,7 +22,7 @@ from mg_nt_fixed_canonical_plots import finish, plot_ensemble, title
 from mg_nt_fixed_ensemble import clean
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, token, write_csv, write_json
 from mg_nt_fixed_statistics import bootstrap_error, fit_window, review_window
-from mg_nt_fixed_scaling_plots import plot_scaling, squared_length_error
+from mg_nt_fixed_scaling_plots import SCALING_PDFS, plot_scaling, squared_length_error
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 RESULTS = ROOT/'analysis/mg_nt_fixed'
@@ -572,24 +572,33 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                               '[Chains](../chains.csv) · [Autocorrelations](../autocorrelations.csv) · '
                               '[All mass windows](../fit_windows.csv).',
                               'Untuned diagnostics retain their explicit campaign role; fixed-c tuning uses only its tuned input set.',
-                              'Mass scaling versus beta/Nt includes Nt=1 matched-coupling diagnostics; the matched-y=1.5 comparison uses only ensembles measured at that y.',
-                              'Plot titles and footer notes are omitted; parameters, flags and completion status are recorded in the tables and logbook.', '']
+                              'All nine scaling plots use beta/Nt on the horizontal axis, the same Nt palette, open markers and Nt-only legends.',
+                              'For p=0,1,3/2 the ordinates are amG*Nt^p, (xi2nd/a)/Nt^p and (xi2nd/a)^2/Nt^(2p).',
+                              'Plot titles, footer notes and grids are omitted; flags and campaign roles remain in the tables and logbook.', '',
+                              '| Observable | Unscaled | p=1 | p=3/2 |',
+                              '|---|---|---|---|']
+                    for i, label in enumerate(('amG', 'xi2nd/a', '(xi2nd/a)^2')):
+                        links = [f'[PDF]({name})' for name in SCALING_PDFS[3*i:3*i+3]]
+                        lines.append('| '+label+' | '+' | '.join(links)+' |')
+                    lines += ['', 'Other comparisons and data:', '']
             else:
                 lines += ['Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.','']
                 if relative=='.':
                     lines += ['[Immutable manifest](manifest.json) · [Simulation build](build_provenance.json) · [Migration map](migration.csv).',
                               '[Nt=1 analysis inventory](nt1_analysis_manifest.json): matched-beta diagnostics; folder c is the source Nt=2 reference target, and target_c is null.',
                               '[Matched-y inputs](scaling_manifest.json) · [Completed matched-y analysis inventory](scaling_analysis_manifest.json) · [Execution plan](scaling_execution.json) · [Scheduler completion](scaling_schedule_status.json).',
+                              '[Nt=1 matched-y inputs](nt1_scaling_manifest.json) · [Nt=1 matched-y analysis inventory](nt1_scaling_analysis_manifest.json).',
                               'The manifest records the checksum-verified qbig recovery archive. Historical stage directories are retired after product verification.','']
                 if '/Nt_1' in relative:
-                    lines += ['Matched-beta Nt=1 diagnostic. The c folder is a source Nt=2 reference target; these inputs are excluded from fixed-c continuum fits.','']
+                    lines += ['Nt=1 matched-beta or matched-beta/Nt diagnostic. The c folder identifies its source reference family; target_c=null and these inputs are excluded from fixed-c continuum fits.','']
                 same = next((p for p in results if p['ensemble']==relative), None)
                 if same and same['campaign_type']=='matched_y_scaling':
                     lines += ['Matched-beta/Nt diagnostic; target_c=null. The c folder is a reference family; excluded from fixed-c continuum fits.','']
             children=[p for p in sorted(directory.iterdir()) if p.is_dir() and (p.name.startswith(('c_','Nt_','Ns_','beta_','seed_')) or p.name=='comparison')]
             lines += [f'- [{p.name}]({p.name}/)' for p in children]
             lines += ['']+[f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.csv'))]
-            lines += [f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.pdf'))]
+            lines += [f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.pdf'))
+                      if not (root==RESULTS and relative=='comparison' and p.name in SCALING_PDFS)]
             (directory/'README.md').write_text('\n'.join(lines)+'\n')
     for p in results:
         for folder in (RESULTS/p['ensemble']/'plots',RESULTS/p['ensemble']/'plots/first_stage'):

@@ -8,10 +8,11 @@ import numpy as np
 
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
 from mg_nt_fixed_scaling_inventory import build_inventory
-from mg_nt_fixed_scaling_plots import effective_powers, plot_masses, squared_length_error
+from mg_nt_fixed_scaling_plots import (NT_PALETTE, SCALING_PDFS, effective_powers,
+                                       plot_lengths, plot_masses, squared_length_error)
 from mg_nt_fixed_replot import saved_scan
 from mg_nt_fixed_canonical_plots import finish
-from plot_thesis_results import FIGURE_SIZE, plt
+from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 
 class ScalingAnalysisTest(unittest.TestCase):
@@ -37,11 +38,57 @@ class ScalingAnalysisTest(unittest.TestCase):
                                ('lorenzo_scaling_collapse',1.5)):
             self.assertEqual(len(plots[name]), 2)
             for label, (x,y,bars) in plots[name].items():
-                nt = 1 if 'diagnostic' in label else 2
+                nt = int(label.removeprefix('$N_t=').removesuffix('$'))
                 np.testing.assert_allclose(x, [2.5/nt])
                 np.testing.assert_allclose(y, [.1*nt**exponent])
                 np.testing.assert_allclose(bars, [[[2.5/nt, .09*nt**exponent],
                                                  [2.5/nt, .11*nt**exponent]]])
+
+    def test_nine_plots_use_all_nt_with_open_markers_and_exact_scaling(self) -> None:
+        ns = 32
+        samples = np.ones((500,4), dtype=np.float64)
+        samples[:,2] = 1.+4*np.sin(np.pi/ns)**2*np.linspace(3.5,4.5,500)
+        points = [dict(ensemble=f'Nt_{nt}', physical_Nt=nt, beta=1.5*nt,
+                       mass=.1, mass_error=.01, xi_2nd=2., xi_2nd_error=.3,
+                       Ns=ns, _boot=dict(samples=samples), include=True,
+                       campaign_type='matched_y_scaling') for nt in NT_PALETTE]
+        plots = {}
+
+        def capture(fig, ax, path, xlabel, ylabel, heading) -> None:
+            self.assertEqual(xlabel, r'$\beta/N_t$')
+            self.assertEqual(heading, '')
+            self.assertEqual(fig.texts, [])
+            np.testing.assert_array_equal(fig.get_size_inches(), [16,9])
+            self.assertEqual(len(ax.containers), len(NT_PALETTE))
+            data = {}
+            for curve in ax.containers:
+                label = curve.get_label()
+                nt = int(label.removeprefix('$N_t=').removesuffix('$'))
+                self.assertEqual(label, rf'$N_t={nt}$')
+                line = curve.lines[0]
+                self.assertEqual(line.get_markerfacecolor(), 'none')
+                self.assertEqual(line.get_color(), pu.color_dict[NT_PALETTE[nt]])
+                self.assertEqual(line.get_marker(), pu.marker_dict[NT_PALETTE[nt]])
+                data[nt] = (line.get_xdata(orig=False), line.get_ydata(orig=False),
+                            curve.lines[2][0].get_segments())
+            plots[path.name] = data
+            plt.close(fig)
+
+        with patch('mg_nt_fixed_scaling_plots.finish', side_effect=capture):
+            plot_masses(points, Path('/tmp/mgnt-nine-plots-test'))
+            plot_lengths(points, Path('/tmp/mgnt-nine-plots-test'))
+        self.assertEqual(set(plots), set(SCALING_PDFS))
+        self.assertEqual(len(plots), 9)
+        square_error = squared_length_error(points[0])
+        for i, name in enumerate(SCALING_PDFS):
+            power = (0.,1.,1.5)[i % 3]
+            for nt, (x, y, bars) in plots[name].items():
+                factor = nt**(power if i < 3 else -power if i < 6 else -2*power)
+                central = (.1 if i < 3 else 2. if i < 6 else 4.)*factor
+                error = (.01 if i < 3 else .3 if i < 6 else square_error)*factor
+                np.testing.assert_allclose(x, [1.5])
+                np.testing.assert_allclose(y, [central])
+                np.testing.assert_allclose(bars, [[[1.5,central-error],[1.5,central+error]]])
 
     def test_complete_production_inventory(self) -> None:
         result = build_inventory(ROOT/'data/mg_nt_fixed')
