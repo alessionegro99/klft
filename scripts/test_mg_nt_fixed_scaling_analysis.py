@@ -8,13 +8,41 @@ import numpy as np
 
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
 from mg_nt_fixed_scaling_inventory import build_inventory
-from mg_nt_fixed_scaling_plots import effective_powers, squared_length_error
+from mg_nt_fixed_scaling_plots import effective_powers, plot_masses, squared_length_error
 from mg_nt_fixed_replot import saved_scan
 from mg_nt_fixed_canonical_plots import finish
 from plot_thesis_results import FIGURE_SIZE, plt
 
 
 class ScalingAnalysisTest(unittest.TestCase):
+    def test_mass_scaling_includes_nt1_and_scales_errors(self) -> None:
+        points = [dict(physical_Nt=nt, beta=2.5, mass=.1, mass_error=.01,
+                       include=True, campaign_type='diagnostic') for nt in (1,2)]
+        points += [dict(points[0], include=False, beta=99.),
+                   dict(points[0], mass=None, beta=98.)]
+        plots = {}
+
+        def capture(fig, ax, path, *args) -> None:
+            plots[path.stem] = {
+                line.get_label(): (line.lines[0].get_xdata(), line.lines[0].get_ydata(),
+                                   line.lines[2][0].get_segments())
+                for line in ax.containers if line.get_label()
+                and not line.get_label().startswith('_')}
+            plt.close(fig)
+
+        with patch('mg_nt_fixed_scaling_plots.finish', side_effect=capture):
+            plot_masses(points, Path('/tmp/mgnt-mass-scaling-test'))
+        for name, exponent in (('mass_vs_beta_over_Nt',0.),
+                               ('mass_Nt_vs_beta_over_Nt',1.),
+                               ('lorenzo_scaling_collapse',1.5)):
+            self.assertEqual(len(plots[name]), 2)
+            for label, (x,y,bars) in plots[name].items():
+                nt = 1 if 'diagnostic' in label else 2
+                np.testing.assert_allclose(x, [2.5/nt])
+                np.testing.assert_allclose(y, [.1*nt**exponent])
+                np.testing.assert_allclose(bars, [[[2.5/nt, .09*nt**exponent],
+                                                 [2.5/nt, .11*nt**exponent]]])
+
     def test_complete_production_inventory(self) -> None:
         result = build_inventory(ROOT/'data/mg_nt_fixed')
         self.assertEqual(result['ensemble_count'], 4)

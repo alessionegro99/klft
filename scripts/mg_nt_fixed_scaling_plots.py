@@ -1,6 +1,7 @@
 """Matched-y comparisons from saved 500-slot replicas; no new resampling."""
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -48,26 +49,12 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
         return
     plot_lengths(results, root, pending)
     plot_lengths(results, root, pending, nt_min=2)
-    points = [p for p in results if p['physical_Nt'] >= 2 and p['include']
+    plot_masses(results, root)
+    points = [p for p in results if p['include']
               and p['mass'] is not None and p['mass_error'] is not None]
     for p in results:
         if p['campaign_type']=='matched_y_scaling' and p['selected_window_index'] is not None:
             plot_window_zoom(p, root)
-    for exponent, name in ((0., 'mass_vs_beta_over_Nt'), (1.5, 'lorenzo_scaling_collapse')):
-        fig, ax = plt.subplots(figsize=FIGURE_SIZE)
-        for i, nt in enumerate(sorted({p['physical_Nt'] for p in points}), start=1):
-            same = sorted((p for p in points if p['physical_Nt']==nt), key=lambda p:p['beta'])
-            ax.errorbar([p['beta']/nt for p in same], [p['mass']*nt**exponent for p in same],
-                [p['mass_error']*nt**exponent for p in same], label=rf'$N_t={nt}$', **pu.data(i))
-            new = [p for p in same if p['campaign_type']=='matched_y_scaling']
-            ax.errorbar([p['beta']/nt for p in new], [p['mass']*nt**exponent for p in new],
-                [p['mass_error']*nt**exponent for p in new],
-                **pu.data(i, markerfacecolor=pu.color_dict[i]))
-        heading = ('Preliminary masses; filled markers: matched-y batch' if exponent==0 else
-                   "Lorenzo's trial $N_t^{1.5}$ collapse\nAssumed exponent; filled markers: new batch")
-        finish(fig, ax, root/'comparison'/f'{name}.pdf', r'$\beta/N_t$',
-               r'$am_G$' if exponent==0 else r'$am_G N_t^{1.5}$', heading)
-
     # This comparison belongs under the shared reference family, c_ref=0.5.
     matched = sorted([p for p in points if p['reference_c']==.5
                       and np.isclose(p['beta']/p['physical_Nt'], 1.5, atol=1.e-12, rtol=0)],
@@ -82,6 +69,37 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
         available_ensembles=[p['ensemble'] for p in results],
         analysis_sha256={p['ensemble']:sha256(root/p['ensemble']/'analysis.json') for p in results},
         bootstrap_samples=500, new_bootstrap_operations=0, job_id=os.environ.get('SLURM_JOB_ID')))
+
+
+def plot_masses(results: list[dict], root: Path) -> None:
+    """Show every included mass, including untuned Nt=1 diagnostics.
+
+    Multiplication by the exact lattice extent scales the saved bootstrap
+    standard error by the same factor; no fit or resampling is performed.
+    Keep Nt>=2 styles unchanged and use the shared Nt=1 length-plot style.
+    """
+    points = [p for p in results if p['include'] and p['physical_Nt'] >= 1
+              and p['mass'] is not None and p['mass_error'] is not None]
+    nts = sorted({p['physical_Nt'] for p in points})
+    palette = {nt:i+1 for i,nt in enumerate(n for n in nts if n != 1)}
+    palette[1] = 0
+    for exponent, name, ylabel in (
+            (0., 'mass_vs_beta_over_Nt', r'$am_G$'),
+            (1., 'mass_Nt_vs_beta_over_Nt', r'$m_G L=am_G N_t$'),
+            (1.5, 'lorenzo_scaling_collapse', r'$am_G N_t^{1.5}$')):
+        fig, ax = plt.subplots(figsize=FIGURE_SIZE)
+        for nt in nts:
+            i = palette[nt]
+            same = sorted((p for p in points if p['physical_Nt']==nt), key=lambda p:p['beta'])
+            label = rf'$N_t={nt}$' + (' (matched-coupling diagnostic)' if nt==1 else '')
+            ax.errorbar([p['beta']/nt for p in same], [p['mass']*nt**exponent for p in same],
+                [p['mass_error']*nt**exponent for p in same], label=label, **pu.data(i))
+            new = [p for p in same if p['campaign_type']=='matched_y_scaling']
+            ax.errorbar([p['beta']/nt for p in new], [p['mass']*nt**exponent for p in new],
+                [p['mass_error']*nt**exponent for p in new],
+                **pu.data(i, markerfacecolor=pu.color_dict[i]))
+        finish(fig, ax, root/'comparison'/f'{name}.pdf', r'$\beta/N_t$',
+               ylabel, '')
 
 
 def squared_length_error(result: dict) -> float | None:
@@ -242,6 +260,10 @@ def plot_volume(volumes: list[dict], root: Path) -> None:
 
 def main() -> None:
     """Refresh these plots from available completed analyses on a compute node."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--masses-only', action='store_true',
+                        help='refresh the three mass-scaling PDFs from saved estimates')
+    args = parser.parse_args()
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('comparison plotting must run on a qbig compute node')
     root = ROOT/'analysis/mg_nt_fixed'
@@ -253,12 +275,16 @@ def main() -> None:
             continue
         result = json.loads(path.read_text())
         result.setdefault('include', result['mass'] is not None)
-        result['_boot'] = np.load(path.parent/'bootstrap.npz')
-        selected = result['selected_window_index']
-        result['_mass_samples'] = (result['_boot']['window_parameters'][selected,:,1]
-                                   if selected is not None else np.full(500, np.nan))
+        if not args.masses_only:
+            result['_boot'] = np.load(path.parent/'bootstrap.npz')
+            selected = result['selected_window_index']
+            result['_mass_samples'] = (result['_boot']['window_parameters'][selected,:,1]
+                                       if selected is not None else np.full(500, np.nan))
         results.append(result)
-    plot_scaling(results, root, pending)
+    if args.masses_only:
+        plot_masses(results, root)
+    else:
+        plot_scaling(results, root, pending)
     print(f'Plotted {len(results)} completed ensembles; {len(pending)} pending; no new resampling.')
 
 

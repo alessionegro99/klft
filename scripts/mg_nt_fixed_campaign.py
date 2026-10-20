@@ -572,6 +572,7 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                               '[Chains](../chains.csv) · [Autocorrelations](../autocorrelations.csv) · '
                               '[All mass windows](../fit_windows.csv).',
                               'Untuned diagnostics retain their explicit campaign role; fixed-c tuning uses only its tuned input set.',
+                              'Mass scaling versus beta/Nt includes Nt=1 matched-coupling diagnostics; the matched-y=1.5 comparison uses only ensembles measured at that y.',
                               'Plot titles and footer notes are omitted; parameters, flags and completion status are recorded in the tables and logbook.', '']
             else:
                 lines += ['Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.','']
