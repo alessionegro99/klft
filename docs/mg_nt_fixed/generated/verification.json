@@ -3,7 +3,7 @@
   "chains": 184,
   "measured_sweeps": 1776000,
   "mass_windows": 12721,
-  "pdfs": 1267,
+  "pdfs": 1268,
   "bootstrap_samples": 500,
   "pdf_canvas_points": [
     1152,
@@ -57,6 +57,6 @@
     "analysis/mg_nt_fixed/c_2/Nt_4/Ns_32/beta_4/analysis.json": "971e42d73b264edd7bc97be3e1322700fcc8c4fc901493badc29a0456b25187d",
     "analysis/mg_nt_fixed/c_2/Nt_4/Ns_32/beta_4p3/analysis.json": "9ade5fd9e52975593a02c202e6726e6368d358d582e8350298b319f3bc6c48e5"
   },
-  "job_id": "291017",
+  "job_id": "291027",
   "status": "passed"
 }
