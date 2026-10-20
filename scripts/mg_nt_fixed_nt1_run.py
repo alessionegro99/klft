@@ -16,6 +16,8 @@ from pathlib import Path
 import struct
 import subprocess
 import time
+import shutil
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -134,7 +136,7 @@ def timing_projection(manifest: dict) -> dict:
     """
     timings = [run for run in manifest["runs"] if run["purpose"] == "timing"]
     production = [run for run in manifest["runs"] if run["purpose"] == "production"]
-    if len(timings) != 3 or len(production) != 12:
+    if len(timings) not in (3, 4) or len(production) != 4 * len(timings):
         raise ValueError("Incomplete Nt=1 manifest")
     projections = []
     for run in production:
@@ -157,13 +159,56 @@ def timing_projection(manifest: dict) -> dict:
             "chains": projections}
 
 
-def run_one(purpose: str, index: int) -> None:
+def validate_scaling_manifest(manifest: dict) -> None:
+    """Restrict the new batch to the four user-approved Ns=128 ensembles."""
+    beta_grid = {1.45, 1.5, float('1.5333333333333333'), 1.55}
+    runs = manifest['runs']
+    production = [r for r in runs if r['purpose']=='production']
+    timings = [r for r in runs if r['purpose']=='timing']
+    smoke = [r for r in runs if r['purpose']=='smoke']
+    if (manifest['backend'] != 'p100' or manifest['analysis_bootstrap_samples'] != 500
+            or len(runs) != 21 or len(production) != 16 or len(timings) != 4 or len(smoke) != 1
+            or len({r['seed'] for r in runs}) != 21
+            or {r['seed'] for r in runs} & set(manifest['reserved_seeds'])):
+        raise ValueError('Invalid Nt=1 matched-y scope or seeds')
+    for beta in beta_grid:
+        if sorted(r['chain_index'] for r in production if r['beta']==beta) != [0,1,2,3]:
+            raise ValueError('Need four independent chains at each approved beta')
+    if {r['beta'] for r in timings} != beta_grid or smoke[0]['beta'] != 1.55:
+        raise ValueError('Invalid timing or smoke couplings')
+    for run in runs:
+        expected = dict(physical_Nt=1, stored_L2=2, Ns=4 if run['purpose']=='smoke' else 128,
+                        sweeps={'smoke':10, 'timing':100, 'production':8000}[run['purpose']],
+                        target_c=None, reference_c=.5, fixed_c_continuum_input=False,
+                        campaign_type='matched_y_scaling', start='hot', n_overrelax=5,
+                        measurement_interval=1, dirichlet_suite_measurement_interval=5,
+                        boundary_wilson_enabled=False)
+        if any(run[k] != value for k,value in expected.items()):
+            raise ValueError('Approved geometry, cadence or campaign role changed')
+
+
+def run_one(purpose: str, index: int, campaign: str = 'nt1') -> None:
     """Run one checked input in an existing typed-P100 Slurm allocation."""
     if not os.environ.get("SLURM_JOB_ID") or os.environ.get("SLURMD_NODENAME") not in {
             "lnode13", "lnode14", "lnode15", "lnode16", "lnode17"}:
         raise RuntimeError("Use the P100 Slurm submission script")
-    manifest_path = DATA / "nt1_manifest.json"
+    if campaign not in ('nt1', 'nt1_scaling'):
+        raise ValueError('Unknown Nt=1 campaign')
+    manifest_path = DATA / f"{campaign}_manifest.json"
     manifest = json.loads(manifest_path.read_text())
+    if campaign == 'nt1_scaling':
+        validate_scaling_manifest(manifest)
+        for name, digest in manifest['source_sha256'].items():
+            if Path(name).name != name or sha256(RECORDS/name) != digest:
+                raise ValueError(f'Execution source changed: {name}')
+        if sha256(RECORDS/'nt1_scaling_run.slurm') != manifest['submission_sha256']:
+            raise ValueError('Submission script changed')
+        if sha256(ROOT/'project/uv.lock') != manifest['uv_lock_sha256']:
+            raise ValueError('Locked environment changed')
+        if sha256(RECORDS/'open_slab_validation.txt') != manifest['validation_sha256']:
+            raise ValueError('GPU validation record changed')
+        if shutil.disk_usage(ROOT).free < 12 * 1024**3:
+            raise RuntimeError('Free disk space below the 12 GiB reserve')
     candidates = [row for row in manifest["runs"] if row["purpose"] == purpose]
     if index < 0 or index >= len(candidates):
         raise ValueError("Invalid task index")
@@ -193,30 +238,37 @@ def run_one(purpose: str, index: int) -> None:
         smoke, = [row for row in manifest["runs"] if row["purpose"] == "smoke"]
         checked_result(smoke)
     if purpose == "production":
-        gate = json.loads((RECORDS / "nt1_timing_gate.json").read_text())
+        gate = json.loads((RECORDS / f"{campaign}_timing_gate.json").read_text())
         if gate["manifest_sha256"] != sha256(manifest_path) or not gate["passed"]:
             raise ValueError("Manual timing gate missing or stale")
         if not timing_projection(manifest)["passed"]:
             raise ValueError("Production would exceed the timing budget")
-    start = {"job_id": os.environ["SLURM_JOB_ID"],
+    start = {**run, "job_id": os.environ["SLURM_JOB_ID"],
              "array_index": os.environ.get("SLURM_ARRAY_TASK_ID"),
              "node": os.environ["SLURMD_NODENAME"],
              "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
              "input_sha256": run["input_sha256"], "heatbath_sha256": run["heatbath_sha256"],
              "manifest_sha256": sha256(manifest_path), "klft_commit": commit,
-             "runner_sha256": sha256(Path(__file__)), "purpose": purpose}
+             "runner_sha256": sha256(Path(__file__)), "purpose": purpose,
+             "started_at": datetime.now(timezone.utc).isoformat()}
     # Exclusive creation also prevents two duplicate jobs from appending.
     write_json(directory / "execution_start.json", start)
     before = time.monotonic()
-    subprocess.run([str(BINARY), "-f", "input.yaml"], cwd=directory, check=True)
-    elapsed = time.monotonic() - before
-    checks = output_check(directory, run["Ns"], run["sweeps"])
-    outputs = {name: sha256(directory / name) for name in
-               ("holonomy_correlator.out", "holonomy_summary.out", "plaquette_profile.out",
-                "configuration_final.klft")}
-    result = dict(start, status="complete", elapsed_seconds=elapsed,
-                  checks=checks, output_sha256=outputs)
-    write_json(directory / "execution_result.json", result)
+    try:
+        subprocess.run([str(BINARY), "-f", "input.yaml"], cwd=directory, check=True, timeout=7200)
+        elapsed = time.monotonic() - before
+        checks = output_check(directory, run["Ns"], run["sweeps"])
+        outputs = {name: sha256(directory / name) for name in
+                   ("holonomy_correlator.out", "holonomy_summary.out", "plaquette_profile.out",
+                    "configuration_final.klft")}
+        result = dict(start, status="complete", elapsed_seconds=elapsed,
+                      completed_at=datetime.now(timezone.utc).isoformat(),
+                      checks=checks, output_sha256=outputs)
+        write_json(directory / "execution_result.json", result)
+    except Exception as error:
+        write_json(directory / "execution_result.json", dict(start, status='failed',
+                   error=f'{type(error).__name__}: {error}', ended_at=datetime.now(timezone.utc).isoformat()))
+        raise
     print(json.dumps(result, indent=2), flush=True)
 
 
@@ -225,17 +277,30 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("purpose", choices=("smoke", "timing", "production", "timing_gate"))
     parser.add_argument("--index", type=int, default=0)
+    parser.add_argument('--campaign', choices=('nt1', 'nt1_scaling'), default='nt1')
     args = parser.parse_args()
     if args.purpose == "timing_gate":
-        path = DATA / "nt1_manifest.json"
-        result = timing_projection(json.loads(path.read_text()))
+        path = DATA / f"{args.campaign}_manifest.json"
+        manifest = json.loads(path.read_text())
+        if args.campaign == 'nt1_scaling':
+            validate_scaling_manifest(manifest)
+            manifest_hash = sha256(path)
+            for run in manifest['runs']:
+                if run['purpose'] in ('smoke', 'timing'):
+                    record = checked_result(run)
+                    if record['manifest_sha256'] != manifest_hash:
+                        raise ValueError('Preflight manifest changed')
+                    for name,digest in record['output_sha256'].items():
+                        if Path(name).name != name or sha256(Path(run['raw_path'])/name) != digest:
+                            raise ValueError('Preflight output changed')
+        result = timing_projection(manifest)
         result["manifest_sha256"] = sha256(path)
-        write_json(RECORDS / "nt1_timing_gate.json", result)
+        write_json(RECORDS / f"{args.campaign}_timing_gate.json", result)
         print(json.dumps(result, indent=2))
         if not result["passed"]:
             raise SystemExit("Timing budget exceeded; production remains forbidden")
     else:
-        run_one(args.purpose, args.index)
+        run_one(args.purpose, args.index, args.campaign)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ import numpy as np
 import mg_nt_fixed_scaling_inputs as inputs
 import mg_nt_fixed_scaling_run as runner
 from mg_nt_fixed_nt1_run import checkpoint_check as nt1_checkpoint_check
+from mg_nt_fixed_nt1_run import validate_scaling_manifest, timing_projection as nt1_timing_projection
 
 
 class ScalingTest(unittest.TestCase):
@@ -71,6 +72,41 @@ class ScalingTest(unittest.TestCase):
         self.prepare()
         with self.assertRaises(FileExistsError):
             self.prepare()
+
+    def test_nt1_matched_y_scope_and_provenance(self) -> None:
+        self.build.write_text(self.build.read_text().replace('klft-a100', 'klft').replace('AMPERE80', 'PASCAL60'))
+        output = self.root/'data/mg_nt_fixed'
+        output.mkdir(parents=True)
+        submission = Path(__file__).resolve().parents[1]/'data/mg_nt_fixed/nt1_scaling_run.slurm'
+        (output/submission.name).write_text(submission.read_text())
+        manifest = inputs.generate(output, self.build, self.validation, self.reserved, nt1=True)
+        validate_scaling_manifest(manifest)
+        self.assertTrue((output/'nt1_scaling_manifest.json').exists())
+        self.assertFalse((output/'scaling_manifest.json').exists())
+        self.assertEqual(manifest['backend'], 'p100')
+        production = [r for r in manifest['runs'] if r['purpose']=='production']
+        self.assertEqual(sum(r['sweeps'] for r in production), 128000)
+        self.assertTrue(all(r['physical_Nt']==1 and r['stored_L2']==2 and r['Ns']==128 for r in production))
+        self.assertEqual(manifest['submission_sha256'], runner.sha256(submission))
+        for run in manifest['runs']:
+            self.assertEqual(runner.sha256(output/run['input']), run['input_sha256'])
+            self.assertIn('  L2: 2\n', (output/run['input']).read_text())
+        with patch('mg_nt_fixed_nt1_run.checked_result', return_value={'elapsed_seconds':2.}):
+            self.assertAlmostEqual(nt1_timing_projection(manifest)['projected_total_gpu_hours'], 16*160/3600)
+        with self.assertRaises(FileExistsError):
+            inputs.generate(output, self.build, self.validation, self.reserved, nt1=True)
+        manifest['runs'][-1]['Ns'] = 64
+        with self.assertRaisesRegex(ValueError, 'geometry'):
+            validate_scaling_manifest(manifest)
+
+    def test_nt1_p100_submission_is_manual_and_uncapped(self) -> None:
+        path = Path(__file__).resolve().parents[1]/'data/mg_nt_fixed/nt1_scaling_run.slurm'
+        text = path.read_text()
+        self.assertIn('--gres=gpu:pascal:1', text)
+        self.assertIn('--campaign nt1_scaling', text)
+        self.assertNotIn('--dependency', text)
+        self.assertNotIn('--nodelist', text)
+        self.assertNotIn('--array', text)
 
     def test_local_unsubmitted_seeds_are_reserved(self) -> None:
         reserved = inputs.unique_seeds({12, 34}, 1)[0]

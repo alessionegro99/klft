@@ -17,6 +17,7 @@ from mg_nt_fixed_nt1_run import ROOT, sha256, write_json
 
 
 GRID = ((3, 96, "4.5"), (4, 160, "6.0"), (6, 320, "9.0"), (4, 160, "6.2"))
+NT1_GRID = tuple((1, 128, beta) for beta in ("1.45", "1.50", "1.5333333333333333", "1.55"))
 COMMIT = "f47421d895469b72d4af8a9b8479807f2b09a692"
 
 
@@ -58,14 +59,17 @@ PartitioningParams:
 '''
 
 
-def generate(output: Path, build: Path, validation: Path, reserved: Path) -> dict:
+def generate(output: Path, build: Path, validation: Path, reserved: Path,
+             *, nt1: bool = False) -> dict:
     """Write one smoke, four timings and sixteen production inputs exclusively."""
-    manifest_path = output / "scaling_manifest.json"
+    manifest_path = output / ("nt1_scaling_manifest.json" if nt1 else "scaling_manifest.json")
     if manifest_path.exists():
         raise FileExistsError(manifest_path)
     fields = dict(line.split(maxsplit=1) for line in build.read_text().splitlines()
                   if len(line.split(maxsplit=1)) == 2)
     backend = "a100" if fields.get("build_path") == str(ROOT / "build/klft-a100") else "p100"
+    if nt1 and backend != "p100":
+        raise ValueError("The Nt=1 matched-y extension uses the approved P100 build")
     expected_path = ROOT / ("build/klft-a100" if backend == "a100" else "build/klft")
     options = set(fields.get("cmake_options", "").split(";"))
     architecture = "AMPERE80=ON" if backend == "a100" else "PASCAL60=ON"
@@ -88,10 +92,11 @@ def generate(output: Path, build: Path, validation: Path, reserved: Path) -> dic
         if match:
             used.add(int(match.group(1)))
     seeds = iter(unique_seeds(used, 21))
-    settings = [("smoke", 6, 4, "9.0", 10, 0)]
-    settings += [("timing", nt, ns, beta, 100, 0) for nt, ns, beta in GRID]
+    grid = NT1_GRID if nt1 else GRID
+    settings = [("smoke", 1, 4, "1.55", 10, 0)] if nt1 else [("smoke", 6, 4, "9.0", 10, 0)]
+    settings += [("timing", nt, ns, beta, 100, 0) for nt, ns, beta in grid]
     settings += [("production", nt, ns, beta, 8000, chain)
-                 for nt, ns, beta in GRID for chain in range(4)]
+                 for nt, ns, beta in grid for chain in range(4)]
     runs = []
     for purpose, nt, ns, beta, sweeps, chain in settings:
         seed = next(seeds)
@@ -123,6 +128,12 @@ def generate(output: Path, build: Path, validation: Path, reserved: Path) -> dic
                     required_before_production=["new smoke and four 100-sweep timings",
                                                 "manual timing gate: <=12 GPU-hours total; <=2 per chain"],
                     runs=runs)
+    if nt1:
+        manifest['source_sha256'] = {name:sha256(Path(__file__).parent/name) for name in
+            ('mg_nt_fixed_scaling_inputs.py', 'mg_nt_fixed_nt1_inputs.py', 'mg_nt_fixed_nt1_run.py')}
+        manifest['submission_sha256'] = sha256(output/'nt1_scaling_run.slurm')
+        manifest['uv_lock_sha256'] = sha256(Path(__file__).resolve().parents[1]/'uv.lock')
+        manifest['beta_ratio_note'] = '1.5333333333333333 represents 4.6/3 at float64 precision'
     for run in runs:
         path = output / run["input"]
         path.parent.mkdir(parents=True, exist_ok=False)
@@ -139,6 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--validation", type=Path, required=True)
     parser.add_argument("--reserved", type=Path, required=True)
+    parser.add_argument("--nt1", action="store_true", help="prepare the approved Nt=1, Ns=128 matched-y extension")
     args = parser.parse_args()
-    result = generate(args.output, args.build, args.validation, args.reserved)
+    result = generate(args.output, args.build, args.validation, args.reserved, nt1=args.nt1)
     print(f"Prepared {len(result['runs'])} immutable inputs; no jobs submitted.")
