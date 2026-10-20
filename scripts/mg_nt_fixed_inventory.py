@@ -65,7 +65,8 @@ def load_campaign_manifest(data: Path | None = None) -> dict:
     """
     data = ROOT/'data/mg_nt_fixed' if data is None else data
     paths = [data/'manifest.json']
-    for name in ('nt1_analysis_manifest.json', 'scaling_analysis_manifest.json'):
+    for name in ('nt1_analysis_manifest.json', 'scaling_analysis_manifest.json',
+                 'nt1_scaling_analysis_manifest.json'):
         if (data/name).exists():
             paths.append(data/name)
     inventories = [json.loads(p.read_text()) for p in paths]

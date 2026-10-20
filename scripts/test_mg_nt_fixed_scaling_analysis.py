@@ -72,7 +72,7 @@ class ScalingAnalysisTest(unittest.TestCase):
         fixed = [g for g in result['ensembles'] if g['fixed_c_continuum_input']]
         matched = [g for g in result['ensembles'] if g['campaign_type']=='matched_y_scaling']
         self.assertEqual(len(fixed), 38)
-        self.assertEqual(len(matched), 4)
+        self.assertEqual(len(matched), 8)
         self.assertEqual(sum(len(g['chains']) for g in fixed), 156)
 
     def test_effective_power_known_limit_and_failed_slot(self) -> None:

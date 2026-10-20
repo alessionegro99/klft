@@ -7,7 +7,7 @@ import numpy as np
 
 from mg_nt_fixed_canonical_plots import title
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
-from mg_nt_fixed_nt1_inventory import build_inventory
+from mg_nt_fixed_nt1_inventory import build_inventory, build_scaling_inventory
 from mg_nt_fixed_adaptive import coarse_bounds, dense_bounds
 from mg_nt_fixed_statistics import choose_window, fit_window
 
@@ -39,9 +39,9 @@ class Nt1AnalysisTest(unittest.TestCase):
 
     def test_combined_inventory_keeps_physics_roles(self) -> None:
         result = load_campaign_manifest()
-        self.assertEqual(result['ensemble_count'], 45)
-        self.assertEqual(result['chain_count'], 184)
-        self.assertEqual(result['total_sweeps'], 1776000)
+        self.assertEqual(result['ensemble_count'], 49)
+        self.assertEqual(result['chain_count'], 200)
+        self.assertEqual(result['total_sweeps'], 1904000)
         fixed = [g for g in result['ensembles'] if g['fixed_c_continuum_input']]
         self.assertEqual(len(fixed), 38)
         self.assertTrue(all(g['physical_Nt'] > 1 for g in fixed))
@@ -69,6 +69,31 @@ class Nt1AnalysisTest(unittest.TestCase):
         with patch('mg_nt_fixed_nt1_inventory.json.loads', side_effect=unfinished):
             with self.assertRaisesRegex(ValueError, 'invalid completed'):
                 build_inventory(ROOT/'data/mg_nt_fixed')
+
+    def test_matched_y_production_inventory(self) -> None:
+        result = build_scaling_inventory(ROOT/'data/mg_nt_fixed')
+        self.assertEqual(result['ensemble_count'], 4)
+        self.assertEqual(result['chain_count'], 16)
+        self.assertEqual(result['total_sweeps'], 128000)
+        for group in result['ensembles']:
+            self.assertEqual((group['physical_Nt'], group['stored_L2'], group['Ns']), (1,2,128))
+            self.assertIsNone(group['target_c'])
+            self.assertFalse(group['fixed_c_continuum_input'])
+            self.assertEqual(len(group['chains']), 4)
+            self.assertTrue(all(c['purpose']=='production' for c in group['chains']))
+
+    def test_matched_y_changed_completion_is_refused(self) -> None:
+        original = json.loads
+        for change in ({'status':'running'}, {'stored_L2':99}, {'target_c':.5}):
+            def altered(text: str) -> dict:
+                result = original(text)
+                if result.get('status') == 'complete':
+                    result.update(change)
+                return result
+            with self.subTest(change=change), patch(
+                    'mg_nt_fixed_nt1_inventory.json.loads', side_effect=altered):
+                with self.assertRaisesRegex(ValueError, 'invalid completed'):
+                    build_scaling_inventory(ROOT/'data/mg_nt_fixed')
 
 
 if __name__ == '__main__':
