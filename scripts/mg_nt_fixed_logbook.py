@@ -146,7 +146,18 @@ def build() -> None:
             number(row['mass']),number(row['mass_error'],3),number(row['xi_2nd'],4),row['min_blocks']])+r'\\')
     lines += [r'\bottomrule',r'\end{tabular}']
     (PRODUCTS/'nt1_table.tex').write_text('\n'.join(lines)+'\n')
-    scaling = [r for r in rows if r.get('campaign_type')=='matched_y_scaling']
+    nt1_scaling = [r for r in rows if r.get('campaign_type')=='matched_y_scaling'
+                   and int(r['physical_Nt'])==1]
+    lines=[r'\begin{tabular}{rrrrrr}',r'\toprule',
+           r'$\beta$ & $am_G$ & boot. SE & $\xi_{\rm 2nd}/a$ & boot. SE & min. blocks\\\midrule']
+    for row in nt1_scaling:
+        lines.append(' & '.join([number(row['beta'],7),number(row['mass']),
+            number(row['mass_error'],3),number(row['xi_2nd'],4),
+            number(row['xi_2nd_error'],3),row['min_blocks']])+r'\\')
+    lines += [r'\bottomrule',r'\end{tabular}']
+    (PRODUCTS/'nt1_scaling_table.tex').write_text('\n'.join(lines)+'\n')
+    scaling = [r for r in rows if r.get('campaign_type')=='matched_y_scaling'
+               and int(r['physical_Nt'])>1]
     lines=[r'\begin{tabular}{rrrrrrr}',r'\toprule',
            r'$N_t$ & $N_s$ & $\beta$ & $am_G$ & boot. SE & $m_G L$ & min. blocks\\\midrule']
     for row in scaling:
@@ -161,7 +172,7 @@ def build() -> None:
         if completed.returncode:
             raise RuntimeError(completed.stdout[-6000:])
     shutil.copy2(PRODUCTS/'logbook.pdf',REPORT/'logbook.pdf')
-    outputs=[REPORT/'logbook.pdf',PRODUCTS/'numbers.tex',PRODUCTS/'tuning_table.tex',PRODUCTS/'continuum_table.tex',PRODUCTS/'ensemble_table.tex',PRODUCTS/'nt1_table.tex',PRODUCTS/'scaling_table.tex']
+    outputs=[REPORT/'logbook.pdf',PRODUCTS/'numbers.tex',PRODUCTS/'tuning_table.tex',PRODUCTS/'continuum_table.tex',PRODUCTS/'ensemble_table.tex',PRODUCTS/'nt1_table.tex',PRODUCTS/'scaling_table.tex',PRODUCTS/'nt1_scaling_table.tex']
     write_json(PRODUCTS/'build_manifest.json',dict(source_sha256=source_hashes(),
                output_sha256={str(p.relative_to(ROOT)):sha256(p) for p in outputs},
                build_job=os.environ.get('SLURM_JOB_ID'),bootstrap_operations=0))
