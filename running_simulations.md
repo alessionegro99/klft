@@ -1,5 +1,102 @@
 # Running simulations
 
+## Nt=1 matched-y extension — all simulations complete, analysis not started
+
+The user approved Nt=1, Ns=128 at beta=1.45, 1.50, 4.6/3 and 1.55,
+with four independent 8,000-sweep hot chains per coupling (128,000 sweeps).
+Stored L2=2; 1 heatbath plus 5 overrelaxation sweeps; holonomy cadence 1,
+profiles 5; Wilson loops, flow and horizontal Polyakov loops disabled.
+These matched-beta/Nt diagnostics have target_c=null and reference_c=0.5;
+they remain excluded from fixed-c continuum inputs until explicitly tuned.
+Exactly 500 replicas will be used in the later analysis on qbig.
+
+P100 nodes 13,14,15,17 were idle with all GPUs reporting zero utilization,
+zero memory use and no compute processes. Node16 was excluded because its
+direct SSH host-key check failed; no host-key policy was changed. Slurm
+reports all five Pascal nodes idle. Free project storage was 29 GB; the
+runner requires at least 12 GiB free before each run.
+
+The existing clean KLFT revision is f47421d895469b72d4af8a9b8479807f2b09a692.
+P100 executable SHA256:
+856a79fada4dc2e91ac7bdbf82c347e1392729dfb214eeafd25529eb64f667dd.
+Build, compiler, CUDA and dependency provenance are in
+`data/mg_nt_fixed/open_slab_build.txt`; CTest, memory-check and benchmark
+validation are in `open_slab_validation.txt`. No rebuild was needed.
+Fresh seed inventory covered 317 YAML inputs and 297 reserved seeds, plus
+local unsubmitted inputs. All 21 new seeds are unique and disjoint from them.
+The generator and execution checks passed 33 tests; source commit `66aaf7c`.
+
+Inputs: `data/mg_nt_fixed/nt1_scaling_manifest.json`, under the canonical
+`c_0p5/Nt_1/Ns_128/beta_<beta>/seed_<seed>/` tree. Raw outputs remain under
+`/qbigwork2/negro/dirichlet/data/mg_nt_fixed/` at the corresponding paths.
+Launcher: `data/mg_nt_fixed/nt1_scaling_run.slurm`; one typed Pascal GPU,
+one CPU, 8 GB and two hours per task; no dependency or concurrency cap.
+Logs: `/qbigwork2/negro/dirichlet/logs/mgnt-nt1-y-<array>_<task>.out`.
+Stages are manual: one 10-sweep Ns=4 smoke, four 100-sweep Ns=128 timings,
+then production only if the projected total is <=12 GPU-hours and each
+chain <=2 GPU-hours. Overwrite and changed-hash checks are enforced.
+
+Immutable inputs commit: `fa8c432`; manifest SHA256:
+`cb6d2f52c9e3e0d6477a84dec7f293412034ba026b1cf16110c1bf1e04a7c4b0`.
+All 21 uploaded inputs, metadata and source/environment hashes were checked.
+Smoke job `291028` completed on lnode17 with exit 0 in 15 seconds (heatbath
+0.365 seconds). Its flag-3 checkpoint has Nt=1, L2=2, 80 physical links,
+fixed identity surface links and maximum squared-norm error 2.22e-16.
+All 10 holonomy measurements, 30 correlator rows and two profiles passed
+cadence, finiteness and C_G(0)=1 checks. No statistical analysis was performed.
+
+Timing array `291029_[0-3]` completed with exit 0 on lnode17 in 15--16
+seconds per task. The 100-sweep executable wall times were 1.2211, 1.2681,
+1.2695 and 1.1691 seconds in increasing beta order. Every run passed 100
+holonomy / 6,500 correlator-row / 20 profile checks and the flag-3 boundary
+check. The separately approved timing gate projects 0.43803 total P100
+GPU-hours and at most 0.028211 GPU-hours (101.56 seconds) per chain.
+All raw-output hashes were rechecked before approval. Gate:
+`/qbigwork2/negro/dirichlet/campaigns/mg_nt_fixed/nt1_scaling_timing_gate.json`.
+Immediately before production, the four eligible nodes' GPUs were again
+idle, the queue empty and free storage 29 GB.
+
+Production array `291033_[0-15]` was submitted without dependencies or a
+concurrency cap. Indices 0--7 run on lnode17 and 8--15 on lnode13, each
+with its own allocated GPU. The first history was inspected while running;
+the first post-start check recorded 484 holonomy measurements for task 0.
+No timing or smoke run will enter the production analysis.
+
+All sixteen chains completed by 20:00:54.775 UTC on 20 October (22:00:55
+CEST). First heatbath start: 20:00:06.309 UTC. Inspection at 20:01:35 UTC,
+more than one minute after the actual start, confirmed all tasks COMPLETED
+with exit 0 and no active array jobs. Heatbath times are 29.12--46.56 seconds
+per chain, totaling 0.152497569 P100 GPU-hours. Slurm task durations including
+startup and validation are 46--65 seconds. All sixteen node/GPU pairs were
+distinct. No production failure or overwrite occurred.
+
+The completion checks passed for all 21 smoke, timing and production runs.
+Every production chain has 8,000 holonomy measurements, 520,000 correlator
+rows, 1,600 profile measurements, and an Nt=1 flag-3 physical checkpoint.
+The total production count is 128,000 sweeps. Every input identity/hash,
+manifest hash and recorded output size was rechecked; raw-output hashes
+were computed on the allocated compute nodes. Compact start/result records
+and the timing gate are synchronized locally. The four recorded raw files
+per production chain total 477,119,592 bytes on qbig; free storage is 28 GB.
+New mass/thermalization/blocking analysis has not been launched. The current
+45-ensemble analyzed tables and plots remain unchanged.
+
+Report-only jobs `291049` and `291050` completed with exit 0 on lnode11
+in 40 and 39 seconds. The final rebuild keeps the execution note on the
+Nt=1 page without adding an almost-empty page. It verifies the unchanged
+45 ensembles, 184 chains, 12,721 mass windows and 1,268 plot PDFs, then
+compiles the 23-page logbook with zero bootstrap operations. Remote and
+local freshness checks pass; the four affected pages were rendered and
+visually inspected. Local Poppler checks cover all existing plot PDFs.
+Input and compact-completion commits are `fa8c432` and `a1d9bf1`.
+
+| beta | Production seeds |
+|---:|---|
+| 1.45 | 1183505828, 1652905867, 1492645710, 1776605214 |
+| 1.50 | 2054294665, 1698854720, 1813195288, 1644106385 |
+| 1.5333333333333333 | 1633219015, 767348993, 1941201623, 1526132928 |
+| 1.55 | 922096602, 1947777266, 1617814432, 1856052414 |
+
 ## Nt=1 mass-scaling plot update
 
 On 20 October, CPU job `291023` completed with exit 0 in 21 seconds,

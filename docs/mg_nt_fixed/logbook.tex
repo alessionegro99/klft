@@ -18,8 +18,8 @@ independent thermalization cuts, and \UsedSweeps{} used in complete blocks.
 There are \NumericalMasses{} numerical mass estimates and \TuningPoints{}
 usable preliminary coupling interpolations. All three targets, $c=0.5,1,2$,
 have $N_t=2,3,4$; $c=1$ also has $N_t=6$. Every new bootstrap operation uses
-exactly 500 replicas. No new Monte Carlo simulations are launched by this
-reanalysis. Raw histories remain on qbig.
+exactly 500 replicas. These counts describe the analyzed register; new
+simulation batches are tracked separately below. Raw histories remain on qbig.
 
 The register now also includes three $N_t=1$ matched-coupling ensembles:
 twelve independent 8,000-sweep chains completed on lnode19 A100 GPUs on
@@ -62,7 +62,7 @@ The CSV column guide is \path{docs/mg_nt_fixed/csv_columns.md}.
 Figures retain axis labels and legends, with no displayed titles or footer
 notes. Their paths, CSVs and this logbook supply the physics parameters and
 diagnostic context. The top-level correlator, ensemble, chain, autocorrelation
-and fit-window tables include every simulation, including both untuned
+and fit-window tables include every analyzed simulation, including both untuned
 diagnostic batches.
 
 \clearpage\section*{Theory: what is being held fixed?}
@@ -332,6 +332,17 @@ rechecked after extending statistics. A smaller-volume comparison is needed
 before replacing 2048 by a smaller production size. Adding these untuned
 points does not extend the fixed-$c$ continuum resolution set.
 
+\subsection*{New $N_t=1$ matched-$y$ batch}
+On 20 October, the user approved four additional $N_t=1,N_s=128$ ensembles
+at $\beta=1.45,1.50,4.6/3,1.55$, each with four independent 8,000-sweep hot
+chains. P100 smoke job 291028 and timing array 291029 passed geometry,
+boundary, cadence and output-hash checks. The projected cost is 0.438 P100
+GPU-hours. Production array 291033 completed all sixteen chains on lnode13
+and lnode17 by 22:00:55 CEST: 128,000 sweeps and 0.1525 P100 GPU-hours.
+Output counts, input hashes and physical checkpoints passed verification.
+This batch has no mass analysis yet and is excluded from the tables and
+figures below; its target remains \texttt{null}.
+
 \clearpage\section*{Matched-$y$ extension near $\beta/N_t=1.5$}
 \begin{center}\small\input{docs/mg_nt_fixed/generated/scaling_table.tex}\end{center}
 Each ensemble has four independent 8,000-sweep hot-start chains, measured
@@ -394,7 +405,7 @@ scaling choice over this range. These finite-spacing ratios inherit the
 window and statistics warnings; they do not determine an asymptotic exponent.
 
 \plotpage{Lorenzo's trial collapse with the matched-$y$ batch}{analysis/mg_nt_fixed/comparison/lorenzo_scaling_collapse.pdf}{Reproduction of Lorenzo's supplied $am_GN_t^{1.5}$ versus $\beta/N_t$ plot, including all three $N_t=1$ matched-coupling diagnostics. Filled markers identify the four matched-$y$ ensembles; open markers show earlier mass estimates. The exponent 1.5 is an assumed illustrative choice. All defined flagged masses remain visible, with bootstrap standard errors conditional on their chosen windows.}
-\plotpage{Screening mass in slab units at all measured couplings}{analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf}{The ordinate is $m_GL=am_GN_t$, with $L=aN_t$. Each saved mass and its bootstrap standard error are multiplied by the exact temporal extent. All three $N_t=1$ ensembles are included at their measured $\beta/N_t$ values, approximately 1.962, 2.504 and 2.990. They retain their untuned diagnostic role. No $N_t=1$ ensemble is available at $\beta/N_t=1.5$, so the matched-coupling comparison on the next page retains its existing resolution set. No new fit or bootstrap resampling is used.}
+\plotpage{Screening mass in slab units at all measured couplings}{analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf}{The ordinate is $m_GL=am_GN_t$, with $L=aN_t$. Each saved mass and its bootstrap standard error are multiplied by the exact temporal extent. The three analyzed $N_t=1$ ensembles are included at their measured $\beta/N_t$ values, approximately 1.962, 2.504 and 2.990. They retain their untuned diagnostic role. The new $N_t=1,\beta/N_t=1.5$ mass is not yet analyzed, so the matched-coupling comparison on the next page retains its existing resolution set. No new fit or bootstrap resampling is used.}
 \plotpage{Measured screening scale at $y=1.5$}{analysis/mg_nt_fixed/c_0p5/comparison/matched_y_mass_Nt.pdf}{The new $N_t=3,4,6$ ensembles extend the earlier $N_t=2$ point. No fixed-$c$ target is imposed on this comparison and no additional continuum fit is performed.}
 \plotpage{Second-moment length in slab units}{analysis/mg_nt_fixed/comparison/xi_2nd_slab_scaled.pdf}{All measured couplings are shown, including the $N_t=1$ matched-coupling diagnostics. The logarithmic scale accommodates their larger lengths. The coordinate is $\xi_{\rm 2nd}/L=(\xi_{\rm 2nd}/a)/N_t$; companion figures show its square, unscaled lengths versus $\beta$, and the trial normalization $N_t^{1.5}$. Error bars use the saved 500 joint replicas and retain the volume and statistics limitations. For the squared estimator, evaluate $(\widetilde C(0)/\widetilde C(p_{\min})-1)/[4\sin^2(\pi/N_s)]$ on each replica before taking its SD. Negative noisy squared-moment estimates remain in that distribution. Both central values and errors are in the existing ensemble CSVs.}
 \plotpage{Transverse-volume check at $N_t=4,\beta=6.2$}{analysis/mg_nt_fixed/c_0p5/Nt_4/comparison/volume_beta_6p2.pdf}{Independent $N_s=96$ and 160 ensembles are compared using their selected mass windows. The companion CSV reports the difference and its 500-replica uncertainty; other windows and correlator curves remain available for visual review.}

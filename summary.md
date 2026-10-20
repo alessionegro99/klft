@@ -1,5 +1,11 @@
 # Numerical validation summary
 
+Four additional Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55
+completed as P100 array `291033_[0-15]`, with four 8,000-sweep hot chains
+each: 128,000 sweeps, 0.1525 GPU-hours and all output checks passed. See the
+[execution record](running_simulations.md). No masses from this new batch
+are included in the current analyzed tables.
+
 A four-ensemble matched-beta/Nt diagnostic batch has completed: 16 chains
 of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
 All sixteen chains completed by 06:05 CEST on 16 October: 128,000 sweeps and
@@ -11,8 +17,7 @@ The existing top-level tables contain every ensemble. Regression 291016
 passed 50 tests. The Nt=1 mass-scaling update passed 51 tests (291025).
 All 1,268 plots are title-free, footer-free and grid-free,
 with single-page 16:9 geometry verified. The updated 23-page logbook passed
-visual review and freshness checks. No mg_nt simulation or mass analysis
-remains pending.
+visual review and freshness checks for the existing 45-ensemble register.
 No new simulations are launched by this analysis.
 See the [campaign report](docs/mg_nt_fixed/summary.md)
 and [execution record](running_simulations.md).

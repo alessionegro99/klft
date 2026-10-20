@@ -1,12 +1,28 @@
 # Fixed mG Nt campaign
 
+## Nt=1 matched-y simulations complete; analysis not started
+
+Four Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55 completed
+as P100 array `291033_[0-15]`, with four independent 8,000-sweep chains each.
+All sixteen exited successfully by 22:00:55 CEST on 20 October: 128,000
+sweeps and 0.152497569 P100 GPU-hours. Smoke `291028` and timing `291029`
+passed before production. Input hashes, dimensions, boundary links,
+measurement counts and output checks passed. Compact completion records
+are synchronized; raw histories remain on qbig. No mass analysis has been
+launched for this batch. This is a matched-beta/Nt diagnostic extension;
+target_c remains null. The existing 45-ensemble analyzed register is unchanged.
+Report-only job `291050` rebuilt the 23-page logbook on lnode11; freshness
+and visual layout checks passed. No fit or bootstrap operation was performed.
+See [execution status](../../running_simulations.md) and
+[immutable inputs](../../data/mg_nt_fixed/nt1_scaling_manifest.json).
+
 ## Nt=1 mass-scaling coverage
 
 The all-coupling mass comparisons include the three Nt=1 matched-coupling
 diagnostics, at beta/Nt approximately 1.962, 2.504 and 2.990. They show amG,
 amG Nt and Lorenzo's trial amG Nt^1.5 using the saved 500-replica mass errors.
 The new [slab-unit mass plot](../../analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf)
-keeps these diagnostics labelled. There is no Nt=1 ensemble at beta/Nt=1.5;
+keeps these diagnostics labelled. There is no analyzed Nt=1 mass at beta/Nt=1.5;
 the matched-1.5 comparison and fixed-c continuum inputs remain unchanged.
 This update adds no simulation, mass fit or bootstrap resampling.
 Plot refresh 291023 and report/verification 291027 completed successfully

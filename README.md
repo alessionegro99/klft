@@ -18,8 +18,11 @@ first-stage PDFs; the 2.1 line remains incomplete. The separate
 Nt=1 matched-beta and four matched-beta/Nt ensembles are kept separate from fixed-c inputs. The
 continuum intercepts remain sensitive to the included resolutions. See its
 [PDF logbook](docs/mg_nt_fixed/logbook.pdf) and
-[analysis index](analysis/mg_nt_fixed/README.md). All production chains and
-mass scans are complete. The top-level tables include every ensemble;
+[analysis index](analysis/mg_nt_fixed/README.md). Those 45 ensembles and their
+mass scans are complete. Four further Nt=1, Ns=128 matched-beta/Nt ensembles
+completed on P100s as array `291033_[0-15]` (128,000 sweeps); their analysis
+has not started. See the campaign report for provenance.
+The top-level tables include every analyzed ensemble;
 comparison plots include Lorenzo's trial collapse, ξ₂nd and ξ₂nd².
 
 This implementation is restricted to the pure Wilson action in a 3D SU(2)

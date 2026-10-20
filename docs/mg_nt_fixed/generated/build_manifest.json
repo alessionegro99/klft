@@ -2010,13 +2010,14 @@
     "data/mg_nt_fixed/nt1_a100_worker_3_start.json": "9cb17b8da8fe2cced80d094721d7a81262636bc5b558689447c53b7a3be97c6b",
     "data/mg_nt_fixed/nt1_analysis_manifest.json": "b2bfa84a51d27e194da3f73a38330a2efaff40c11131fc88675d7fc23bda2e1e",
     "data/mg_nt_fixed/nt1_manifest.json": "0bd0baedbfee731080568edb396a1ee31a287c489f8550bdc4431ba69878cd01",
+    "data/mg_nt_fixed/nt1_scaling_manifest.json": "cb6d2f52c9e3e0d6477a84dec7f293412034ba026b1cf16110c1bf1e04a7c4b0",
     "data/mg_nt_fixed/scaling_analysis_manifest.json": "39576b223df2e060e0d1734ee7b881bcabf4095e4042f1872040907c5fa56106",
     "data/mg_nt_fixed/scaling_execution.json": "6cc4d57bff2b212054805207972d5d06c0f49e78f61c91853ac7648ef3696053",
     "data/mg_nt_fixed/scaling_manifest.json": "f4b2c2b96afc6834e3f068b269f5326f737aa15637f7d8a739b7f42ca6bbc396",
     "data/mg_nt_fixed/scaling_schedule_status.json": "4cf2a87414be23b5a5ef2748e1e14f370f529f8787481ba49605611aeea175e3",
     "data/mg_nt_fixed/scaling_timing_gate.json": "241d01ad780fad6c2afa1d4651ac6aa035d185282b06fb2adbf2395c2371911e",
-    "docs/mg_nt_fixed/logbook.tex": "3d6f36088ae4f5253d1fe138809d32089801559cd96b5e7d6a2ac37eb18b6f10",
-    "docs/mg_nt_fixed/review.json": "d3b2a76ac03963541d8cb694b02009124b30e344ae40d204bdfcc13fad32b70d",
+    "docs/mg_nt_fixed/logbook.tex": "a0e9b93dab7c97fdfe433870e3ee4571e396aa570b3f9ede739e69cfe271e254",
+    "docs/mg_nt_fixed/review.json": "fca3a7dcfd9ef1e1dc23005075d987dc0e4846313573b5f3ad06bd7347b8e676",
     "scripts/beta_nt_fixed/analysis.py": "f9aea858b89370cbe8899dd7978ba19af47e188ad0ec1fd2e1e692c23db74dae",
     "scripts/dirichlet_analysis.py": "8ac57279656c44fb7ec09dcd908243c95279ae783a2685234cf0da8c4a80da24",
     "scripts/mg_nt_fixed_adaptive.py": "7b55332c18b9b378a58539e79a9189b39e5ed08d0c05e3e1eb1b5f962c8b95fc",
@@ -2029,10 +2030,10 @@
     "scripts/mg_nt_fixed_nt1_a100.py": "4fcfb74ea7bccc1cfb62017e16cdeb13fa51f44fc7366cec91607ad486792878",
     "scripts/mg_nt_fixed_nt1_inputs.py": "0cba8374b50b41b62956c1e4f698cabc80a857cd3edd02e188651518aef626d8",
     "scripts/mg_nt_fixed_nt1_inventory.py": "d32deb0c3db5ed39315e954d85787c50006847847af3b8949d4beaed7271093f",
-    "scripts/mg_nt_fixed_nt1_run.py": "62caae6cc25807f1dbf9490efea9a2c270d2457c67ca5decc70d5f22ab580ef9",
+    "scripts/mg_nt_fixed_nt1_run.py": "0746db2d6464bd1f636e5f4c76135d28b23e0fb12fb79a4fe52b2637cb1203bd",
     "scripts/mg_nt_fixed_parallel.py": "5b2fa8f73cd1ed0ec8f4e859c02cb129f2f43d06f933eb7c691f884eb908bef0",
     "scripts/mg_nt_fixed_replot.py": "e66a4a7f6cfc1cf87f5af15db0db7ca77f0834dff1bb60974cf3ad8bdfb7a244",
-    "scripts/mg_nt_fixed_scaling_inputs.py": "7161006be347f1e3d7abe99f993f349f6846032968423b5b44a226ba1bd7ef5b",
+    "scripts/mg_nt_fixed_scaling_inputs.py": "1824f70e2a835cb5f3a10bfb291d71fdce644ab0aea9ac6f80aab989c8e38f38",
     "scripts/mg_nt_fixed_scaling_inventory.py": "daefe73d1de51ff4c53e891284e52cdbae5a44e813eac49ad4b8bb7124dec404",
     "scripts/mg_nt_fixed_scaling_plots.py": "bde461cdb382f9591ca0a72c8c29b63d1ace941b146d2fe6ff8a921cb9f37f99",
     "scripts/mg_nt_fixed_scaling_run.py": "f8d4e619d74a1203c7d43b236f4d550a134c2d7af8f8e93c2ab422c98571806d",
@@ -2044,7 +2045,7 @@
     "uv.lock": "1bee9b5d384309d87510e632ea585807e4e887791bb00ab808b599cfc8bab67d"
   },
   "output_sha256": {
-    "docs/mg_nt_fixed/logbook.pdf": "acc4277eff4cb5c0d88fe8e4315e149df9ae9099b74f764468c9a86625c5c06b",
+    "docs/mg_nt_fixed/logbook.pdf": "76ca524753de6f831c3a736329e835e565eb64059f1a207fb40d6c89099dd77b",
     "docs/mg_nt_fixed/generated/numbers.tex": "ef86292948d4afbaa5e37ed338492828d24238149b3e920925504ab48ec56b0e",
     "docs/mg_nt_fixed/generated/tuning_table.tex": "d12015bc08a502a23ec2d10f970552010c5deaab21578a78241f570c5847962b",
     "docs/mg_nt_fixed/generated/continuum_table.tex": "fdb385017995a279bd4ae9436c883c30422839ebac570a75a5dbaec3d5e6337f",
@@ -2052,6 +2053,6 @@
     "docs/mg_nt_fixed/generated/nt1_table.tex": "5cf847339f552d76e100aa6a5acbbaa0f589719fff28fac31a3743ba9f10cacb",
     "docs/mg_nt_fixed/generated/scaling_table.tex": "d9a7bc01c52fcc06b0cc4cbe6db19433b68cd7424de2bf8201be092bc96ee3e1"
   },
-  "build_job": "291027",
+  "build_job": "291050",
   "bootstrap_operations": 0
 }
