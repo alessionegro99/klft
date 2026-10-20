@@ -1,5 +1,19 @@
 # Fixed mG Nt campaign
 
+## Nt=1 mass-scaling coverage
+
+The all-coupling mass comparisons include the three Nt=1 matched-coupling
+diagnostics, at beta/Nt approximately 1.962, 2.504 and 2.990. They show amG,
+amG Nt and Lorenzo's trial amG Nt^1.5 using the saved 500-replica mass errors.
+The new [slab-unit mass plot](../../analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf)
+keeps these diagnostics labelled. There is no Nt=1 ensemble at beta/Nt=1.5;
+the matched-1.5 comparison and fixed-c continuum inputs remain unchanged.
+This update adds no simulation, mass fit or bootstrap resampling.
+Plot refresh 291023 and report/verification 291027 completed successfully
+on qbig; regression 291025 passed all 51 tests. The three mass plots and
+the two affected pages of the 23-page logbook passed visual review, and
+the report passes remote and local freshness checks.
+
 ## Completed matched-y simulations and mass analyses
 
 The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =

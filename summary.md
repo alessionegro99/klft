@@ -8,8 +8,9 @@ SSH is restored and compact completion records are downloaded. CPU array
 291008 completed all four ensemble analyses. Collection 291015 verified
 45 ensembles, 184 chains and 12,721 mass windows, with exactly 500 replicas.
 The existing top-level tables contain every ensemble. Regression 291016
-passed 50 tests. All 1,267 plots are title-free, footer-free and grid-free,
-with single-page 16:9 geometry verified. The updated 22-page logbook passed
+passed 50 tests. The Nt=1 mass-scaling update passed 51 tests (291025).
+All 1,268 plots are title-free, footer-free and grid-free,
+with single-page 16:9 geometry verified. The updated 23-page logbook passed
 visual review and freshness checks. No mg_nt simulation or mass analysis
 remains pending.
 No new simulations are launched by this analysis.

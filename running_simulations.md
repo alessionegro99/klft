@@ -1,5 +1,39 @@
 # Running simulations
 
+## Nt=1 mass-scaling plot update
+
+On 20 October, CPU job `291023` completed with exit 0 in 21 seconds,
+adding the three existing Nt=1 masses to the all-coupling mass plots and
+adding `comparison/mass_Nt_vs_beta_over_Nt.pdf`. The saved masses and their
+500-replica standard errors are unchanged; no simulation, fit or resampling
+was performed. The beta/Nt=1.5 comparison and fixed-c fits are unchanged.
+The plotting-only mode requests one CPU, 8 GB and one hour in batch,
+excluding lnode13--17, without a GPU or dependency. Command:
+`sbatch scripts/mg_nt_fixed_scaling_collect.slurm --mass-plots-only`, from
+`/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_scaling`.
+Logs: `/qbigwork2/negro/dirichlet/logs/mgnt-scaling-collect-<job>.out`.
+Source commit: `a9b08e9`.
+
+Regression job `291024` failed only the new plot-test assertion because
+Matplotlib exposed object-typed original coordinates. The corrected test
+uses Matplotlib's converted numeric coordinates; two focused local tests
+pass. Regression rerun `291025` completed with exit 0 in 30 seconds on
+lnode11: all 51 tests passed in 14.826 seconds (two CPUs, same memory/time
+limits). Scientific estimates are unchanged by this test correction.
+
+Logbook preflight `291026` failed before analysis validation because an index
+sync replaced the snapshot's analysis symlink with a one-file directory.
+The canonical result directory remained intact. The replacement directory
+was preserved at `/tmp/mgnt-plot-sync.BGnS5L` on qbig, and the original link
+to `/qbigwork2/negro/dirichlet/analysis` was restored. Subsequent index syncs
+use the canonical destination directly. Report verification and compilation
+were rerun after this repair; no scientific products were removed.
+Job `291027` completed with exit 0 in 1m04s on lnode11, verifying 45
+ensembles, 184 chains, 12,721 windows and 1,268 plot PDFs before building
+the 23-page logbook. Remote and local freshness checks pass. The three
+changed mass plots and the two affected logbook pages were rendered and
+visually inspected. Source/test follow-up commit: `fcd31e8`.
+
 ## Matched-y scaling diagnostic — simulations and mass analyses complete
 
 Checked on lnode19 at 07:36 UTC on 16 October: the scheduler finished
