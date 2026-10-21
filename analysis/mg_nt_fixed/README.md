@@ -1,6 +1,6 @@
 # Fixed mG Nt
 
-45 physical ensembles; 184 independent chains; exactly 500 replicas per operation.
+49 physical ensembles; 200 independent chains; exactly 500 replicas per operation.
 Nt=1 matched-beta and matched-beta/Nt diagnostics have target_c=null; their folder c is a reference family. They do not enter fixed-c tuning or continuum fits.
 All numerical results are preliminary and available for visual review. Full-covariance chi-square is descriptive.
 Edit review.csv to choose mass windows or exclude points, then rerun the campaign collector and logbook on qbig.

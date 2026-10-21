@@ -1,4 +1,5 @@
 ensemble_low,ensemble_high,beta_over_Nt,Nt_low,Nt_high,effective_power,bootstrap_error,bootstrap_samples,bootstrap_successes,flags
+c_0p5/Nt_1/Ns_128/beta_1p5,c_0p5/Nt_2/Ns_64/beta_3,1.5,1,2,0.7636498202735287,0.003444694211854801,500,500,below_50_blocks;finite_spacing_diagnostic;observable_blocking_plateau_unresolved;prior_10000_sweeps
 c_0p5/Nt_2/Ns_64/beta_3,c_0p5/Nt_3/Ns_96/beta_4p5,1.5,2,3,1.4054409012613736,0.007733317113519236,500,500,below_50_blocks;finite_spacing_diagnostic;prior_10000_sweeps;split_history_review
 c_0p5/Nt_3/Ns_96/beta_4p5,c_0p5/Nt_4/Ns_160/beta_6,1.5,3,4,1.3454528389573301,0.011054938276377727,500,500,between_chain_review;finite_spacing_diagnostic;late_window_drift;split_history_review
 c_0p5/Nt_4/Ns_160/beta_6,c_0p5/Nt_6/Ns_320/beta_9,1.5,4,6,1.267846190385781,0.0075087160018125045,500,500,below_50_blocks;between_chain_review;finite_spacing_diagnostic;late_window_drift;observable_blocking_plateau_unresolved;singular_full_covariance

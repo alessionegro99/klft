@@ -239,5 +239,6 @@
       "execution_result_sha256": "ba2f63315e1a6e7394af6fa8a17aa5a9f1aed36ce7e4dcee16db812dcd00a626"
     }
   ],
-  "index": 0
+  "index": 0,
+  "metadata_verified_on_qbig": true
 }
