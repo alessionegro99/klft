@@ -28,12 +28,13 @@ For these rows, the folder's $c_{\rm ref}$ denotes that source target;
 the actual $N_t=1$ mass is measured without imposing $m_GN_t=c_{\rm ref}$.
 They are excluded from fixed-$c$ interpolation and continuum fits.
 
-Four matched-$y$ ensembles, $y=\beta/N_t$, add sixteen 8,000-sweep chains
-completed on 16 October. Three extend $y=1.5$ to $N_t=3,4,6$; the fourth
-checks $N_s=160$ against 96 at $N_t=4,\beta=6.2$. These rows also have
-\texttt{target\_c=null}, with $c_{\rm ref}=0.5$ identifying their source
-family. They enter correlator and scaling comparisons. Fixed-$c$ tuning
-and its continuum inputs remain unchanged.
+Eight matched-$y$ ensembles, $y=\beta/N_t$, add thirty-two 8,000-sweep chains.
+The four completed on 16 October extend $y=1.5$ to $N_t=3,4,6$ and check
+the transverse volume at $N_t=4,\beta=6.2$. Four $N_t=1,N_s=128$ ensembles
+completed on 20 October. These rows have \texttt{target\_c=null}, with
+$c_{\rm ref}=0.5$ identifying their source family. They enter correlator
+and scaling comparisons. Fixed-$c$ tuning and its continuum inputs remain
+unchanged.
 
 The four 80,000-sweep chains at $c=0.5,N_t=3,N_s=80,\beta=4.4$ have the
 explicit flag \texttt{length\_outlier}. Their length differs from the
@@ -332,7 +333,7 @@ rechecked after extending statistics. A smaller-volume comparison is needed
 before replacing 2048 by a smaller production size. Adding these untuned
 points does not extend the fixed-$c$ continuum resolution set.
 
-\subsection*{New $N_t=1$ matched-$y$ batch}
+\clearpage\section*{$N_t=1$ near $\beta/N_t=1.5$}
 On 20 October, the user approved four additional $N_t=1,N_s=128$ ensembles
 at $\beta=1.45,1.50,4.6/3,1.55$, each with four independent 8,000-sweep hot
 chains. P100 smoke job 291028 and timing array 291029 passed geometry,
@@ -340,18 +341,57 @@ boundary, cadence and output-hash checks. The projected cost is 0.438 P100
 GPU-hours. Production array 291033 completed all sixteen chains on lnode13
 and lnode17 by 22:00:55 CEST: 128,000 sweeps and 0.1525 P100 GPU-hours.
 Output counts, input hashes and physical checkpoints passed verification.
-This batch has no mass analysis yet and is excluded from the tables and
-figures below; its target remains \texttt{null}.
+Analysis array 291051 uses the same independent-chain cuts, blocking,
+500-replica estimator and exhaustive 550-window mass scan as the canonical
+campaign. These are untuned measurements with \texttt{target\_c=null}.
+All four analyses completed successfully. The selected windows are
+$r=5$--64 at $\beta=1.45$ and $r=4$--64 at the other three couplings;
+each has 500 successful refits.
+
+\begin{center}\small\input{docs/mg_nt_fixed/generated/nt1_scaling_table.tex}\end{center}
+
+Every chain uses a 500-sweep cut. The selected block lengths in increasing
+$\beta$ order are $B=240,240,80,240$, retaining 31,31,93,31 complete blocks
+per chain. Three ensembles are below the 50-block target. At the present
+cut and $B=240$, that target would require at least 12,500 total sweeps per
+chain and renewed autocorrelation and blocking checks. These statistics
+warnings accompany the plotted points.
+The common observable plateau is unresolved at $\beta=1.45,1.50$;
+$\beta=1.45$ also has between-chain and split-history warnings.
+Later-window drift is flagged at $\beta=1.45,4.6/3,1.55$.
+
+Visual inspection at $\beta=1.55$ shows a stable early-window mass and
+large-distance correlated excursions, including a negative tail for
+$r\gtrsim52$. The selected mass remains preliminary, conditional on its
+window; increased statistics and tail/window review remain relevant.
+This observation is retained alongside the automatic split-history flag.
+
+\subsection*{Nine scaling comparisons}
+All measured points are shown against $y=\beta/N_t$ in three representations,
+with $p=0,1,3/2$:
+\[
+  \widehat m N_t^p,\qquad
+  \frac{\xi_{\rm 2nd}/a}{N_t^p},\qquad
+  \frac{(\xi_{\rm 2nd}/a)^2}{N_t^{2p}}.
+\]
+Thus the squared-length denominators are $1,N_t^2,N_t^3$. Mass and length
+errors use the saved 500-replica estimates; the squared-length uncertainty
+uses the structure-factor ratio evaluated on those same joint replicas.
+The fixed exact scaling factors multiply the corresponding errors.
+All points use open markers and the same color and shape for a given $N_t$.
+The legends contain only $N_t$; campaign roles and flags remain in the CSVs.
+The comparison index links the nine individual, grid-free 16:9 PDFs.
+The trial exponent $3/2$ is a display choice; no exponent fit is implied.
 
 \clearpage\section*{Matched-$y$ extension near $\beta/N_t=1.5$}
 \begin{center}\small\input{docs/mg_nt_fixed/generated/scaling_table.tex}\end{center}
-Each ensemble has four independent 8,000-sweep hot-start chains, measured
-every sweep (profiles every five). The batch used 0.2745 A100 GPU-hours on
+Each $N_t\geq2$ ensemble has four independent 8,000-sweep hot-start chains,
+measured every sweep (profiles every five). This batch used 0.2745 A100 GPU-hours on
 lnode19, preserving one free GPU. Inputs, output counts, checkpoints and
 raw hashes passed validation. Array 291008 used the same 500-replica
 estimator and exhaustive window scan as the fixed-$c$ analysis.
 
-All four mass scans completed successfully. Their selected windows have
+These four mass scans completed successfully. Their selected windows have
 500 successful refits. The $N_t=3$ ensemble has a split-history warning;
 $N_t=4,\beta=6$ has between-chain and later-window drift warnings. The
 $N_t=6$ window is $r=6$--160, with later-window drift retained for review.
@@ -374,7 +414,8 @@ the numerical result and every alternative window are retained.
 
 The purpose is to test the proposed collapse where the screening mass is
 small, and to check transverse-volume sensitivity. The existing
-$N_t=2,N_s=64,\beta=3$ point joins the three new $y=1.5$ points. From the
+$N_t=2,N_s=64,\beta=3$ point joins the three finer $y=1.5$ points and
+the new $N_t=1,\beta=1.5$ point. From the
 Wilson coupling convention,
 \[
  y=\beta/N_t=\frac{4}{ag_{3,0}^2N_t}
@@ -398,16 +439,17 @@ errors propagated through the saved 500 replicas. Window, volume and
 thermalization uncertainties remain separate from these conditional
 statistical errors. The fixed-$c$ continuum fit continues to use its
 existing independently tuned inputs.
-The measured adjacent-resolution powers are $1.4054\pm0.0077$ (2 to 3),
+The measured adjacent-resolution powers are $0.7636\pm0.0034$ (1 to 2),
+$1.4054\pm0.0077$ (2 to 3),
 $1.3455\pm0.0111$ (3 to 4), and $1.2678\pm0.0075$ (4 to 6).
 Their drift shows that the trial exponent 1.5 is an approximate visual
 scaling choice over this range. These finite-spacing ratios inherit the
 window and statistics warnings; they do not determine an asymptotic exponent.
 
-\plotpage{Lorenzo's trial collapse with the matched-$y$ batch}{analysis/mg_nt_fixed/comparison/lorenzo_scaling_collapse.pdf}{Reproduction of Lorenzo's supplied $am_GN_t^{1.5}$ versus $\beta/N_t$ plot, including all three $N_t=1$ matched-coupling diagnostics. Filled markers identify the four matched-$y$ ensembles; open markers show earlier mass estimates. The exponent 1.5 is an assumed illustrative choice. All defined flagged masses remain visible, with bootstrap standard errors conditional on their chosen windows.}
-\plotpage{Screening mass in slab units at all measured couplings}{analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf}{The ordinate is $m_GL=am_GN_t$, with $L=aN_t$. Each saved mass and its bootstrap standard error are multiplied by the exact temporal extent. The three analyzed $N_t=1$ ensembles are included at their measured $\beta/N_t$ values, approximately 1.962, 2.504 and 2.990. They retain their untuned diagnostic role. The new $N_t=1,\beta/N_t=1.5$ mass is not yet analyzed, so the matched-coupling comparison on the next page retains its existing resolution set. No new fit or bootstrap resampling is used.}
-\plotpage{Measured screening scale at $y=1.5$}{analysis/mg_nt_fixed/c_0p5/comparison/matched_y_mass_Nt.pdf}{The new $N_t=3,4,6$ ensembles extend the earlier $N_t=2$ point. No fixed-$c$ target is imposed on this comparison and no additional continuum fit is performed.}
-\plotpage{Second-moment length in slab units}{analysis/mg_nt_fixed/comparison/xi_2nd_slab_scaled.pdf}{All measured couplings are shown, including the $N_t=1$ matched-coupling diagnostics. The logarithmic scale accommodates their larger lengths. The coordinate is $\xi_{\rm 2nd}/L=(\xi_{\rm 2nd}/a)/N_t$; companion figures show its square, unscaled lengths versus $\beta$, and the trial normalization $N_t^{1.5}$. Error bars use the saved 500 joint replicas and retain the volume and statistics limitations. For the squared estimator, evaluate $(\widetilde C(0)/\widetilde C(p_{\min})-1)/[4\sin^2(\pi/N_s)]$ on each replica before taking its SD. Negative noisy squared-moment estimates remain in that distribution. Both central values and errors are in the existing ensemble CSVs.}
+\plotpage{Lorenzo's trial collapse with all measured points}{analysis/mg_nt_fixed/comparison/lorenzo_scaling_collapse.pdf}{Reproduction of Lorenzo's supplied $am_GN_t^{3/2}$ versus $\beta/N_t$ plot, including all seven $N_t=1$ ensembles. Every marker is open; its color and shape identify $N_t$. The exponent $3/2$ is an assumed illustrative choice. All defined flagged masses remain visible, with bootstrap standard errors conditional on their chosen windows.}
+\plotpage{Screening mass in slab units at all measured couplings}{analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf}{The ordinate is $m_GL=am_GN_t$, with $L=aN_t$. Each saved mass and its bootstrap standard error are multiplied by the exact temporal extent. All seven $N_t=1$ ensembles retain their untuned role in the tables. The matched-$y=1.5$ comparison now includes $N_t=1,2,3,4,6$. These additional untuned points leave the fixed-$c$ continuum fits unchanged.}
+\plotpage{Measured screening scale at $y=1.5$}{analysis/mg_nt_fixed/c_0p5/comparison/matched_y_mass_Nt.pdf}{The measured resolutions are $N_t=1,2,3,4,6$. No fixed-$c$ target is imposed on this comparison and no additional continuum fit is performed.}
+\plotpage{Second-moment length in slab units}{analysis/mg_nt_fixed/comparison/xi_2nd_slab_scaled.pdf}{All measured couplings are shown, including all $N_t=1$ ensembles. The logarithmic scale accommodates the length range. The coordinate is $\xi_{\rm 2nd}/L=(\xi_{\rm 2nd}/a)/N_t$; companion figures show its square and the unscaled and trial-$N_t^{3/2}$ forms, all versus $\beta/N_t$. Error bars use the saved 500 joint replicas and retain the volume and statistics limitations. For the squared estimator, evaluate $(\widetilde C(0)/\widetilde C(p_{\min})-1)/[4\sin^2(\pi/N_s)]$ on each replica before taking its SD. Negative noisy squared-moment estimates remain in that distribution. Both central values and errors are in the existing ensemble CSVs.}
 \plotpage{Transverse-volume check at $N_t=4,\beta=6.2$}{analysis/mg_nt_fixed/c_0p5/Nt_4/comparison/volume_beta_6p2.pdf}{Independent $N_s=96$ and 160 ensembles are compared using their selected mass windows. The companion CSV reports the difference and its 500-replica uncertainty; other windows and correlator curves remain available for visual review.}
 
 \plotpage{$N_t=1$: matched-coupling correlators}{analysis/mg_nt_fixed/comparison/nt1_correlators.pdf}{The three volumes correspond to different couplings. Their folder labels identify the source $N_t=2$ tuning. Error bars use independent-chain, pooled-with-boundaries bootstrap replicas.}

@@ -1,26 +1,21 @@
 # Numerical validation summary
 
-Four additional Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55
-completed as P100 array `291033_[0-15]`, with four 8,000-sweep hot chains
-each: 128,000 sweeps, 0.1525 GPU-hours and all output checks passed. See the
-[execution record](running_simulations.md). No masses from this new batch
-are included in the current analyzed tables.
-
-A four-ensemble matched-beta/Nt diagnostic batch has completed: 16 chains
-of 8,000 sweeps, using three A100s on lnode19 and leaving GPU 6 free.
-All sixteen chains completed by 06:05 CEST on 16 October: 128,000 sweeps and
-0.274520466 A100 GPU-hours, according to the remote completion records.
-SSH is restored and compact completion records are downloaded. CPU array
-291008 completed all four ensemble analyses. Collection 291015 verified
-45 ensembles, 184 chains and 12,721 mass windows, with exactly 500 replicas.
-The existing top-level tables contain every ensemble. Regression 291016
-passed 50 tests. The Nt=1 mass-scaling update passed 51 tests (291025).
-All 1,268 plots are title-free, footer-free and grid-free,
-with single-page 16:9 geometry verified. The updated 23-page logbook passed
-visual review and freshness checks for the existing 45-ensemble register.
-No new simulations are launched by this analysis.
-See the [campaign report](docs/mg_nt_fixed/summary.md)
-and [execution record](running_simulations.md).
+The mg_nt_fixed register now contains 49 fully analyzed ensembles, 200 chains,
+1,904,000 measured sweeps and 14,921 mass windows. This includes the four
+new Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55. CPU analysis
+291051 and collection 291056 completed successfully; regression 291055
+passed 54 tests. Every new bootstrap operation uses exactly 500 replicas.
+The [nine scaling plots](analysis/mg_nt_fixed/comparison/README.md) show all
+points versus beta/Nt, with amG*Nt^p, (xi2nd/a)/Nt^p and
+(xi2nd/a)^2/Nt^(2p), for p=0,1,3/2. Markers are open; legends contain only
+Nt; titles, footer notes and grids are omitted. Top-level tables include
+every ensemble, retaining diagnostic flags. No new simulations were launched
+by this analysis. All nine plots passed visual review; all 1,391 plot PDFs
+passed single-page 16:9 checks. The 24-page logbook passed freshness and
+visual checks after compute-node build 291082.
+See the [campaign report](docs/mg_nt_fixed/summary.md),
+[PDF logbook](docs/mg_nt_fixed/logbook.pdf) and
+[execution record](running_simulations.md).
 
 Fixed-beta/Nt production has 36 of 40 chains complete and eleven accepted slab
 masses. The 48,300-sweep `Nt=5,beta=10.5` analysis completed with exactly

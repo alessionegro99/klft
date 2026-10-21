@@ -13,17 +13,17 @@ Current campaign status is documented separately. The
 fits on the 1.8 and 2.0 lines, 64 comparison PDFs, and 30 per-ensemble
 first-stage PDFs; the 2.1 line remains incomplete. The separate
 [fixed `m_G Nt`](docs/mg_nt_fixed/summary.md) campaign has been reanalysed:
-45 physical ensembles (184 chains) in a `c/Nt/Ns/beta` tree, 500-replica errors,
+49 physical ensembles (200 chains) in a `c/Nt/Ns/beta` tree, 500-replica errors,
 10 tuning points and three preliminary `p=1` continuum comparisons. Three
-Nt=1 matched-beta and four matched-beta/Nt ensembles are kept separate from fixed-c inputs. The
+Nt=1 matched-beta and eight matched-beta/Nt ensembles are kept separate from fixed-c inputs. The
 continuum intercepts remain sensitive to the included resolutions. See its
 [PDF logbook](docs/mg_nt_fixed/logbook.pdf) and
-[analysis index](analysis/mg_nt_fixed/README.md). Those 45 ensembles and their
-mass scans are complete. Four further Nt=1, Ns=128 matched-beta/Nt ensembles
-completed on P100s as array `291033_[0-15]` (128,000 sweeps); their analysis
-has not started. See the campaign report for provenance.
-The top-level tables include every analyzed ensemble;
-comparison plots include Lorenzo's trial collapse, ξ₂nd and ξ₂nd².
+[analysis index](analysis/mg_nt_fixed/README.md). All simulations and mass
+scans in this register are complete, including the four new Nt=1, Ns=128
+ensembles. The top-level tables include every analyzed ensemble.
+The [nine scaling comparisons](analysis/mg_nt_fixed/comparison/README.md)
+show amG, ξ₂nd/a and (ξ₂nd/a)² with p=0,1,3/2, all versus beta/Nt,
+using open markers and Nt-only legends. See the campaign report for provenance.
 
 This implementation is restricted to the pure Wilson action in a 3D SU(2)
 build. Set `temporal_dirichlet: true` in either update section. With it false,

@@ -1,9 +1,9 @@
 {
-  "ensembles": 45,
-  "chains": 184,
-  "measured_sweeps": 1776000,
-  "mass_windows": 12721,
-  "pdfs": 1268,
+  "ensembles": 49,
+  "chains": 200,
+  "measured_sweeps": 1904000,
+  "mass_windows": 14921,
+  "pdfs": 1391,
   "bootstrap_samples": 500,
   "pdf_canvas_points": [
     1152,
@@ -11,6 +11,10 @@
   ],
   "pdf_geometry_status": "passed",
   "source_sha256": {
+    "analysis/mg_nt_fixed/c_0p5/Nt_1/Ns_128/beta_1p45/analysis.json": "3c3d006aabc982b8c475e791acb4e8c3cd3e8cb6da48f4fa2d279b8204c91e12",
+    "analysis/mg_nt_fixed/c_0p5/Nt_1/Ns_128/beta_1p5/analysis.json": "7947a23596b23430b4aceb8a9aa972b75e664cae9b87f4eaa853fb4fb1924a47",
+    "analysis/mg_nt_fixed/c_0p5/Nt_1/Ns_128/beta_1p5333333333333333/analysis.json": "5458e52be8959585ea1ee4abc49f2623092a2ff05b2f7b3e89c7435b11fb70b5",
+    "analysis/mg_nt_fixed/c_0p5/Nt_1/Ns_128/beta_1p55/analysis.json": "24c6edd005decdda708df85d39d76e4f2c724636693ac55cba670415606c8753",
     "analysis/mg_nt_fixed/c_0p5/Nt_1/Ns_2048/beta_2p989543168360997/analysis.json": "26d9de39e73f726c9659296648b8869c381a626711185751f2c700fc4176c390",
     "analysis/mg_nt_fixed/c_0p5/Nt_2/Ns_64/beta_2p9/analysis.json": "374a8495f7b0c534b0571f2fc404b0594cfb415939ef64f1d881ff3fb75a673b",
     "analysis/mg_nt_fixed/c_0p5/Nt_2/Ns_64/beta_3/analysis.json": "c73df3bdfdb0e83d886237960f4be311377f92c74062b22dfe671a024e765a09",
@@ -57,6 +61,6 @@
     "analysis/mg_nt_fixed/c_2/Nt_4/Ns_32/beta_4/analysis.json": "971e42d73b264edd7bc97be3e1322700fcc8c4fc901493badc29a0456b25187d",
     "analysis/mg_nt_fixed/c_2/Nt_4/Ns_32/beta_4p3/analysis.json": "9ade5fd9e52975593a02c202e6726e6368d358d582e8350298b319f3bc6c48e5"
   },
-  "job_id": "291050",
+  "job_id": "291082",
   "status": "passed"
 }

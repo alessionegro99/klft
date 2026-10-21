@@ -1,6 +1,6 @@
 # Fixed mG Nt campaign
 
-## Nt=1 matched-y simulations complete; analysis not started
+## Nine scaling comparisons and Nt=1 matched-y analysis
 
 Four Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55 completed
 as P100 array `291033_[0-15]`, with four independent 8,000-sweep chains each.
@@ -8,29 +8,69 @@ All sixteen exited successfully by 22:00:55 CEST on 20 October: 128,000
 sweeps and 0.152497569 P100 GPU-hours. Smoke `291028` and timing `291029`
 passed before production. Input hashes, dimensions, boundary links,
 measurement counts and output checks passed. Compact completion records
-are synchronized; raw histories remain on qbig. No mass analysis has been
-launched for this batch. This is a matched-beta/Nt diagnostic extension;
-target_c remains null. The existing 45-ensemble analyzed register is unchanged.
-Report-only job `291050` rebuilt the 23-page logbook on lnode11; freshness
-and visual layout checks passed. No fit or bootstrap operation was performed.
+are synchronized; raw histories remain on qbig. Analysis array
+`291051_[0-3]` completed the canonical independent-chain 500-replica
+procedure with 550 windows per ensemble. This is a matched-beta/Nt
+diagnostic extension; target_c remains null and fixed-c inputs are unchanged.
+The nine requested plots include these four new points alongside the
+existing 45 ensembles. All use beta/Nt, open markers, the existing Nt palette
+and Nt-only legends, without titles, footer notes or grids. For p=0,1,3/2
+the vertical coordinates are amG*Nt^p, (xi2nd/a)/Nt^p and (xi2nd/a)^2/Nt^(2p).
+Regression `291055` passed all 54 tests on qbig. Collection `291056`
+completed with exit 0 on lnode11 in 1m42s, verifying 49 ensembles, 200
+chains, 1,904,000 measured sweeps, 14,921 mass windows and 1,391 plot PDFs.
+Every new selected window has 500 successful refits. The top-level tables
+and comparison directory now contain all 49 ensembles, including seven Nt=1
+points. No simulation or mass analysis remains pending in this register.
 See [execution status](../../running_simulations.md) and
 [immutable inputs](../../data/mg_nt_fixed/nt1_scaling_manifest.json).
 
-## Nt=1 mass-scaling coverage
+| beta | amG (bootstrap SE) | xi2nd/a (bootstrap SE) | selected R | B (sweeps) | blocks/chain |
+|---:|---:|---:|---:|---:|---:|
+| 1.45 | 0.454606 ± 0.001231 | 1.992 ± 0.495 | 5--64 | 240 | 31 |
+| 1.50 | 0.416180 ± 0.000643 | 2.604 ± 0.381 | 4--64 | 240 | 31 |
+| 4.6/3 | 0.388585 ± 0.000520 | 3.272 ± 0.307 | 4--64 | 80 | 93 |
+| 1.55 | 0.376464 ± 0.000465 | 2.489 ± 0.413 | 4--64 | 240 | 31 |
+
+All sixteen chains have a 500-sweep thermalization cut. Three ensembles
+retain fewer than the target 50 blocks; at B=240 they would require at
+least 12,500 total sweeps per chain, with renewed blocking checks. The common
+observable plateau is unresolved at beta=1.45 and 1.50. Later-window drift
+is flagged at beta=1.45, 4.6/3 and 1.55; chain and window warnings remain
+in the CSVs. At beta=1.55 the correlator has a coherent
+negative tail beyond roughly R=52 despite an early-window mass plateau.
+These results remain preliminary and available for visual review.
+First-stage examples stay in each simulation's `plots/first_stage/` folder.
+At beta/Nt=1.5, the new Nt=1 to 2 effective power is 0.7636 ± 0.0034;
+it highlights coarse-resolution drift in the trial scaling comparison.
+The fixed-c tuning and continuum CSV hashes remain unchanged.
+
+The [comparison index](../../analysis/mg_nt_fixed/comparison/README.md)
+links the nine requested PDFs. Four superseded length-plot variants are
+recoverable in qbig's `archive/mg_nt_fixed/scaling_plot_variants/`.
+All nine figures passed visual inspection, and all 1,391 campaign plot PDFs
+passed single-page 16:9 checks. Logbook job `291082` completed successfully
+on lnode11 in 42 seconds. The updated 24-page
+[logbook](logbook.pdf) passed visual review and remote/local freshness checks.
+The 45 earlier ensemble result hashes and all 12,721 earlier window rows
+remain unchanged. Only compact products were downloaded; raw histories
+remain on qbig.
+
+## Previous Nt=1 mass-scaling coverage
 
 The all-coupling mass comparisons include the three Nt=1 matched-coupling
 diagnostics, at beta/Nt approximately 1.962, 2.504 and 2.990. They show amG,
 amG Nt and Lorenzo's trial amG Nt^1.5 using the saved 500-replica mass errors.
 The new [slab-unit mass plot](../../analysis/mg_nt_fixed/comparison/mass_Nt_vs_beta_over_Nt.pdf)
-keeps these diagnostics labelled. There is no analyzed Nt=1 mass at beta/Nt=1.5;
-the matched-1.5 comparison and fixed-c continuum inputs remain unchanged.
-This update adds no simulation, mass fit or bootstrap resampling.
+kept these diagnostics labelled. At that stage no Nt=1 mass at beta/Nt=1.5
+had been analyzed, so the matched-1.5 and fixed-c inputs were unchanged.
+That plotting-only update added no simulation, fit or bootstrap resampling.
 Plot refresh 291023 and report/verification 291027 completed successfully
 on qbig; regression 291025 passed all 51 tests. The three mass plots and
 the two affected pages of the 23-page logbook passed visual review, and
-the report passes remote and local freshness checks.
+that report passed remote and local freshness checks before this refresh.
 
-## Completed matched-y simulations and mass analyses
+## Earlier Nt>=2 matched-y simulations and mass analyses
 
 The user approved four matched-beta/Nt diagnostic ensembles: (Nt,Ns,beta) =
 (3,96,4.5), (4,160,6.0), (6,320,9.0), (4,160,6.2), each with four independent
@@ -51,7 +91,7 @@ The earlier guarded manual attempt is preserved in the dispatch history.
 Inputs and analysis code are committed and pushed; 50 targeted tests pass on qbig.
 Inputs use the canonical c=0.5 reference-family tree, with target_c=null and
 fixed_c_continuum_input=false. Existing fixed-c tuning inputs remain unchanged.
-The combined immutable inventory now has 45 ensembles, 184 chains and
+At that stage the combined immutable inventory had 45 ensembles, 184 chains and
 1,776,000 measured sweeps and 12,721 mass windows. All five existing top-level
 tables (ensembles, correlators, chains, autocorrelations and fit windows)
 include every ensemble. Lorenzo's trial collapse and both xi2nd and
@@ -93,9 +133,9 @@ remain relevant. The corresponding
 [volume plot](../../analysis/mg_nt_fixed/c_0p5/Nt_4/comparison/volume_beta_6p2.pdf)
 and CSV retain the individual estimates.
 
-The root comparison folder includes Lorenzo's supplied trial amG Nt^1.5
-collapse, plus xi2nd and xi2nd-squared versus beta and beta/Nt. Full-range
-plots retain Nt=1; focused trial-normalized versions use Nt>=2. The exponent
+The earlier comparison set included Lorenzo's supplied trial amG Nt^1.5
+collapse, plus xi2nd and xi2nd-squared versus beta and beta/Nt. It has been
+replaced by the nine all-point comparisons above. The exponent
 1.5 is assumed, not fitted. Squared-length errors use the squared-moment
 ratio on all 500 joint replicas without positivity truncation. CPU regression
 job 291016 passed all 50 targeted tests. Collection 291015 completed with

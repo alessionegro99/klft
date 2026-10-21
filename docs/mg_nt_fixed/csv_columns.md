@@ -111,16 +111,18 @@ estimates. Failed refits remain NaN in their original slots; no replacement
 draws are made. The sample SD is conditional on successful refits, with their
 count recorded. Operation seeds and input/code hashes are in `analysis.json`.
 
-The comparison folder contains `xi_2nd_*` and `xi_2nd_squared_*` plots for all
-measured couplings, including Nt=1. `vs_beta` uses unscaled lattice lengths;
-`slab_scaled` shows xi/Nt or (xi/Nt)^2 against beta/Nt; `lorenzo_scaled` uses
-the trial normalization xi/Nt^1.5 or its square. Vertical log scales keep the
-long Nt=1 lengths visible alongside Nt>=2. These plots retain the original
-volume and chain-statistics limitations and do not fit an exponent.
-The two `lorenzo_scaled_Nt_ge_2` companion plots show the same Nt=2,3,4,6
-range as Lorenzo's mass figure, while the full-range figures retain Nt=1.
-All campaign figures omit displayed titles and footer notes. Axis labels and
-legends remain; the directory paths and CSVs identify parameters and flags.
+The comparison folder has nine scaling plots: amG, xi2nd/a and (xi2nd/a)^2,
+each for p=0,1,3/2 and all against beta/Nt. The ordinates are amG*Nt^p,
+(xi2nd/a)/Nt^p and (xi2nd/a)^2/Nt^(2p). Thus squared-length scaling divides
+by Nt^2 and Nt^3. `vs_beta_over_Nt` uses unscaled vertical quantities;
+`slab_scaled` uses p=1; `lorenzo_scaled` uses p=3/2. Vertical log scales
+keep all defined length points visible. Every point uses an open marker,
+with a fixed color/shape for each Nt; legends contain only Nt values.
+All campaign figures omit displayed titles, footer notes and grids.
+Volume, fit and chain-statistics limitations remain in the tables. These
+transformations reuse saved errors/500 joint replicas and do not fit an
+exponent. The old beta-axis and Nt>=2-only variants are recoverable from
+the qbig archive, outside the active comparison folder.
 `comparison/scaling_plot_status.json` distinguishes simulation completion
 from analysis completion. `scripts/mg_nt_fixed_replot.py` regenerates
 per-ensemble figures from saved cuts, error curves and 500-slot fit arrays;

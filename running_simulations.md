@@ -1,6 +1,83 @@
 # Running simulations
 
-## Nt=1 matched-y extension — all simulations complete, analysis not started
+## Nine scaling plots and Nt=1 matched-y analysis
+
+The requested comparison set is nine PDFs: amG, xi2nd/a and (xi2nd/a)^2,
+each at p=0,1,3/2, all versus beta/Nt. The approved physical normalization
+multiplies masses by Nt^p, divides lengths by Nt^p and squared lengths by
+Nt^(2p). All markers are open, with the existing Nt palette and Nt-only
+legends. No titles, footer notes or grids. Four obsolete length-plot variants
+are retained in the qbig recovery archive, outside the active tree.
+
+Analysis array `291051_[0-3]` analyzed the four completed Nt=1,Ns=128
+production ensembles at beta=1.45,1.50,4.6/3,1.55. Each task requests eight
+CPUs, 24 GB and two hours, without GPUs, dependencies or a concurrency cap;
+P100 nodes are excluded. Nodes in index order: lnode11,lcpunode02,lnode03,
+lnode04. The immutable `nt1_scaling_analysis_manifest.json` binds all sixteen
+production records, excluding smoke/timing histories. Exactly 500 replicas
+per operation, independent cuts/blocks and fixed used-measurement weights;
+550 exhaustive windows per ensemble. Existing 45 ensemble estimates are
+reused unchanged. Code/input commits: `dbdf5d7`, `fa9c739`; 17 inventory and
+analysis tests passed before launch. Plot scaling/style and estimator tests
+subsequently passed all 33 checks locally.
+
+Snapshot: `/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_scaling`.
+Entry: `sbatch --array=0-3 scripts/mg_nt_fixed_scaling_analysis.slurm --nt1`.
+Logs: `/qbigwork2/negro/dirichlet/logs/mgnt-scaling-analysis-291051_<index>.out`.
+Compact outputs go to the canonical analysis physics tree; raw histories
+remain in their recorded qbig paths. First-stage checks verified all four
+chains per ensemble and selected B=240,240,80,240 sweeps respectively.
+
+Regression job `291055` completed on lcpunode02 with exit 0 in 29 seconds;
+all 54 tests passed in the locked environment. Its mocked scheduler tests
+did not launch simulations. Plot implementation commit: `4015105`.
+The four replaced variants (`xi_2nd_vs_beta.pdf`,
+`xi_2nd_squared_vs_beta.pdf`, `xi_2nd_lorenzo_scaled_Nt_ge_2.pdf`,
+`xi_2nd_squared_lorenzo_scaled_Nt_ge_2.pdf`) were moved intact to
+`/qbigwork2/negro/dirichlet/archive/mg_nt_fixed/scaling_plot_variants/`;
+they remain recoverable. SHA256 values, in that order:
+`03349166f02c80addac6c0043516b84151af3a87e16be9759895f799314eb805`,
+`191164b9f4752572bbd833f4d415914ac615f132789dbfa8b382f5a8f4d7a645`,
+`190f7627d6a94d590c4d54ede106c805541a3a0d843f1242e9451aea3bdc9eee`,
+`dedb009ae63791f5d015c557afa10a288320564350ee2c0af5ce0c0235b52351`.
+Both unscaled length plots now explicitly use `beta_over_Nt` in their names.
+
+All four analysis tasks completed with exit 0. Durations in index order:
+22m08s, 15m18s, 16m25s, 10m27s. Each saved all 550 windows and exactly
+500 refits per window; every selected window has 500 successful refits.
+Selected windows are R=5--64 at beta1.45 and R=4--64 at the other couplings.
+Masses (bootstrap SE): 0.4546061 ± 0.0012312, 0.4161802 ± 0.0006431,
+0.3885846 ± 0.0005199, 0.3764641 ± 0.0004649.
+No further simulation or bootstrap resampling is needed for rendering.
+
+Collection `291056` completed on lnode11 with exit 0 in 1m42s, using
+`sbatch scripts/mg_nt_fixed_scaling_collect.slurm --collect-only`.
+It verified 49 ensembles, 200 chains, 1,904,000 measured sweeps, 14,921
+mass windows and 1,391 single-plot PDFs. All top-level tables include the
+new results; matched-y points retain target_c=null and
+fixed_c_continuum_input=false. Log:
+`/qbigwork2/negro/dirichlet/logs/mgnt-scaling-collect-291056.out`.
+
+Compact products were synchronized with dry runs and partial transfers;
+raw histories stayed on qbig. SHA256 checks confirm that all 45 prior
+`analysis.json` files and the fixed-c tuning/continuum CSVs are unchanged.
+All 12,721 prior window rows retain identical parsed values. All 49 masses
+are included, including seven Nt=1 points. Local Poppler verification passed
+for all 1,391 single-page 16:9 plot PDFs. Each of the nine requested scaling
+plots was rendered and visually inspected. The four retired variants remain
+recoverable in the archive named above.
+
+Logbook-only job `291082` completed on lnode11 with exit 0 in 42 seconds:
+`sbatch scripts/mg_nt_fixed_scaling_collect.slurm --logbook-only`.
+The 24-page report includes the new results, flags and all nine normalization
+definitions. Changed narrative and comparison pages passed visual inspection;
+LaTeX reported no layout warnings. Remote and local
+`uv run --frozen python scripts/mg_nt_fixed_logbook.py --check` passed.
+The 33 targeted local tests were rerun successfully on 21 October; the full
+54-test qbig regression is recorded above. No simulation or mass analysis
+remains pending in this register.
+
+## Nt=1 matched-y extension — all simulations complete
 
 The user approved Nt=1, Ns=128 at beta=1.45, 1.50, 4.6/3 and 1.55,
 with four independent 8,000-sweep hot chains per coupling (128,000 sweeps).
@@ -8,7 +85,7 @@ Stored L2=2; 1 heatbath plus 5 overrelaxation sweeps; holonomy cadence 1,
 profiles 5; Wilson loops, flow and horizontal Polyakov loops disabled.
 These matched-beta/Nt diagnostics have target_c=null and reference_c=0.5;
 they remain excluded from fixed-c continuum inputs until explicitly tuned.
-Exactly 500 replicas will be used in the later analysis on qbig.
+Exactly 500 replicas are used in analysis on qbig; see the current array above.
 
 P100 nodes 13,14,15,17 were idle with all GPUs reporting zero utilization,
 zero memory use and no compute processes. Node16 was excluded because its
@@ -78,8 +155,8 @@ manifest hash and recorded output size was rechecked; raw-output hashes
 were computed on the allocated compute nodes. Compact start/result records
 and the timing gate are synchronized locally. The four recorded raw files
 per production chain total 477,119,592 bytes on qbig; free storage is 28 GB.
-New mass/thermalization/blocking analysis has not been launched. The current
-45-ensemble analyzed tables and plots remain unchanged.
+At execution handoff the 45-ensemble analyzed register was unchanged;
+the subsequent analysis is tracked above.
 
 Report-only jobs `291049` and `291050` completed with exit 0 on lnode11
 in 40 and 39 seconds. The final rebuild keeps the execution note on the
