@@ -1,5 +1,17 @@
 # Fixed mG Nt campaign
 
+## Zoomed scaling comparisons
+
+Nine additional `_zoom.pdf` plots show 1.2 <= beta/Nt <= 1.6, including
+30 ensembles and all four new Nt=1 points near 1.5. Each vertical axis
+uses the points in this interval. The original full-range plots, numerical
+tables and saved 500-replica estimates are unchanged. The
+[comparison index](../../analysis/mg_nt_fixed/comparison/README.md) links
+both sets. All nine zooms and the updated logbook page passed visual review.
+CPU job `291083` completed on lnode11 in 54 seconds, verifying 1,400 plot
+PDFs and rebuilding the logbook without new fits or resampling.
+All 57 targeted regression tests passed locally.
+
 ## Nine scaling comparisons and Nt=1 matched-y analysis
 
 Four Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55 completed

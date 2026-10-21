@@ -1,5 +1,11 @@
 # Numerical validation summary
 
+Nine additional scaling zooms now show 1.2 <= beta/Nt <= 1.6, covering
+30 ensembles. The full-range plots and all numerical results are unchanged.
+CPU job 291083 completed successfully; all nine zooms passed visual review
+and 57 targeted tests passed. Links are in the
+[comparison index](analysis/mg_nt_fixed/comparison/README.md).
+
 The mg_nt_fixed register now contains 49 fully analyzed ensembles, 200 chains,
 1,904,000 measured sweeps and 14,921 mass windows. This includes the four
 new Nt=1, Ns=128 ensembles at beta=1.45, 1.50, 4.6/3 and 1.55. CPU analysis

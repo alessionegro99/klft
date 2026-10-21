@@ -1,5 +1,29 @@
 # Running simulations
 
+## Scaling-plot zoom
+
+Add nine comparison PDFs over 1.2 <= beta/Nt <= 1.6, using the saved
+500-replica estimates and errors. Full-range PDFs and all numerical tables
+are preserved. No simulation, fit or resampling is requested.
+Compute-node entry: `sbatch scripts/mg_nt_fixed_scaling_collect.slurm --zoom-only`
+in `/qbigwork2/negro/dirichlet/reviews/mg_nt_fixed_scaling`; one CPU, 8 GB,
+no GPU, no dependencies. The job verifies the enlarged plot inventory and
+rebuilds/checks the logbook after adding the zooms.
+Submitted as CPU job `291083`; code commit `20545da`. Eighteen local
+plotting/campaign tests passed, including exact preservation of values,
+bootstrap error bars, open-marker styles and inclusive zoom boundaries.
+The selected interval contains 30 ensembles, including four Nt=1 points.
+All 57 targeted regression tests subsequently passed locally. Slurm initially
+queued the job for priority; its wall-time request was reduced to ten minutes
+to match this plotting-only workload. No GPU or priority override was used.
+Job `291083` completed on lnode11 with exit 0 in 54 seconds. Its log is
+`/qbigwork2/negro/dirichlet/logs/mgnt-scaling-collect-291083.out`.
+The numerical inventory is unchanged; plot count is now 1,400. All nine
+zooms were downloaded after a dry run and visually inspected. The updated
+24-page logbook passed remote/local freshness checks and visual inspection
+of its changed page, without LaTeX layout warnings. Report source hashes
+confirm every prior numerical product and full-range PDF is unchanged.
+
 ## Nine scaling plots and Nt=1 matched-y analysis
 
 The requested comparison set is nine PDFs: amG, xi2nd/a and (xi2nd/a)^2,

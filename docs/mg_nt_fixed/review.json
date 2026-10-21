@@ -15,6 +15,7 @@
   "nine_scaling_regression_job": "291055",
   "nine_scaling_regression_tests_passed": 54,
   "nine_scaling_collection_job": "291056",
+  "scaling_zoom": "nine additional views over beta/Nt=[1.2,1.6]; y axes autoscale to visible points; unchanged estimates, 500-replica errors and full-range plots; no new fitting or resampling",
   "nt1_matched_y_production_chains_complete": 16,
   "nt1_matched_y_production_sweeps": 128000,
   "nt1_matched_y_heatbath_gpu_hours": 0.15249756931430763,
