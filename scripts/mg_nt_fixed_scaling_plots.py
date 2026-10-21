@@ -22,6 +22,8 @@ SCALING_PDFS = (
     'xi_2nd_squared_vs_beta_over_Nt.pdf', 'xi_2nd_squared_slab_scaled.pdf',
     'xi_2nd_squared_lorenzo_scaled.pdf',
 )
+ZOOM_RANGE = (1.2, 1.6)
+ZOOM_PDFS = tuple(name.removesuffix('.pdf')+'_zoom.pdf' for name in SCALING_PDFS)
 
 
 def effective_powers(points: list[dict]) -> list[dict]:
@@ -59,6 +61,7 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
         return
     plot_lengths(results, root)
     plot_masses(results, root)
+    plot_zoom(results, root)
     points = [p for p in results if p['include']
               and p['mass'] is not None and p['mass_error'] is not None]
     for p in results:
@@ -84,7 +87,7 @@ def plot_scaling(results: list[dict], root: Path, pending: list[str] | None = No
         bootstrap_samples=500, new_bootstrap_operations=0, job_id=os.environ.get('SLURM_JOB_ID')))
 
 
-def plot_masses(results: list[dict], root: Path) -> None:
+def plot_masses(results: list[dict], root: Path, zoom: bool = False) -> None:
     """Show every included mass, including untuned Nt=1 diagnostics.
 
     Multiplication by the exact lattice extent scales the saved bootstrap
@@ -93,6 +96,8 @@ def plot_masses(results: list[dict], root: Path) -> None:
     """
     points = [p for p in results if p['include'] and p['physical_Nt'] >= 1
               and p['mass'] is not None and p['mass_error'] is not None]
+    if zoom:
+        points = [p for p in points if ZOOM_RANGE[0] <= p['beta']/p['physical_Nt'] <= ZOOM_RANGE[1]]
     nts = sorted({p['physical_Nt'] for p in points})
     for exponent, name, ylabel in (
             (0., 'mass_vs_beta_over_Nt', r'$am_G$'),
@@ -105,7 +110,10 @@ def plot_masses(results: list[dict], root: Path) -> None:
             ax.errorbar([p['beta']/nt for p in same], [p['mass']*nt**exponent for p in same],
                 [p['mass_error']*nt**exponent for p in same], label=rf'$N_t={nt}$',
                 **pu.data(i, markerfacecolor='none'))
-        finish(fig, ax, root/'comparison'/f'{name}.pdf', r'$\beta/N_t$',
+        if zoom:
+            ax.set_xlim(*ZOOM_RANGE)
+        suffix = '_zoom' if zoom else ''
+        finish(fig, ax, root/'comparison'/f'{name}{suffix}.pdf', r'$\beta/N_t$',
                ylabel, '')
 
 
@@ -126,7 +134,7 @@ def squared_length_error(result: dict) -> float | None:
     return bootstrap_error(squared)
 
 
-def plot_lengths(results: list[dict], root: Path) -> None:
+def plot_lengths(results: list[dict], root: Path, zoom: bool = False) -> None:
     """Show both xi_2nd and its square for every defined measured coupling.
 
     Physical normalization is xi/L = (xi/a)/Nt. The companion trial exponent
@@ -138,6 +146,8 @@ def plot_lengths(results: list[dict], root: Path) -> None:
               and p['xi_2nd_error'] is not None and p['physical_Nt'] >= 1
               and p.get('review', {}).get('decision') != 'exclude'
               and p.get('review_status') != 'user_excluded']
+    if zoom:
+        points = [p for p in points if ZOOM_RANGE[0] <= p['beta']/p['physical_Nt'] <= ZOOM_RANGE[1]]
     if not points:
         return
     square_errors = {p['ensemble']:squared_length_error(p) for p in points}
@@ -159,8 +169,23 @@ def plot_lengths(results: list[dict], root: Path) -> None:
             nt_power = '3/2' if exponent*power==1.5 else f'{exponent*power:g}'
             denominator = '' if exponent==0 else rf'/N_t^{{{nt_power}}}'
             ylabel = '$'+numerator+denominator+'$'
-            finish(fig, ax, root/'comparison'/f'{tag}_{suffix}.pdf',
+            if zoom:
+                ax.set_xlim(*ZOOM_RANGE)
+            zoom_suffix = '_zoom' if zoom else ''
+            finish(fig, ax, root/'comparison'/f'{tag}_{suffix}{zoom_suffix}.pdf',
                    r'$\beta/N_t$', ylabel, '')
+
+
+def plot_zoom(results: list[dict], root: Path) -> None:
+    """Render nine additional views; autoscale y using only points in the x range."""
+    plot_masses(results, root, zoom=True)
+    plot_lengths(results, root, zoom=True)
+    write_json(root/'comparison/scaling_zoom_status.json', dict(
+        beta_over_Nt_range=list(ZOOM_RANGE), scaling_pdfs=list(ZOOM_PDFS),
+        available_ensembles=[p['ensemble'] for p in results
+                            if ZOOM_RANGE[0] <= p['beta']/p['physical_Nt'] <= ZOOM_RANGE[1]],
+        bootstrap_samples=500, new_bootstrap_operations=0,
+        full_range_plots_preserved=True, job_id=os.environ.get('SLURM_JOB_ID')))
 
 
 def plot_window_zoom(result: dict, root: Path) -> None:
@@ -258,8 +283,11 @@ def plot_volume(volumes: list[dict], root: Path) -> None:
 def main() -> None:
     """Refresh these plots from available completed analyses on a compute node."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--masses-only', action='store_true',
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--masses-only', action='store_true',
                         help='refresh the three mass-scaling PDFs from saved estimates')
+    mode.add_argument('--zoom-only', action='store_true',
+                      help='add nine beta/Nt=1.2--1.6 views without changing full-range plots')
     args = parser.parse_args()
     if not os.environ.get('SLURM_JOB_ID'):
         raise RuntimeError('comparison plotting must run on a qbig compute node')
@@ -274,12 +302,15 @@ def main() -> None:
         result.setdefault('include', result['mass'] is not None)
         if not args.masses_only:
             result['_boot'] = np.load(path.parent/'bootstrap.npz')
+        if not args.masses_only and not args.zoom_only:
             selected = result['selected_window_index']
             result['_mass_samples'] = (result['_boot']['window_parameters'][selected,:,1]
                                        if selected is not None else np.full(500, np.nan))
         results.append(result)
     if args.masses_only:
         plot_masses(results, root)
+    elif args.zoom_only:
+        plot_zoom(results, root)
     else:
         plot_scaling(results, root, pending)
     print(f'Plotted {len(results)} completed ensembles; {len(pending)} pending; no new resampling.')

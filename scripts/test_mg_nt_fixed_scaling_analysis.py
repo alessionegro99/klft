@@ -8,7 +8,7 @@ import numpy as np
 
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest
 from mg_nt_fixed_scaling_inventory import build_inventory
-from mg_nt_fixed_scaling_plots import (NT_PALETTE, SCALING_PDFS, effective_powers,
+from mg_nt_fixed_scaling_plots import (NT_PALETTE, SCALING_PDFS, ZOOM_PDFS, ZOOM_RANGE, effective_powers,
                                        plot_lengths, plot_masses, squared_length_error)
 from mg_nt_fixed_replot import saved_scan
 from mg_nt_fixed_canonical_plots import finish
@@ -16,6 +16,42 @@ from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 
 class ScalingAnalysisTest(unittest.TestCase):
+    def test_zoom_preserves_values_errors_styles_and_filters_before_autoscaling(self) -> None:
+        samples = np.ones((500, 4), dtype=np.float64)
+        samples[:, 2] = np.linspace(1.1, 1.2, 500)
+        points = [dict(ensemble=f'{nt}_{y}', physical_Nt=nt, beta=y*nt,
+                       mass=y, mass_error=.01, xi_2nd=y, xi_2nd_error=.1,
+                       Ns=32, _boot=dict(samples=samples), include=True)
+                  for nt in (1, 2) for y in (1., 1.2, 1.5, 1.6, 2.9)]
+        plots = {}
+
+        def capture(fig, ax, path, xlabel, ylabel, heading) -> None:
+            if path.stem.endswith('_zoom'):
+                np.testing.assert_allclose(ax.get_xlim(), ZOOM_RANGE)
+                # Off-screen data must not hold the vertical scale open.
+                self.assertLess(ax.dataLim.ymax, 11.)
+            curves = {}
+            for curve in ax.containers:
+                line = curve.lines[0]
+                self.assertEqual(line.get_markerfacecolor(), 'none')
+                curves[curve.get_label()] = (
+                    line.get_xdata(orig=False), line.get_ydata(orig=False),
+                    np.asarray(curve.lines[2][0].get_segments()))
+            plots[path.name] = curves
+            plt.close(fig)
+
+        with patch('mg_nt_fixed_scaling_plots.finish', side_effect=capture):
+            for zoom in (False, True):
+                plot_masses(points, Path('/tmp/mgnt-zoom-test'), zoom=zoom)
+                plot_lengths(points, Path('/tmp/mgnt-zoom-test'), zoom=zoom)
+        self.assertEqual(set(plots), set(SCALING_PDFS+ZOOM_PDFS))
+        for full, zoom in zip(SCALING_PDFS, ZOOM_PDFS):
+            for label, (x, y, bars) in plots[full].items():
+                keep = (x >= ZOOM_RANGE[0]) & (x <= ZOOM_RANGE[1])
+                for observed, expected in zip(plots[zoom][label], (x[keep], y[keep], bars[keep])):
+                    np.testing.assert_allclose(observed, expected)
+                self.assertEqual(len(plots[zoom][label][0]), 3)
+
     def test_mass_scaling_includes_nt1_and_scales_errors(self) -> None:
         points = [dict(physical_Nt=nt, beta=2.5, mass=.1, mass_error=.01,
                        include=True, campaign_type='diagnostic') for nt in (1,2)]

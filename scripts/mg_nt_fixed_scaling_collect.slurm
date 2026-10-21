@@ -26,6 +26,13 @@ if [[ "${1:-}" == "--mass-plots-only" ]]; then
   "$project/bin/uv" run --frozen python "$snapshot/scripts/mg_nt_fixed_scaling_plots.py" --masses-only
   exit
 fi
+if [[ "${1:-}" == "--zoom-only" ]]; then
+  "$project/bin/uv" run --frozen python "$snapshot/scripts/mg_nt_fixed_scaling_plots.py" --zoom-only
+  "$project/bin/uv" run --frozen python "$snapshot/scripts/mg_nt_fixed_verify.py"
+  "$project/bin/uv" run --frozen python "$snapshot/scripts/mg_nt_fixed_logbook.py"
+  "$project/bin/uv" run --frozen python "$snapshot/scripts/mg_nt_fixed_logbook.py" --check
+  exit
+fi
 case "${1:-}" in
   --collect-only) steps=(mg_nt_fixed_campaign mg_nt_fixed_verify);;
   --plots-only) steps=(mg_nt_fixed_scaling_plots);;

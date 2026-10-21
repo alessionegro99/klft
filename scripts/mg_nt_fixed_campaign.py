@@ -22,7 +22,7 @@ from mg_nt_fixed_canonical_plots import finish, plot_ensemble, title
 from mg_nt_fixed_ensemble import clean
 from mg_nt_fixed_inventory import ROOT, load_campaign_manifest, sha256, token, write_csv, write_json
 from mg_nt_fixed_statistics import bootstrap_error, fit_window, review_window
-from mg_nt_fixed_scaling_plots import SCALING_PDFS, plot_scaling, squared_length_error
+from mg_nt_fixed_scaling_plots import SCALING_PDFS, ZOOM_PDFS, plot_scaling, squared_length_error
 from plot_thesis_results import FIGURE_SIZE, plt, pu
 
 RESULTS = ROOT/'analysis/mg_nt_fixed'
@@ -580,6 +580,12 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
                     for i, label in enumerate(('amG', 'xi2nd/a', '(xi2nd/a)^2')):
                         links = [f'[PDF]({name})' for name in SCALING_PDFS[3*i:3*i+3]]
                         lines.append('| '+label+' | '+' | '.join(links)+' |')
+                    lines += ['', 'Zoom: 1.2 <= beta/Nt <= 1.6; vertical limits use the visible points.', '',
+                              '| Observable | Unscaled | p=1 | p=3/2 |',
+                              '|---|---|---|---|']
+                    for i, label in enumerate(('amG', 'xi2nd/a', '(xi2nd/a)^2')):
+                        links = [f'[PDF]({name})' for name in ZOOM_PDFS[3*i:3*i+3]]
+                        lines.append('| '+label+' | '+' | '.join(links)+' |')
                     lines += ['', 'Other comparisons and data:', '']
             else:
                 lines += ['Immutable input copies and provenance. Raw histories remain on qbig at the original manifest paths.','']
@@ -598,7 +604,7 @@ def write_readmes(manifest: dict,results: list[dict],tunings: list[dict],continu
             lines += [f'- [{p.name}]({p.name}/)' for p in children]
             lines += ['']+[f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.csv'))]
             lines += [f'- [{p.name}]({p.name})' for p in sorted(directory.glob('*.pdf'))
-                      if not (root==RESULTS and relative=='comparison' and p.name in SCALING_PDFS)]
+                      if not (root==RESULTS and relative=='comparison' and p.name in SCALING_PDFS+ZOOM_PDFS)]
             (directory/'README.md').write_text('\n'.join(lines)+'\n')
     for p in results:
         for folder in (RESULTS/p['ensemble']/'plots',RESULTS/p['ensemble']/'plots/first_stage'):
